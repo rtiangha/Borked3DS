@@ -476,6 +476,7 @@ bool RasterizerVulkan::Draw(bool accelerate, bool is_indexed) {
 
     pipeline_info.attachments.color = framebuffer->Format(SurfaceType::Color);
     pipeline_info.attachments.depth = framebuffer->Format(SurfaceType::Depth);
+    pipeline_info.attachments.sample_count = framebuffer->Samples();
 
     if (shadow_rendering) {
         pipeline_cache.BindStorageImage(6, framebuffer->ImageView(SurfaceType::Color));
@@ -765,6 +766,7 @@ bool RasterizerVulkan::AccelerateDisplay(const Pica::FramebufferConfig& config,
     src_params.stride = pixel_stride;
     src_params.is_tiled = false;
     src_params.pixel_format = VideoCore::PixelFormatFromGPUPixelFormat(config.color_format);
+    src_params.sample_count = Settings::values.sample_count.GetValue();
     src_params.UpdateParams();
 
     const auto [src_surface_id, src_rect] =

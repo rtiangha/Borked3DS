@@ -508,9 +508,11 @@ bool Instance::CreateDevice() {
             .features{
                 .robustBufferAccess = features.robustBufferAccess,
                 .geometryShader = features.geometryShader,
+                .sampleRateShading = features.sampleRateShading,
                 .logicOp = features.logicOp,
                 .samplerAnisotropy = features.samplerAnisotropy,
                 .fragmentStoresAndAtomics = features.fragmentStoresAndAtomics,
+                .shaderStorageImageMultisample = features.shaderStorageImageMultisample,
                 .shaderClipDistance = features.shaderClipDistance,
             },
         },
