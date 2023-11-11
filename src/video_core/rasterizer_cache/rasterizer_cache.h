@@ -96,20 +96,21 @@ void RasterizerCache<T>::TickFrame() {
     }
 
     const u32 scale_factor = renderer.GetResolutionScaleFactor();
+    const u32 samples = renderer.GetSampleCount();
     const bool resolution_scale_changed = resolution_scale_factor != scale_factor;
+    const bool sample_count_changed = sample_count != samples;
     const bool use_custom_texture_changed =
         Settings::values.custom_textures.GetValue() != use_custom_textures;
 
-    if (resolution_scale_changed || use_custom_texture_changed) {
+    if (resolution_scale_changed || use_custom_texture_changed || sample_count_changed) {
         resolution_scale_factor = scale_factor;
+        sample_count = renderer.GetSampleCount();
         use_custom_textures = Settings::values.custom_textures.GetValue();
         if (use_custom_textures) {
             custom_tex_manager.FindCustomTextures();
         }
         UnregisterAll();
     }
-
-    sample_count = renderer.GetSampleCount();
 }
 
 template <class T>
