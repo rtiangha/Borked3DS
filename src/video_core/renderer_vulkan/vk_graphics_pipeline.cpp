@@ -156,6 +156,7 @@ bool GraphicsPipeline::Build(bool fail_on_compile_required) {
     const vk::PipelineMultisampleStateCreateInfo multisampling = {
         .rasterizationSamples = vk::SampleCountFlagBits(info.attachments.sample_count),
         .sampleShadingEnable = true,
+        .minSampleShading = 1.0f,
     };
 
     const vk::PipelineColorBlendAttachmentState colorblend_attachment = {
