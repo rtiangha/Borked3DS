@@ -144,8 +144,8 @@ boost::container::small_vector<vk::ImageMemoryBarrier, 3> MakeInitBarriers(
 }
 
 Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, TextureType type,
-                  vk::Format format, vk::ImageUsageFlags usage, vk::ImageCreateFlags flags,
-                  vk::ImageAspectFlags aspect, bool need_format_list,
+                  vk::Format format, vk::SampleCountFlagBits samples, vk::ImageUsageFlags usage,
+                  vk::ImageCreateFlags flags, vk::ImageAspectFlags aspect, bool need_format_list,
                   std::string_view debug_name = {}) {
     const u32 layers = type == TextureType::CubeMap ? 6 : 1;
 
@@ -166,7 +166,7 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
         .extent = {width, height, 1},
         .mipLevels = levels,
         .arrayLayers = layers,
-        .samples = vk::SampleCountFlagBits::e1,
+        .samples = samples,
         .usage = usage,
     };
 
@@ -311,7 +311,7 @@ bool TextureRuntime::ClearTexture(Surface& surface, const VideoCore::TextureClea
         .aspect = surface.Aspect(),
         .pipeline_flags = surface.PipelineStageFlags(),
         .src_access = surface.AccessFlags(),
-        .src_image = surface.Image(),
+        .src_image = surface.GetSampleCount() > 1 ? surface.Image(3) : surface.Image(),
     };
 
     if (clear.texture_rect == surface.GetScaledRect()) {
@@ -377,7 +377,8 @@ void TextureRuntime::ClearTextureWithRenderpass(Surface& surface,
 
     const auto color_format = is_color ? surface.pixel_format : PixelFormat::Invalid;
     const auto depth_format = is_color ? PixelFormat::Invalid : surface.pixel_format;
-    const auto render_pass = renderpass_cache.GetRenderpass(color_format, depth_format, true);
+    const auto render_pass =
+        renderpass_cache.GetRenderpass(color_format, depth_format, true, surface.GetSampleCount());
 
     const RecordParams params = {
         .aspect = surface.Aspect(),
@@ -432,13 +433,14 @@ void TextureRuntime::ClearTextureWithRenderpass(Surface& surface,
         };
 
         const auto clear_value = MakeClearValue(clear.value);
+        std::array<vk::ClearValue, 2> clear_values = {clear_value, clear_value};
 
         const vk::RenderPassBeginInfo renderpass_begin_info = {
             .renderPass = render_pass,
             .framebuffer = framebuffer,
             .renderArea = render_area,
-            .clearValueCount = 1,
-            .pClearValues = &clear_value,
+            .clearValueCount = 2,
+            .pClearValues = clear_values.data(),
         };
 
         cmdbuf.pipelineBarrier(params.pipeline_flags, pipeline_flags,
@@ -725,16 +727,27 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
         flags |= vk::ImageCreateFlagBits::eMutableFormat;
     }
 
+    // Native image
     const bool need_format_list = is_mutable && instance->IsImageFormatListSupported();
-    handles[0] = MakeHandle(instance, width, height, levels, texture_type, format, traits.usage,
-                            flags, traits.aspect, need_format_list, DebugName(false));
+    handles[0] = MakeHandle(instance, width, height, levels, texture_type, format,
+                            vk::SampleCountFlagBits::e1, traits.usage, flags, traits.aspect,
+                            need_format_list, DebugName(false));
     raw_images.emplace_back(handles[0].image);
 
+    // Upscaled image
     if (res_scale != 1) {
-        handles[1] =
-            MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type, format,
-                       traits.usage, flags, traits.aspect, need_format_list, DebugName(true));
+        handles[1] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
+                                format, vk::SampleCountFlagBits::e1, traits.usage, flags,
+                                traits.aspect, need_format_list, DebugName(true));
         raw_images.emplace_back(handles[1].image);
+    }
+
+    // Upscales+MSAA image
+    if (vk::SampleCountFlagBits(sample_count) > vk::SampleCountFlagBits::e1) {
+        handles[3] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
+                                format, vk::SampleCountFlagBits(sample_count), traits.usage, flags,
+                                traits.aspect, need_format_list, DebugName(true));
+        raw_images.emplace_back(handles[3].image);
     }
 
     runtime->renderpass_cache.EndRendering();
@@ -757,7 +770,7 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceBase& surface
     const bool has_normal = mat && mat->Map(MapType::Normal);
     const vk::Format format = traits.native;
 
-    boost::container::static_vector<vk::Image, 2> raw_images;
+    boost::container::static_vector<vk::Image, 4> raw_images;
 
     vk::ImageCreateFlags flags{};
     if (texture_type == VideoCore::TextureType::CubeMap) {
@@ -766,18 +779,26 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceBase& surface
 
     const std::string debug_name = DebugName(false, true);
     handles[0] = MakeHandle(instance, mat->width, mat->height, levels, texture_type, format,
-                            traits.usage, flags, traits.aspect, false, debug_name);
+                            vk::SampleCountFlagBits::e1, traits.usage, flags, traits.aspect, false,
+                            debug_name);
     raw_images.emplace_back(handles[0].image);
 
     if (res_scale != 1) {
         handles[1] = MakeHandle(instance, mat->width, mat->height, levels, texture_type,
-                                vk::Format::eR8G8B8A8Unorm, traits.usage, flags, traits.aspect,
-                                false, debug_name);
+                                vk::Format::eR8G8B8A8Unorm, vk::SampleCountFlagBits::e1,
+                                traits.usage, flags, traits.aspect, false, debug_name);
         raw_images.emplace_back(handles[1].image);
+    }
+    if (vk::SampleCountFlagBits(sample_count) > vk::SampleCountFlagBits::e1) {
+        handles[3] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
+                                format, vk::SampleCountFlagBits(sample_count), traits.usage, flags,
+                                traits.aspect, false, debug_name);
+        raw_images.emplace_back(handles[3].image);
     }
     if (has_normal) {
         handles[2] = MakeHandle(instance, mat->width, mat->height, levels, texture_type, format,
-                                traits.usage, flags, traits.aspect, false, debug_name);
+                                vk::SampleCountFlagBits::e1, traits.usage, flags, traits.aspect,
+                                false, debug_name);
         raw_images.emplace_back(handles[2].image);
     }
 
@@ -1076,9 +1097,9 @@ void Surface::ScaleUp(u32 new_scale) {
         flags |= vk::ImageCreateFlagBits::eMutableFormat;
     }
 
-    handles[1] =
-        MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
-                   traits.native, traits.usage, flags, traits.aspect, false, DebugName(true));
+    handles[1] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
+                            traits.native, vk::SampleCountFlagBits::e1, traits.usage, flags,
+                            traits.aspect, false, DebugName(true));
 
     runtime->renderpass_cache.EndRendering();
     scheduler->Record(
@@ -1152,9 +1173,9 @@ vk::ImageView Surface::CopyImageView() noexcept {
         if (texture_type == VideoCore::TextureType::CubeMap) {
             flags |= vk::ImageCreateFlagBits::eCubeCompatible;
         }
-        copy_handle =
-            MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
-                       traits.native, traits.usage, flags, traits.aspect, false);
+        copy_handle = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels,
+                                 texture_type, traits.native, vk::SampleCountFlagBits::e1,
+                                 traits.usage, flags, traits.aspect, false);
         copy_layout = vk::ImageLayout::eUndefined;
     }
 
@@ -1346,8 +1367,12 @@ vk::Framebuffer Surface::Framebuffer() noexcept {
     const auto color_format = is_depth ? PixelFormat::Invalid : pixel_format;
     const auto depth_format = is_depth ? pixel_format : PixelFormat::Invalid;
     const auto render_pass =
-        runtime->renderpass_cache.GetRenderpass(color_format, depth_format, false);
-    const auto attachments = std::array{ImageView()};
+        runtime->renderpass_cache.GetRenderpass(color_format, depth_format, false, sample_count);
+    boost::container::static_vector<vk::ImageView, 2> attachments;
+    attachments.emplace_back(ImageView());
+    if (sample_count > 1) {
+        attachments.emplace_back(ImageView(3));
+    }
     framebuffers[index] = MakeFramebuffer(instance->GetDevice(), render_pass, GetScaledWidth(),
                                           GetScaledHeight(), attachments);
     return framebuffers[index].get();
