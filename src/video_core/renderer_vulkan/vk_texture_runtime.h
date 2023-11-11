@@ -181,8 +181,8 @@ public:
     const Instance* instance;
     Scheduler* scheduler;
     FormatTraits traits;
-    std::array<Handle, 3> handles{};
-    std::array<vk::UniqueFramebuffer, 2> framebuffers{};
+    std::array<Handle, 4> handles{};
+    std::array<vk::UniqueFramebuffer, 3> framebuffers{};
     Handle copy_handle;
     vk::UniqueImageView depth_view;
     vk::UniqueImageView stencil_view;

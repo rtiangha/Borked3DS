@@ -71,6 +71,10 @@ public:
         return height * res_scale;
     }
 
+    [[nodiscard]] u8 GetSampleCount() const noexcept {
+        return sample_count;
+    }
+
     [[nodiscard]] Common::Rectangle<u32> GetRect(u32 level = 0) const noexcept {
         return {0, height >> level, width >> level, 0};
     }
@@ -104,6 +108,7 @@ public:
     u32 stride = 0;
     u32 levels = 1;
     u32 res_scale = 1;
+    u8 sample_count = 1;
 
     bool is_tiled = false;
     TextureType texture_type = TextureType::Texture2D;
