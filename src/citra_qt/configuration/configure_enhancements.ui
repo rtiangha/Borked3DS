@@ -111,6 +111,55 @@
        </widget>
       </item>
       <item>
+       <widget class="QWidget" name="widget_sample_count" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="sample_count_label">
+           <property name="text">
+            <string>Sample count</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="sample_count_combobox">
+           <item>
+            <property name="text">
+             <string>Native (x1)</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>x2</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>x4</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>x8</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="toggle_linear_filter">
         <property name="text">
          <string>Enable Linear Filtering</string>
