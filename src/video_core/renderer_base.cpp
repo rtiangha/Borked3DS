@@ -37,7 +37,7 @@ u8 RendererBase::GetSampleCount() const {
         return 1;
     }
 
-    return Settings::values.sample_count.GetValue();
+    return static_cast<u8>(1u << Settings::values.sample_count.GetValue());
 }
 
 void RendererBase::UpdateCurrentFramebufferLayout(bool is_portrait_mode) {
