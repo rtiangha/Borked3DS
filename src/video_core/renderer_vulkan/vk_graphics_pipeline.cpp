@@ -155,7 +155,7 @@ bool GraphicsPipeline::Build(bool fail_on_compile_required) {
 
     const vk::PipelineMultisampleStateCreateInfo multisampling = {
         .rasterizationSamples = vk::SampleCountFlagBits(info.attachments.sample_count),
-        .sampleShadingEnable = false,
+        .sampleShadingEnable = true,
     };
 
     const vk::PipelineColorBlendAttachmentState colorblend_attachment = {
@@ -264,8 +264,8 @@ bool GraphicsPipeline::Build(bool fail_on_compile_required) {
         .pColorBlendState = &color_blending,
         .pDynamicState = &dynamic_info,
         .layout = pipeline_layout,
-        .renderPass =
-            renderpass_cache.GetRenderpass(info.attachments.color, info.attachments.depth, false),
+        .renderPass = renderpass_cache.GetRenderpass(info.attachments.color, info.attachments.depth,
+                                                     false, info.attachments.sample_count),
     };
 
     if (fail_on_compile_required) {
