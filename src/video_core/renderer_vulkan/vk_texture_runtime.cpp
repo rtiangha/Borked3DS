@@ -464,8 +464,8 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
         .pipeline_flags = source.PipelineStageFlags() | dest.PipelineStageFlags(),
         .src_access = source.AccessFlags(),
         .dst_access = dest.AccessFlags(),
-        .src_image = source.Image(),
-        .dst_image = dest.Image(),
+        .src_image = (source.GetSampleCount() > 1) ? source.Image(3) : source.Image(),
+        .dst_image = (dest.GetSampleCount() > 1) ? dest.Image(3) : dest.Image(),
     };
 
     scheduler.Record([params, copy](vk::CommandBuffer cmdbuf) {
