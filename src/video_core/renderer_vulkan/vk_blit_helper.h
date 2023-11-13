@@ -55,10 +55,12 @@ private:
 
     vk::ShaderModule full_screen_vert;
     vk::ShaderModule d24s8_to_rgba8_comp;
+    vk::ShaderModule d24s8_to_rgba8_ms_comp;
     vk::ShaderModule depth_to_buffer_comp;
     vk::ShaderModule blit_depth_stencil_frag;
 
     vk::Pipeline d24s8_to_rgba8_pipeline;
+    vk::Pipeline d24s8_to_rgba8_ms_pipeline;
     vk::Pipeline depth_to_buffer_pipeline;
     vk::Pipeline depth_blit_pipeline;
     vk::Sampler linear_sampler;
