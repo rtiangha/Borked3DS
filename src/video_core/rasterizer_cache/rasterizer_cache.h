@@ -301,6 +301,7 @@ bool RasterizerCache<T>::AccelerateDisplayTransfer(const Pica::DisplayTransferCo
     }
 
     dst_params.res_scale = slot_surfaces[src_surface_id].res_scale;
+    dst_params.sample_count = slot_surfaces[src_surface_id].sample_count;
 
     const auto [dst_surface_id, dst_rect] =
         GetSurfaceSubRect(dst_params, ScaleMatch::Upscale, false);
@@ -345,6 +346,7 @@ bool RasterizerCache<T>::AccelerateFill(const Pica::MemoryFillConfig& config) {
     params.size = params.end - params.addr;
     params.type = SurfaceType::Fill;
     params.res_scale = std::numeric_limits<u16>::max();
+    params.sample_count = sample_count;
 
     SurfaceId fill_surface_id = slot_surfaces.insert(runtime, params);
     Surface& fill_surface = slot_surfaces[fill_surface_id];
@@ -499,6 +501,7 @@ typename RasterizerCache<T>::SurfaceRect_Tuple RasterizerCache<T>::GetSurfaceSub
         if (surface_id) {
             SurfaceParams new_params = slot_surfaces[surface_id];
             new_params.res_scale = params.res_scale;
+            new_params.sample_count = params.sample_count;
 
             surface_id = CreateSurface(new_params);
             RegisterSurface(surface_id);
