@@ -384,7 +384,7 @@ void TextureRuntime::ClearTextureWithRenderpass(Surface& surface,
         .aspect = surface.Aspect(),
         .pipeline_flags = surface.PipelineStageFlags(),
         .src_access = surface.AccessFlags(),
-        .src_image = surface.Image(),
+        .src_image = surface.GetSampleCount() > 1 ? surface.Image(3) : surface.Image(),
     };
 
     scheduler.Record([params, is_color, clear, render_pass,
@@ -1342,7 +1342,7 @@ vk::ImageView Surface::StorageView() noexcept {
     is_storage = true;
 
     const vk::ImageViewCreateInfo storage_view_info = {
-        .image = Image(),
+        .image = sample_count > 1 ? Image(3) : Image(),
         .viewType = vk::ImageViewType::e2D,
         .format = vk::Format::eR32Uint,
         .subresourceRange{
@@ -1483,8 +1483,8 @@ void Surface::BlitScale(const VideoCore::TextureBlit& blit, bool up_scale) {
 
 Framebuffer::Framebuffer(TextureRuntime& runtime, const VideoCore::FramebufferParams& params,
                          Surface* color, Surface* depth)
-    : VideoCore::FramebufferParams{params},
-      res_scale{color ? color->res_scale : (depth ? depth->res_scale : 1u)},
+    : VideoCore::FramebufferParams{params}, res_scale{color ? color->res_scale
+                                                            : (depth ? depth->res_scale : 1u)},
       sample_count{params.sample_count} {
     auto& renderpass_cache = runtime.GetRenderpassCache();
     if (shadow_rendering && !color) {
@@ -1588,8 +1588,8 @@ Sampler::Sampler(TextureRuntime& runtime, const VideoCore::SamplerParams& params
 Sampler::~Sampler() = default;
 
 DebugScope::DebugScope(TextureRuntime& runtime, Common::Vec4f color, std::string_view label)
-    : scheduler{runtime.GetScheduler()}, has_debug_tool{
-                                             runtime.GetInstance().HasDebuggingToolAttached()} {
+    : scheduler{runtime.GetScheduler()},
+      has_debug_tool{runtime.GetInstance().HasDebuggingToolAttached()} {
     if (!has_debug_tool) {
         return;
     }
