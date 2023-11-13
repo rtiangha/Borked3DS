@@ -61,8 +61,12 @@ public:
 private:
     /// Creates a renderpass configured appropriately and stores it in cached_renderpasses
     vk::UniqueRenderPass CreateRenderPass(vk::Format color, vk::Format depth,
-                                          vk::AttachmentLoadOp load_op,
-                                          vk::SampleCountFlagBits sample_count) const;
+                                          vk::AttachmentLoadOp load_op) const;
+
+    /// Creates an MSAA renderpass configured appropriately and stores it in cached_renderpasses
+    vk::UniqueRenderPass CreateRenderPassMSAA(vk::Format color, vk::Format depth,
+                                              vk::AttachmentLoadOp load_op,
+                                              vk::SampleCountFlagBits sample_count) const;
 
 private:
     const Instance& instance;
