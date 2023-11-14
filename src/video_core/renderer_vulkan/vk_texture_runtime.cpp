@@ -311,10 +311,13 @@ bool TextureRuntime::ClearTexture(Surface& surface, const VideoCore::TextureClea
         .aspect = surface.Aspect(),
         .pipeline_flags = surface.PipelineStageFlags(),
         .src_access = surface.AccessFlags(),
-        .src_image = surface.GetSampleCount() > 1 ? surface.Image(3) : surface.Image(),
+        .src_image = surface.Image(),
     };
 
-    if (clear.texture_rect == surface.GetScaledRect()) {
+    // MSAA images should always use a render-pass to clear both the MSAA texture and the regular
+    // texture at the same time
+
+    if (clear.texture_rect == surface.GetScaledRect() && (surface.GetSampleCount() == 1)) {
         scheduler.Record([params, clear](vk::CommandBuffer cmdbuf) {
             const vk::ImageSubresourceRange range = {
                 .aspectMask = params.aspect,
@@ -744,9 +747,10 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
 
     // Upscales+MSAA image
     if (vk::SampleCountFlagBits(sample_count) > vk::SampleCountFlagBits::e1) {
-        handles[3] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
-                                format, vk::SampleCountFlagBits(sample_count), traits.usage, flags,
-                                traits.aspect, need_format_list, DebugName(true, false, sample_count));
+        handles[3] =
+            MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type, format,
+                       vk::SampleCountFlagBits(sample_count), traits.usage, flags, traits.aspect,
+                       need_format_list, DebugName(true, false, sample_count));
         raw_images.emplace_back(handles[3].image);
     }
 
@@ -1483,8 +1487,8 @@ void Surface::BlitScale(const VideoCore::TextureBlit& blit, bool up_scale) {
 
 Framebuffer::Framebuffer(TextureRuntime& runtime, const VideoCore::FramebufferParams& params,
                          Surface* color, Surface* depth)
-    : VideoCore::FramebufferParams{params}, res_scale{color ? color->res_scale
-                                                            : (depth ? depth->res_scale : 1u)},
+    : VideoCore::FramebufferParams{params},
+      res_scale{color ? color->res_scale : (depth ? depth->res_scale : 1u)},
       sample_count{params.sample_count} {
     auto& renderpass_cache = runtime.GetRenderpassCache();
     if (shadow_rendering && !color) {
