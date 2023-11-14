@@ -132,16 +132,16 @@ public:
     vk::ImageView CopyImageView() noexcept;
 
     /// Returns the framebuffer view of the surface image
-    vk::ImageView FramebufferView() noexcept;
+    vk::ImageView FramebufferView(u32 index = 1) noexcept;
 
     /// Returns the depth view of the surface image
-    vk::ImageView DepthView() noexcept;
+    vk::ImageView DepthView(u32 index = 1) noexcept;
 
     /// Returns the stencil view of the surface image
-    vk::ImageView StencilView() noexcept;
+    vk::ImageView StencilView(u32 index = 1) noexcept;
 
     /// Returns the R32 image view used for atomic load/store
-    vk::ImageView StorageView() noexcept;
+    vk::ImageView StorageView(u32 index = 1) noexcept;
 
     /// Returns a framebuffer handle for rendering to this surface
     vk::Framebuffer Framebuffer() noexcept;
