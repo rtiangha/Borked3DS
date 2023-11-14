@@ -1278,18 +1278,18 @@ vk::ImageView Surface::ImageView(u32 index) const noexcept {
     return image_view;
 }
 
-vk::ImageView Surface::FramebufferView() noexcept {
+vk::ImageView Surface::FramebufferView(u32 index) noexcept {
     is_framebuffer = true;
-    return ImageView();
+    return ImageView(index);
 }
 
-vk::ImageView Surface::DepthView() noexcept {
+vk::ImageView Surface::DepthView(u32 index) noexcept {
     if (depth_view) {
         return depth_view.get();
     }
 
     const vk::ImageViewCreateInfo view_info = {
-        .image = Image(),
+        .image = Image(index),
         .viewType = vk::ImageViewType::e2D,
         .format = instance->GetTraits(pixel_format).native,
         .subresourceRange{
@@ -1305,13 +1305,13 @@ vk::ImageView Surface::DepthView() noexcept {
     return depth_view.get();
 }
 
-vk::ImageView Surface::StencilView() noexcept {
+vk::ImageView Surface::StencilView(u32 index) noexcept {
     if (stencil_view) {
         return stencil_view.get();
     }
 
     const vk::ImageViewCreateInfo view_info = {
-        .image = Image(),
+        .image = Image(index),
         .viewType = vk::ImageViewType::e2D,
         .format = instance->GetTraits(pixel_format).native,
         .subresourceRange{
@@ -1327,7 +1327,7 @@ vk::ImageView Surface::StencilView() noexcept {
     return stencil_view.get();
 }
 
-vk::ImageView Surface::StorageView() noexcept {
+vk::ImageView Surface::StorageView(u32 index) noexcept {
     if (storage_view) {
         return storage_view.get();
     }
@@ -1336,7 +1336,7 @@ vk::ImageView Surface::StorageView() noexcept {
         LOG_WARNING(Render_Vulkan,
                     "Attempted to retrieve storage view from unsupported surface with format {}",
                     VideoCore::PixelFormatAsString(pixel_format));
-        return ImageView();
+        return ImageView(index);
     }
 
     is_storage = true;
