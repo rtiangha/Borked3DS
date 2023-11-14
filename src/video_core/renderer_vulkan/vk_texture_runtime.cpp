@@ -746,7 +746,7 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
     if (vk::SampleCountFlagBits(sample_count) > vk::SampleCountFlagBits::e1) {
         handles[3] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
                                 format, vk::SampleCountFlagBits(sample_count), traits.usage, flags,
-                                traits.aspect, need_format_list, DebugName(true));
+                                traits.aspect, need_format_list, DebugName(true, false, sample_count));
         raw_images.emplace_back(handles[3].image);
     }
 

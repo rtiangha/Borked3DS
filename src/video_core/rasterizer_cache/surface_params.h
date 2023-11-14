@@ -51,7 +51,7 @@ public:
     u32 LevelOf(PAddr addr) const;
 
     /// Returns a string identifier of the params object
-    std::string DebugName(bool scaled, bool custom = false) const noexcept;
+    std::string DebugName(bool scaled, bool custom = false, u8 sample_count = 1) const noexcept;
 
     bool operator==(const SurfaceParams& other) const noexcept;
 
