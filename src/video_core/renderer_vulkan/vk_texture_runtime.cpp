@@ -387,7 +387,7 @@ void TextureRuntime::ClearTextureWithRenderpass(Surface& surface,
         .aspect = surface.Aspect(),
         .pipeline_flags = surface.PipelineStageFlags(),
         .src_access = surface.AccessFlags(),
-        .src_image = surface.GetSampleCount() > 1 ? surface.Image(3) : surface.Image(),
+        .src_image = surface.Image(),
     };
 
     scheduler.Record([params, is_color, clear, render_pass,
@@ -467,8 +467,8 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
         .pipeline_flags = source.PipelineStageFlags() | dest.PipelineStageFlags(),
         .src_access = source.AccessFlags(),
         .dst_access = dest.AccessFlags(),
-        .src_image = (source.GetSampleCount() > 1) ? source.Image(3) : source.Image(),
-        .dst_image = (dest.GetSampleCount() > 1) ? dest.Image(3) : dest.Image(),
+        .src_image = source.Image(),
+        .dst_image = dest.Image(),
     };
 
     scheduler.Record([params, copy](vk::CommandBuffer cmdbuf) {
@@ -572,8 +572,8 @@ bool TextureRuntime::BlitTextures(Surface& source, Surface& dest,
         .pipeline_flags = source.PipelineStageFlags() | dest.PipelineStageFlags(),
         .src_access = source.AccessFlags(),
         .dst_access = dest.AccessFlags(),
-        .src_image = source.Image(),
-        .dst_image = dest.Image(),
+        .src_image = source.Image(1),
+        .dst_image = dest.Image(1),
     };
 
     scheduler.Record([params, blit](vk::CommandBuffer cmdbuf) {
@@ -1175,11 +1175,10 @@ vk::PipelineStageFlags Surface::PipelineStageFlags() const noexcept {
 }
 
 vk::Image Surface::Image(u32 index) const noexcept {
-    const vk::Image image = handles[index].image;
-    if (!image) {
-        return handles[0].image;
-    }
-    return image;
+
+    const auto it = std::find_if(handles.crend() - index - 1, handles.crend(),
+                                 [](const Handle& handle) -> bool { return handle.image; });
+    return it->image;
 }
 
 vk::ImageView Surface::CopyImageView() noexcept {
