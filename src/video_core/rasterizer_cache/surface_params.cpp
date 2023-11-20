@@ -222,9 +222,10 @@ u32 SurfaceParams::LevelOf(PAddr level_addr) const {
 std::string SurfaceParams::DebugName(bool scaled, bool custom, u8 sample_count) const noexcept {
     const u32 scaled_width = scaled ? GetScaledWidth() : width;
     const u32 scaled_height = scaled ? GetScaledHeight() : height;
-    return fmt::format("Surface: {}x{} {} samples {} levels from {:#x} to {:#x} ({}{})", scaled_width,
-                       scaled_height, PixelFormatAsString(pixel_format), static_cast<u32>(sample_count), levels, addr,
-                       end, custom ? "custom," : "", scaled ? "scaled" : "unscaled");
+    return fmt::format("Surface: {}x{} {} samples {} levels from {:#x} to {:#x} ({}{})",
+                       scaled_width, scaled_height, PixelFormatAsString(pixel_format),
+                       static_cast<u32>(sample_count), levels, addr, end, custom ? "custom," : "",
+                       scaled ? "scaled" : "unscaled");
 }
 
 bool SurfaceParams::operator==(const SurfaceParams& other) const noexcept {
