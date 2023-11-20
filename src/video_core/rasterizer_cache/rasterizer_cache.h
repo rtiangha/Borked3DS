@@ -431,8 +431,10 @@ void RasterizerCache<T>::CopySurface(Surface& src_surface, Surface& dst_surface,
 
     const u32 src_scale = src_surface.res_scale;
     const u32 dst_scale = dst_surface.res_scale;
-    if (src_scale > dst_scale) {
-        dst_surface.ScaleUp(src_scale);
+    const u32 src_sample_count = src_surface.sample_count;
+    const u32 dst_sample_count = dst_surface.sample_count;
+    if ((src_scale > dst_scale) || (src_sample_count > dst_sample_count)) {
+        dst_surface.ScaleUp(src_scale, src_sample_count);
     }
 
     const auto src_rect = src_surface.GetScaledSubRect(subrect_params);
@@ -1171,8 +1173,9 @@ bool RasterizerCache<T>::ValidateByReinterpretation(Surface& surface, SurfacePar
             return false;
         }
         const u32 res_scale = src_surface.res_scale;
-        if (res_scale > surface.res_scale) {
-            surface.ScaleUp(res_scale);
+        const u8 sample_count = src_surface.sample_count;
+        if ((res_scale > surface.res_scale) || (sample_count > surface.sample_count)) {
+            surface.ScaleUp(res_scale, sample_count);
         }
         const PAddr addr = boost::icl::lower(interval);
         const SurfaceParams copy_params = surface.FromInterval(copy_interval);
@@ -1349,8 +1352,8 @@ SurfaceId RasterizerCache<T>::CreateSurface(const SurfaceParams& params) {
         return surface_id;
     }();
     Surface& surface = slot_surfaces[surface_id];
-    if (params.res_scale > surface.res_scale) {
-        surface.ScaleUp(params.res_scale);
+    if ((params.res_scale > surface.res_scale) || (params.sample_count > surface.sample_count)) {
+        surface.ScaleUp(params.res_scale, params.sample_count);
     }
     surface.MarkInvalid(surface.GetInterval());
     return surface_id;
