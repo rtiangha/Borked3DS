@@ -576,6 +576,87 @@ bool TextureRuntime::BlitTextures(Surface& source, Surface& dest,
         .dst_image = dest.Image(1),
     };
 
+    // Must resolve source-image first
+    if ((source.sample_count > dest.sample_count) && (dest.sample_count == 1)) {
+
+        scheduler.Record([&source](vk::CommandBuffer cmdbuf) {
+            const vk::ImageResolve resolve_area = {
+                .srcSubresource{
+                    .aspectMask = source.Aspect(),
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+                .srcOffset = {},
+                .dstSubresource{
+                    .aspectMask = source.Aspect(),
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+                .dstOffset = {},
+                .extent{source.GetScaledWidth(), source.GetScaledHeight(), 0},
+            };
+
+            const std::array read_barriers = {
+                vk::ImageMemoryBarrier{
+                    .srcAccessMask = source.AccessFlags(),
+                    .dstAccessMask = vk::AccessFlagBits::eTransferRead,
+                    .oldLayout = vk::ImageLayout::eGeneral,
+                    .newLayout = vk::ImageLayout::eTransferSrcOptimal,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = source.Image(3),
+                    .subresourceRange = MakeSubresourceRange(source.Aspect(), 0),
+                },
+                vk::ImageMemoryBarrier{
+                    .srcAccessMask = source.AccessFlags(),
+                    .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+                    .oldLayout = vk::ImageLayout::eGeneral,
+                    .newLayout = vk::ImageLayout::eTransferDstOptimal,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = source.Image(1),
+                    .subresourceRange = MakeSubresourceRange(source.Aspect(), 0),
+                },
+            };
+            const std::array write_barriers = {
+                vk::ImageMemoryBarrier{
+                    .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+                    .dstAccessMask = source.AccessFlags(),
+                    .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
+                    .newLayout = vk::ImageLayout::eGeneral,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = source.Image(3),
+                    .subresourceRange = MakeSubresourceRange(source.Aspect(), 0),
+                },
+                vk::ImageMemoryBarrier{
+                    .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                    .dstAccessMask = source.AccessFlags(),
+                    .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+                    .newLayout = vk::ImageLayout::eGeneral,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = source.Image(1),
+                    .subresourceRange = MakeSubresourceRange(source.Aspect(), 0),
+                },
+            };
+
+            cmdbuf.pipelineBarrier(source.PipelineStageFlags(),
+                                   vk::PipelineStageFlagBits::eTransfer,
+                                   vk::DependencyFlagBits::eByRegion, {}, {}, read_barriers);
+
+            cmdbuf.resolveImage(source.Image(3), vk::ImageLayout::eTransferSrcOptimal,
+                                source.Image(1), vk::ImageLayout::eTransferDstOptimal,
+                                resolve_area);
+
+            cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                   source.PipelineStageFlags(), vk::DependencyFlagBits::eByRegion,
+                                   {}, {}, write_barriers);
+        });
+    }
+
     scheduler.Record([params, blit](vk::CommandBuffer cmdbuf) {
         const std::array source_offsets = {
             vk::Offset3D{static_cast<s32>(blit.src_rect.left),
