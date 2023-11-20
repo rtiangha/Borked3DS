@@ -123,7 +123,7 @@ public:
     }
 
     /// Returns the image at index, otherwise the base image
-    vk::Image Image(u32 index = 1) const noexcept;
+    vk::Image Image(u32 index = 3) const noexcept;
 
     /// Returns the image view at index, otherwise the base view
     vk::ImageView ImageView(u32 index = 1) const noexcept;
