@@ -1367,11 +1367,10 @@ vk::ImageView Surface::CopyImageView() noexcept {
 }
 
 vk::ImageView Surface::ImageView(u32 index) const noexcept {
-    const auto& image_view = handles[index].image_view.get();
-    if (!image_view) {
-        return handles[0].image_view.get();
-    }
-    return image_view;
+    const auto it =
+        std::find_if(handles.crend() - index - 1, handles.crend(),
+                     [](const Handle& handle) -> bool { return handle.image_view.get(); });
+    return it->image_view.get();
 }
 
 vk::ImageView Surface::FramebufferView(u32 index) noexcept {
@@ -1438,7 +1437,7 @@ vk::ImageView Surface::StorageView(u32 index) noexcept {
     is_storage = true;
 
     const vk::ImageViewCreateInfo storage_view_info = {
-        .image = sample_count > 1 ? Image(3) : Image(),
+        .image = Image(),
         .viewType = vk::ImageViewType::e2D,
         .format = vk::Format::eR32Uint,
         .subresourceRange{
@@ -1465,7 +1464,7 @@ vk::Framebuffer Surface::Framebuffer() noexcept {
     const auto render_pass =
         runtime->renderpass_cache.GetRenderpass(color_format, depth_format, false, sample_count);
     boost::container::static_vector<vk::ImageView, 2> attachments;
-    attachments.emplace_back(ImageView());
+    attachments.emplace_back(ImageView(1));
     if (sample_count > 1) {
         attachments.emplace_back(ImageView(3));
     }
@@ -1597,8 +1596,9 @@ Framebuffer::Framebuffer(TextureRuntime& runtime, const VideoCore::FramebufferPa
             formats[index] = surface->pixel_format;
         }
         aspects[index] = surface->Aspect();
-        images[index] = surface->Image();
-        image_views[index] = shadow_rendering ? surface->StorageView() : surface->FramebufferView();
+        images[index] = surface->Image(1);
+        image_views[index] =
+            shadow_rendering ? surface->StorageView(1) : surface->FramebufferView(1);
     };
 
     boost::container::static_vector<vk::ImageView, 4> attachments;
