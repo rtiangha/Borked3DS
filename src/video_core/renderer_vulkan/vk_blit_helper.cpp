@@ -192,7 +192,7 @@ BlitHelper::BlitHelper(const Instance& instance_, Scheduler& scheduler_, Descrip
           device.createPipelineLayout(PipelineLayoutCreateInfo(&two_textures_provider.Layout()))},
       full_screen_vert{CompileSPV(FULL_SCREEN_TRIANGLE_VERT_SPV, device)},
       d24s8_to_rgba8_comp{CompileSPV(VULKAN_D24S8_TO_RGBA8_COMP_SPV, device)},
-      d24s8_to_rgba8_ms_comp{CompileSPV(VULKAN_D24S8_TO_RGBA8_COMP_SPV, device)},
+      d24s8_to_rgba8_ms_comp{CompileSPV(VULKAN_D24S8_TO_RGBA8_MS_COMP_SPV, device)},
       depth_to_buffer_comp{CompileSPV(VULKAN_DEPTH_TO_BUFFER_COMP_SPV, device)},
       blit_depth_stencil_frag{CompileSPV(VULKAN_BLIT_DEPTH_STENCIL_FRAG_SPV, device)},
       d24s8_to_rgba8_pipeline{MakeComputePipeline(d24s8_to_rgba8_comp, compute_pipeline_layout)},
