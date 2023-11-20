@@ -846,12 +846,16 @@ SurfaceId RasterizerCache<T>::FindMatch(const SurfaceParams& params, ScaleMatch 
     SurfaceId match_id{};
     bool match_valid = false;
     u32 match_scale = 0;
+    u8 match_sample_count = 0;
     SurfaceInterval match_interval{};
 
     ForEachSurfaceInRegion(params.addr, params.size, [&](SurfaceId surface_id, Surface& surface) {
         const bool res_scale_matched = match_scale_type == ScaleMatch::Exact
                                            ? (params.res_scale == surface.res_scale)
                                            : (params.res_scale <= surface.res_scale);
+        const bool sample_count_matched = match_scale_type == ScaleMatch::Exact
+                                              ? (params.sample_count == surface.sample_count)
+                                              : (params.sample_count <= surface.sample_count);
         const bool is_valid =
             True(find_flags & MatchFlags::Copy)
                 ? true
@@ -871,11 +875,16 @@ SurfaceId RasterizerCache<T>::FindMatch(const SurfaceParams& params, ScaleMatch 
                 surface.type != SurfaceType::Fill)
                 return;
 
+            if (!sample_count_matched && match_scale_type != ScaleMatch::Ignore &&
+                surface.type != SurfaceType::Fill)
+                return;
+
             // Found a match, update only if this is better than the previous one
             auto UpdateMatch = [&] {
                 match_id = surface_id;
                 match_valid = is_valid;
                 match_scale = surface.res_scale;
+                match_sample_count = surface.sample_count;
                 match_interval = surface_interval;
             };
 
@@ -883,6 +892,13 @@ SurfaceId RasterizerCache<T>::FindMatch(const SurfaceParams& params, ScaleMatch 
                 UpdateMatch();
                 return;
             } else if (surface.res_scale < match_scale) {
+                return;
+            }
+
+            if (surface.sample_count > match_sample_count) {
+                UpdateMatch();
+                return;
+            } else if (surface.sample_count < match_sample_count) {
                 return;
             }
 
