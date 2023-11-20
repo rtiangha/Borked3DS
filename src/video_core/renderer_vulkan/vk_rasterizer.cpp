@@ -594,7 +594,7 @@ void RasterizerVulkan::SyncTextureUnits(const Framebuffer* framebuffer) {
         Surface& surface = res_cache.GetTextureSurface(texture);
         Sampler& sampler = res_cache.GetSampler(texture.config);
         if (!IsFeedbackLoop(texture_index, framebuffer, surface, sampler)) {
-            pipeline_cache.BindTexture(texture_index, surface.ImageView(), sampler.Handle());
+            pipeline_cache.BindTexture(texture_index, surface.ImageView(1), sampler.Handle());
         }
     }
 }
@@ -784,7 +784,7 @@ bool RasterizerVulkan::AccelerateDisplay(const Pica::FramebufferConfig& config,
         (float)src_rect.bottom / (float)scaled_height, (float)src_rect.left / (float)scaled_width,
         (float)src_rect.top / (float)scaled_height, (float)src_rect.right / (float)scaled_width);
 
-    screen_info.image_view = src_surface.ImageView();
+    screen_info.image_view = src_surface.ImageView(1);
 
     return true;
 }

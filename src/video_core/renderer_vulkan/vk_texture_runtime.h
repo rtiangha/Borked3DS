@@ -126,22 +126,22 @@ public:
     vk::Image Image(u32 index = 3) const noexcept;
 
     /// Returns the image view at index, otherwise the base view
-    vk::ImageView ImageView(u32 index = 1) const noexcept;
+    vk::ImageView ImageView(u32 index = 3) const noexcept;
 
     /// Returns a copy of the upscaled image handle, used for feedback loops.
     vk::ImageView CopyImageView() noexcept;
 
     /// Returns the framebuffer view of the surface image
-    vk::ImageView FramebufferView(u32 index = 1) noexcept;
+    vk::ImageView FramebufferView(u32 index = 3) noexcept;
 
     /// Returns the depth view of the surface image
-    vk::ImageView DepthView(u32 index = 1) noexcept;
+    vk::ImageView DepthView(u32 index = 3) noexcept;
 
     /// Returns the stencil view of the surface image
-    vk::ImageView StencilView(u32 index = 1) noexcept;
+    vk::ImageView StencilView(u32 index = 3) noexcept;
 
     /// Returns the R32 image view used for atomic load/store
-    vk::ImageView StorageView(u32 index = 1) noexcept;
+    vk::ImageView StorageView(u32 index = 3) noexcept;
 
     /// Returns a framebuffer handle for rendering to this surface
     vk::Framebuffer Framebuffer() noexcept;
