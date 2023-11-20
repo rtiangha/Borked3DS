@@ -1084,12 +1084,16 @@ void Surface::Download(const VideoCore::BufferTextureCopy& download,
         });
 }
 
-void Surface::ScaleUp(u32 new_scale) {
-    if (res_scale == new_scale || new_scale == 1) {
+void Surface::ScaleUp(u32 new_scale, u8 new_sample_count) {
+    if (res_scale == new_scale) {
+        return;
+    }
+    if (sample_count == new_sample_count) {
         return;
     }
 
     res_scale = new_scale;
+    sample_count = new_sample_count;
 
     const bool is_mutable = pixel_format == VideoCore::PixelFormat::RGBA8;
 
@@ -1101,27 +1105,35 @@ void Surface::ScaleUp(u32 new_scale) {
         flags |= vk::ImageCreateFlagBits::eMutableFormat;
     }
 
-    handles[1] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
-                            traits.native, vk::SampleCountFlagBits::e1, traits.usage, flags,
-                            traits.aspect, false, DebugName(true));
+    if (res_scale > 1) {
+        handles[1] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
+                                traits.native, vk::SampleCountFlagBits::e1, traits.usage, flags,
+                                traits.aspect, false, DebugName(true));
 
-    runtime->renderpass_cache.EndRendering();
-    scheduler->Record(
-        [raw_images = std::array{Image()}, aspect = traits.aspect](vk::CommandBuffer cmdbuf) {
-            const auto barriers = MakeInitBarriers(aspect, raw_images);
-            cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                   vk::PipelineStageFlagBits::eTopOfPipe,
-                                   vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
-        });
-    LOG_INFO(HW_GPU, "Surface scale up!");
-    for (u32 level = 0; level < levels; level++) {
-        const VideoCore::TextureBlit blit = {
-            .src_level = level,
-            .dst_level = level,
-            .src_rect = GetRect(level),
-            .dst_rect = GetScaledRect(level),
-        };
-        BlitScale(blit, true);
+        runtime->renderpass_cache.EndRendering();
+        scheduler->Record(
+            [raw_images = std::array{Image()}, aspect = traits.aspect](vk::CommandBuffer cmdbuf) {
+                const auto barriers = MakeInitBarriers(aspect, raw_images);
+                cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                       vk::PipelineStageFlagBits::eTopOfPipe,
+                                       vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
+            });
+        LOG_INFO(HW_GPU, "Surface scale up!");
+        for (u32 level = 0; level < levels; level++) {
+            const VideoCore::TextureBlit blit = {
+                .src_level = level,
+                .dst_level = level,
+                .src_rect = GetRect(level),
+                .dst_rect = GetScaledRect(level),
+            };
+            BlitScale(blit, true);
+        }
+    }
+
+    if (sample_count > 1) {
+        handles[3] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
+                                traits.native, vk::SampleCountFlagBits(sample_count), traits.usage,
+                                flags, traits.aspect, false, DebugName(true, false, sample_count));
     }
 }
 
@@ -1487,8 +1499,8 @@ void Surface::BlitScale(const VideoCore::TextureBlit& blit, bool up_scale) {
 
 Framebuffer::Framebuffer(TextureRuntime& runtime, const VideoCore::FramebufferParams& params,
                          Surface* color, Surface* depth)
-    : VideoCore::FramebufferParams{params}, res_scale{color ? color->res_scale
-                                                            : (depth ? depth->res_scale : 1u)},
+    : VideoCore::FramebufferParams{params},
+      res_scale{color ? color->res_scale : (depth ? depth->res_scale : 1u)},
       sample_count{params.sample_count} {
     auto& renderpass_cache = runtime.GetRenderpassCache();
     if (shadow_rendering && !color) {
