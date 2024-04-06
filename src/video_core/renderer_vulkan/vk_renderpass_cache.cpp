@@ -1,4 +1,4 @@
-// Copyright 2024 Citra Emulator Project
+// Copyright 2023 Citra Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -6,7 +6,7 @@
 #include "common/assert.h"
 #include "video_core/rasterizer_cache/pixel_format.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
-#include "video_core/renderer_vulkan/vk_render_manager.h"
+#include "video_core/renderer_vulkan/vk_renderpass_cache.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_texture_runtime.h"
 
@@ -17,13 +17,13 @@ constexpr u32 MIN_DRAWS_TO_FLUSH = 20;
 using VideoCore::PixelFormat;
 using VideoCore::SurfaceType;
 
-RenderManager::RenderManager(const Instance& instance, Scheduler& scheduler)
+RenderpassCache::RenderpassCache(const Instance& instance, Scheduler& scheduler)
     : instance{instance}, scheduler{scheduler} {}
 
-RenderManager::~RenderManager() = default;
+RenderpassCache::~RenderpassCache() = default;
 
-void RenderManager::BeginRendering(const Framebuffer* framebuffer,
-                                   Common::Rectangle<u32> draw_rect) {
+void RenderpassCache::BeginRendering(const Framebuffer* framebuffer,
+                                     Common::Rectangle<u32> draw_rect) {
     const vk::Rect2D render_area = {
         .offset{
             .x = static_cast<s32>(draw_rect.left),
@@ -46,7 +46,7 @@ void RenderManager::BeginRendering(const Framebuffer* framebuffer,
     BeginRendering(new_pass);
 }
 
-void RenderManager::BeginRendering(const RenderPass& new_pass) {
+void RenderpassCache::BeginRendering(const RenderPass& new_pass) {
     if (pass == new_pass) [[likely]] {
         num_draws++;
         return;
@@ -67,11 +67,12 @@ void RenderManager::BeginRendering(const RenderPass& new_pass) {
     pass = new_pass;
 }
 
-void RenderManager::EndRendering() {
+void RenderpassCache::EndRendering() {
     if (!pass.render_pass) {
         return;
     }
 
+    pass.render_pass = vk::RenderPass{};
     scheduler.Record([images = images, aspects = aspects](vk::CommandBuffer cmdbuf) {
         u32 num_barriers = 0;
         vk::PipelineStageFlags pipeline_flags{};
@@ -107,20 +108,12 @@ void RenderManager::EndRendering() {
             };
         }
         cmdbuf.endRenderPass();
-        if (num_barriers == 0) {
-            return;
-        }
         cmdbuf.pipelineBarrier(pipeline_flags,
                                vk::PipelineStageFlagBits::eFragmentShader |
                                    vk::PipelineStageFlagBits::eTransfer,
                                vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr,
                                num_barriers, barriers.data());
     });
-
-    // Reset state.
-    pass.render_pass = vk::RenderPass{};
-    images = {};
-    aspects = {};
 
     // The Mali guide recommends flushing at the end of each major renderpass
     // Testing has shown this has a significant effect on rendering performance
@@ -130,8 +123,8 @@ void RenderManager::EndRendering() {
     }
 }
 
-vk::RenderPass RenderManager::GetRenderpass(VideoCore::PixelFormat color,
-                                            VideoCore::PixelFormat depth, bool is_clear) {
+vk::RenderPass RenderpassCache::GetRenderpass(VideoCore::PixelFormat color,
+                                              VideoCore::PixelFormat depth, bool is_clear) {
     std::scoped_lock lock{cache_mutex};
 
     const u32 color_index =
@@ -155,8 +148,8 @@ vk::RenderPass RenderManager::GetRenderpass(VideoCore::PixelFormat color,
     return *renderpass;
 }
 
-vk::UniqueRenderPass RenderManager::CreateRenderPass(vk::Format color, vk::Format depth,
-                                                     vk::AttachmentLoadOp load_op) const {
+vk::UniqueRenderPass RenderpassCache::CreateRenderPass(vk::Format color, vk::Format depth,
+                                                       vk::AttachmentLoadOp load_op) const {
     u32 attachment_count = 0;
     std::array<vk::AttachmentDescription, 2> attachments;
 

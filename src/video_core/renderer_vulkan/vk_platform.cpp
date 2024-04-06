@@ -32,9 +32,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
     const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {
 
-    switch (static_cast<u32>(callback_data->messageIdNumber)) {
+    switch (callback_data->messageIdNumber) {
     case 0x609a13b: // Vertex attribute at location not consumed by shader
-    case 0xc81ad50e:
         return VK_FALSE;
     default:
         break;

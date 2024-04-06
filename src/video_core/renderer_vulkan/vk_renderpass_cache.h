@@ -1,4 +1,4 @@
-// Copyright 2024 Citra Emulator Project
+// Copyright 2023 Citra Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -24,7 +24,7 @@ struct RenderPass {
     vk::RenderPass render_pass;
     vk::Rect2D render_area;
     vk::ClearValue clear;
-    u32 do_clear;
+    bool do_clear;
 
     bool operator==(const RenderPass& other) const noexcept {
         return std::tie(framebuffer, render_pass, render_area, do_clear) ==
@@ -34,13 +34,13 @@ struct RenderPass {
     }
 };
 
-class RenderManager {
+class RenderpassCache {
     static constexpr std::size_t MAX_COLOR_FORMATS = 13;
     static constexpr std::size_t MAX_DEPTH_FORMATS = 4;
 
 public:
-    explicit RenderManager(const Instance& instance, Scheduler& scheduler);
-    ~RenderManager();
+    explicit RenderpassCache(const Instance& instance, Scheduler& scheduler);
+    ~RenderpassCache();
 
     /// Begins a new renderpass with the provided framebuffer as render target.
     void BeginRendering(const Framebuffer* framebuffer, Common::Rectangle<u32> draw_rect);

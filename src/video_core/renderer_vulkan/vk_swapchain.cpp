@@ -250,8 +250,10 @@ void Swapchain::RefreshSemaphores() {
 
     if (instance.HasDebuggingToolAttached()) {
         for (u32 i = 0; i < image_count; ++i) {
-            SetObjectName(device, image_acquired[i], "Swapchain Semaphore: image_acquired {}", i);
-            SetObjectName(device, present_ready[i], "Swapchain Semaphore: present_ready {}", i);
+            Vulkan::SetObjectName(device, image_acquired[i],
+                                  "Swapchain Semaphore: image_acquired {}", i);
+            Vulkan::SetObjectName(device, present_ready[i], "Swapchain Semaphore: present_ready {}",
+                                  i);
         }
     }
 }
@@ -263,7 +265,7 @@ void Swapchain::SetupImages() {
 
     if (instance.HasDebuggingToolAttached()) {
         for (u32 i = 0; i < image_count; ++i) {
-            SetObjectName(device, images[i], "Swapchain Image {}", i);
+            Vulkan::SetObjectName(device, images[i], "Swapchain Image {}", i);
         }
     }
 }
