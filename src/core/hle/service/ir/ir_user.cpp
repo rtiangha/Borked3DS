@@ -26,12 +26,13 @@ namespace Service::IR {
 template <class Archive>
 void IR_USER::serialize(Archive& ar, const unsigned int) {
     ar& boost::serialization::base_object<Kernel::SessionRequestHandler>(*this);
-    ar& conn_status_event;
-    ar& send_event;
-    ar& receive_event;
-    ar& shared_memory;
-    ar& connected_device;
-    ar& receive_buffer;
+    ar & conn_status_event;
+    ar & send_event;
+    ar & receive_event;
+    ar & shared_memory;
+    ar & connected_device;
+    ar & receive_buffer;
+    ar & send_buffer;
     ar&* extra_hid.get();
 }
 
@@ -164,10 +165,10 @@ private:
     private:
         template <class Archive>
         void serialize(Archive& ar, const unsigned int) {
-            ar& begin_index;
-            ar& end_index;
-            ar& packet_count;
-            ar& unknown;
+            ar & begin_index;
+            ar & end_index;
+            ar & packet_count;
+            ar & unknown;
         }
         friend class boost::serialization::access;
     };
@@ -216,12 +217,12 @@ private:
 
     template <class Archive>
     void serialize(Archive& ar, const unsigned int) {
-        ar& info;
-        ar& shared_memory;
-        ar& info_offset;
-        ar& buffer_offset;
-        ar& max_packet_count;
-        ar& max_data_size;
+        ar & info;
+        ar & shared_memory;
+        ar & info_offset;
+        ar & buffer_offset;
+        ar & max_packet_count;
+        ar & max_data_size;
     }
     friend class boost::serialization::access;
 };
@@ -303,6 +304,40 @@ void IR_USER::InitializeIrNopShared(Kernel::HLERequestContext& ctx) {
              send_buff_packet_count, baud_rate);
 }
 
+void IR_USER::InitializeIrNop(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    const u32 shared_buff_size = rp.Pop<u32>();
+    const u32 recv_buff_size = rp.Pop<u32>();
+    const u32 recv_buff_packet_count = rp.Pop<u32>();
+    const u32 send_buff_size = rp.Pop<u32>();
+    const u32 send_buff_packet_count = rp.Pop<u32>();
+    const u8 baud_rate = rp.Pop<u8>();
+    shared_memory = rp.PopObject<Kernel::SharedMemory>();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+
+    shared_memory->SetName("IR_USER: shared memory");
+
+    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, recv_buff_packet_count,
+                                                     recv_buff_size);
+
+    send_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, send_buff_packet_count,
+                                                  send_buff_size);
+
+    SharedMemoryHeader shared_memory_init{};
+    shared_memory_init.initialized = 1;
+    std::memcpy(shared_memory->GetPointer(), &shared_memory_init, sizeof(SharedMemoryHeader));
+
+    rb.Push(ResultSuccess);
+
+    LOG_INFO(Service_IR,
+             "called, shared_buff_size={}, recv_buff_size={}, "
+             "recv_buff_packet_count={}, send_buff_size={}, "
+             "send_buff_packet_count={}, baud_rate={}",
+             shared_buff_size, recv_buff_size, recv_buff_packet_count, send_buff_size,
+             send_buff_packet_count, baud_rate);
+}
+
 void IR_USER::RequireConnection(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     const u8 device_id = rp.Pop<u8>();
@@ -328,6 +363,34 @@ void IR_USER::RequireConnection(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
 
     LOG_INFO(Service_IR, "called, device_id = {}", device_id);
+}
+
+void IR_USER::AutoConnection(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    const u32 param_one = rp.Pop<u32>();
+    const u32 param_two = rp.Pop<u32>();
+    const u8 param_three = rp.Pop<u8>();
+    const u32 param_four = rp.Pop<u32>();
+    const u8 param_five = rp.Pop<u8>();
+    const u32 param_six = rp.Pop<u32>();
+    const u8 param_seven = rp.Pop<u8>();
+    const u32 param_eight = rp.Pop<u32>();
+    const u8 param_nine = rp.Pop<u8>();
+    const u32 param_ten = rp.Pop<u32>();
+    const u8 param_eleven = rp.Pop<u8>();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+
+    LOG_INFO(Service_IR,
+             "called, one={}, two={}, "
+             "three={}, four={}, "
+             "five={}, six={}, "
+             "seven={}, eight={}, "
+             "nine={}, ten={}, "
+             "eleven={}",
+             param_one, param_two, param_three, param_four, param_five, param_six, param_seven,
+             param_eight, param_nine, param_ten, param_eleven);
 }
 
 void IR_USER::GetReceiveEvent(Kernel::HLERequestContext& ctx) {
@@ -429,13 +492,13 @@ void IR_USER::ReleaseReceivedData(Kernel::HLERequestContext& ctx) {
 IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
     const FunctionInfo functions[] = {
         // clang-format off
-        {0x0001, nullptr, "InitializeIrNop"},
+        {0x0001, &IR_USER::InitializeIrNop, "InitializeIrNop"},
         {0x0002, &IR_USER::FinalizeIrNop, "FinalizeIrNop"},
         {0x0003, nullptr, "ClearReceiveBuffer"},
         {0x0004, nullptr, "ClearSendBuffer"},
         {0x0005, nullptr, "WaitConnection"},
         {0x0006, &IR_USER::RequireConnection, "RequireConnection"},
-        {0x0007, nullptr, "AutoConnection"},
+        {0x0007, &IR_USER::AutoConnection, "AutoConnection"},
         {0x0008, nullptr, "AnyConnection"},
         {0x0009, &IR_USER::Disconnect, "Disconnect"},
         {0x000A, &IR_USER::GetReceiveEvent, "GetReceiveEvent"},

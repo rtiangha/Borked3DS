@@ -77,6 +77,9 @@ private:
      */
     void InitializeIrNopShared(Kernel::HLERequestContext& ctx);
 
+
+    void InitializeIrNop(Kernel::HLERequestContext& ctx);
+
     /**
      * RequireConnection service function
      * Searches for an IR device and connects to it. After connecting to the device, applications
@@ -90,6 +93,8 @@ private:
      *      1 : Result of function, 0 on success, otherwise error code
      */
     void RequireConnection(Kernel::HLERequestContext& ctx);
+
+    void AutoConnection(Kernel::HLERequestContext& ctx);
 
     /**
      * GetReceiveEvent service function
@@ -167,6 +172,7 @@ private:
     std::shared_ptr<Kernel::SharedMemory> shared_memory;
     bool connected_device;
     std::unique_ptr<BufferManager> receive_buffer;
+    std::unique_ptr<BufferManager> send_buffer;
     std::unique_ptr<ExtraHID> extra_hid;
 
 private:
