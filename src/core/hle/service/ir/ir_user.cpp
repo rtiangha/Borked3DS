@@ -290,6 +290,8 @@ void IR_USER::InitializeIrNopShared(Kernel::HLERequestContext& ctx) {
 
     receive_buffer = std::make_unique<BufferManager>(shared_memory, 0x10, 0x20,
                                                      recv_buff_packet_count, recv_buff_size);
+    send_buffer = std::make_unique<BufferManager>(shared_memory, 0x10, 0x20, send_buff_packet_count,
+                                                  send_buff_size);
     SharedMemoryHeader shared_memory_init{};
     shared_memory_init.initialized = 1;
     std::memcpy(shared_memory->GetPointer(), &shared_memory_init, sizeof(SharedMemoryHeader));
