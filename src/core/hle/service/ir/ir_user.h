@@ -18,6 +18,7 @@ namespace Service::IR {
 
 class BufferManager;
 class ExtraHID;
+class IRPortal;
 
 /// An interface representing a device that can communicate with 3DS via ir:USER service
 class IRDevice {
@@ -134,6 +135,8 @@ private:
      */
     void GetConnectionStatusEvent(Kernel::HLERequestContext& ctx);
 
+    void GetConnectionStatus(Kernel::HLERequestContext& ctx);
+
     /**
      * FinalizeIrNop service function
      * Finalize ir:USER service.
@@ -174,6 +177,7 @@ private:
     std::unique_ptr<BufferManager> receive_buffer;
     std::unique_ptr<BufferManager> send_buffer;
     std::unique_ptr<ExtraHID> extra_hid;
+    std::unique_ptr<IRPortal> ir_portal;
 
 private:
     template <class Archive>
