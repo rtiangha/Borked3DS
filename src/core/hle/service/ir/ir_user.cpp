@@ -379,6 +379,9 @@ void IR_USER::AutoConnection(Kernel::HLERequestContext& ctx) {
     const u32 param_ten = rp.Pop<u32>();
     const u8 param_eleven = rp.Pop<u8>();
 
+    connected_device = true;
+    conn_status_event->Signal();
+
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
     rb.Push(ResultSuccess);
 
