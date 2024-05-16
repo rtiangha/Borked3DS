@@ -13,8 +13,7 @@ namespace Service::IR {
 
 SkylanderPortal g_skyportal;
 
-IRPortal::IRPortal(SendFunc send_func, Core::Timing& timing_, Core::Movie& movie_)
-    : IRDevice(send_func), timing{timing_}, movie{movie_} {}
+IRPortal::IRPortal(SendFunc send_func) : IRDevice(send_func) {}
 
 IRPortal::~IRPortal() {
     OnDisconnect();

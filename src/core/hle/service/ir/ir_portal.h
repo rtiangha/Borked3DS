@@ -32,7 +32,7 @@ namespace Service::IR {
  */
 class IRPortal final : public IRDevice {
 public:
-    explicit IRPortal(SendFunc send_func, Core::Timing& timing, Core::Movie& movie);
+    explicit IRPortal(SendFunc send_func);
     ~IRPortal();
 
     void OnConnect() override;
@@ -41,9 +41,6 @@ public:
 
 private:
     void HandlePortalCommand(std::span<const u8> request);
-
-    Core::Timing& timing;
-    Core::Movie& movie;
 
     template <class Archive>
     void serialize(Archive& ar, const unsigned int) {
@@ -92,7 +89,6 @@ private:
     std::mutex sky_mutex;
 
     bool m_activated = false;
-    bool m_status_updated = false;
     u8 m_interrupt_counter = 0;
     SkylanderLEDColor m_color_right = {};
     SkylanderLEDColor m_color_left = {};

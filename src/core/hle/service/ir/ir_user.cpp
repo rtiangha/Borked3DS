@@ -321,9 +321,9 @@ void IR_USER::InitializeIrNop(Kernel::HLERequestContext& ctx) {
 
     shared_memory->SetName("IR_USER: shared memory");
 
-    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0x20, recv_buff_packet_count,
+    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, recv_buff_packet_count,
                                                      recv_buff_size);
-    send_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0x20, send_buff_packet_count,
+    send_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, send_buff_packet_count,
                                                   send_buff_size);
 
     rb.Push(ResultSuccess);
@@ -576,8 +576,8 @@ IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
 
     extra_hid = std::make_unique<ExtraHID>([this](std::span<const u8> data) { PutToReceive(data); },
                                            system.CoreTiming(), system.Movie());
-    ir_portal = std::make_unique<IRPortal>([this](std::span<const u8> data) { PutToReceive(data); },
-                                           system.CoreTiming(), system.Movie());
+    ir_portal =
+        std::make_unique<IRPortal>([this](std::span<const u8> data) { PutToReceive(data); });
 }
 
 IR_USER::~IR_USER() {
