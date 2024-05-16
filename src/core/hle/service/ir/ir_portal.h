@@ -76,7 +76,6 @@ public:
     void Activate();
     void Deactivate();
     bool IsActivated();
-    void UpdateStatus();
     void SetLEDs(u8 side, u8 r, u8 g, u8 b);
 
     std::array<u8, 64> GetStatus();
@@ -85,8 +84,6 @@ public:
 
     bool RemoveSkylander(u8 sky_num);
     u8 LoadSkylander(u8* data, FileUtil::IOFile sky_file);
-    Skylander* GetSkylander(u8 slot);
-    std::pair<u16, u16> CalculateIDs(const std::array<u8, 0x40 * 0x10>& file_data);
 
 private:
     static bool IsSkylanderNumberValid(u8 sky_num);

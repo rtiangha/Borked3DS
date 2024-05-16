@@ -321,8 +321,8 @@ void IR_USER::InitializeIrNop(Kernel::HLERequestContext& ctx) {
 
     shared_memory->SetName("IR_USER: shared memory");
 
-    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0x20,
-                                                     recv_buff_packet_count, recv_buff_size);
+    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0x20, recv_buff_packet_count,
+                                                     recv_buff_size);
     send_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0x20, send_buff_packet_count,
                                                   send_buff_size);
 
@@ -419,7 +419,7 @@ void IR_USER::GetSendEvent(Kernel::HLERequestContext& ctx) {
 
 void IR_USER::Disconnect(Kernel::HLERequestContext& ctx) {
     if (connected_device) {
-        //extra_hid->OnDisconnect();
+        // extra_hid->OnDisconnect();
         ir_portal->OnDisconnect();
         connected_device = false;
         conn_status_event->Signal();
@@ -461,13 +461,14 @@ void IR_USER::GetConnectionStatus(Kernel::HLERequestContext& ctx) {
 
 void IR_USER::FinalizeIrNop(Kernel::HLERequestContext& ctx) {
     if (connected_device) {
-        //extra_hid->OnDisconnect();
+        // extra_hid->OnDisconnect();
         ir_portal->OnDisconnect();
         connected_device = false;
     }
 
     shared_memory = nullptr;
     receive_buffer = nullptr;
+    send_buffer = nullptr;
 
     IPC::RequestBuilder rb(ctx, 0x02, 1, 0);
     rb.Push(ResultSuccess);
@@ -513,6 +514,26 @@ void IR_USER::ReleaseReceivedData(Kernel::HLERequestContext& ctx) {
     LOG_INFO(Service_IR, "called, count={}", count);
 }
 
+void IR_USER::GetLatestReceiveErrorResult(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    u32 param = rp.Pop<u32>();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+
+    LOG_INFO(Service_IR, "called, param={}", param);
+}
+
+void IR_USER::GetLatestSendErrorResult(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    u32 param = rp.Pop<u32>();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+    rb.Push(ResultSuccess);
+
+    LOG_INFO(Service_IR, "called, param={}", param);
+}
+
 IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
     const FunctionInfo functions[] = {
         // clang-format off
@@ -532,8 +553,8 @@ IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
         {0x000E, nullptr, "SendIrNopLarge"},
         {0x000F, nullptr, "ReceiveIrnop"},
         {0x0010, nullptr, "ReceiveIrnopLarge"},
-        {0x0011, nullptr, "GetLatestReceiveErrorResult"},
-        {0x0012, nullptr, "GetLatestSendErrorResult"},
+        {0x0011, &IR_USER::GetLatestReceiveErrorResult, "GetLatestReceiveErrorResult"},
+        {0x0012, &IR_USER::GetLatestSendErrorResult, "GetLatestSendErrorResult"},
         {0x0013, &IR_USER::GetConnectionStatus, "GetConnectionStatus"},
         {0x0014, nullptr, "GetTryingToConnectStatus"},
         {0x0015, nullptr, "GetReceiveSizeFreeAndUsed"},
@@ -561,7 +582,7 @@ IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
 
 IR_USER::~IR_USER() {
     if (connected_device) {
-        //extra_hid->OnDisconnect();
+        // extra_hid->OnDisconnect();
         ir_portal->OnDisconnect();
     }
 }

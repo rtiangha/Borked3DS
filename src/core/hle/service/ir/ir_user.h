@@ -169,6 +169,9 @@ private:
      */
     void ReleaseReceivedData(Kernel::HLERequestContext& ctx);
 
+    void GetLatestReceiveErrorResult(Kernel::HLERequestContext& ctx);
+    void GetLatestSendErrorResult(Kernel::HLERequestContext& ctx);
+
     void PutToReceive(std::span<const u8> payload);
 
     std::shared_ptr<Kernel::Event> conn_status_event, send_event, receive_event;

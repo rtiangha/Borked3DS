@@ -52,15 +52,20 @@ void IRPortal::HandlePortalCommand(std::span<const u8> data) {
         break;
     }
     case 'J': {
-        LOG_INFO(Service_IR, "Stubbed: {}", data[3]);
+        response = {data[3]};
+        g_skyportal.SetLEDs(data[4], data[5], data[6], data[7]);
         break;
     }
     case 'L': {
-        LOG_INFO(Service_IR, "Stubbed: {}", data[3]);
+        u8 side = data[4];
+        if (side == 0x02) {
+            side = 0x04;
+        }
+        g_skyportal.SetLEDs(side, data[5], data[6], data[7]);
         break;
     }
     case 'M': {
-        LOG_INFO(Service_IR, "Stubbed: {}", data[3]);
+        response = {data[3], data[4], 0x00, 0x19};
         break;
     }
     case 'Q': {
@@ -80,11 +85,13 @@ void IRPortal::HandlePortalCommand(std::span<const u8> data) {
         break;
     }
     case 'V': {
-        LOG_INFO(Service_IR, "Stubbed: {}", data[3]);
+        response = g_skyportal.GetStatus();
         break;
     }
     case 'W': {
-        LOG_INFO(Service_IR, "Stubbed: {}", data[3]);
+        const u8 sky_num = data[4] & 0xF;
+        const u8 block = data[5];
+        g_skyportal.WriteBlock(sky_num, block, &data[6], response.data());
         break;
     }
     default:
@@ -96,7 +103,7 @@ void IRPortal::HandlePortalCommand(std::span<const u8> data) {
 }
 
 void Skylander::Save() {
-    if (!sky_file.IsGood()) {
+    if (!sky_file) {
         LOG_ERROR(Service_IR, "Tried to save a Skylander but no file was open");
         return;
     }
@@ -199,28 +206,42 @@ std::array<u8, 64> SkylanderPortal::GetStatus() {
     return response;
 }
 
-void SkylanderPortal::QueryBlock(u8 sky_num, u8 block, u8* reply_buf)
-{
-  if (!IsSkylanderNumberValid(sky_num) || !IsBlockNumberValid(block))
-    return;
+void SkylanderPortal::QueryBlock(u8 sky_num, u8 block, u8* reply_buf) {
+    if (!IsSkylanderNumberValid(sky_num) || !IsBlockNumberValid(block))
+        return;
 
-  std::lock_guard lock(sky_mutex);
+    std::lock_guard lock(sky_mutex);
 
-  const auto& skylander = skylanders[sky_num];
+    const auto& skylander = skylanders[sky_num];
 
-  LOG_INFO(Service_IR, "Num: {} Block: {}", sky_num, block);
+    reply_buf[0] = 'Q';
+    reply_buf[2] = block;
+    if (skylander.status & Skylander::READY) {
+        reply_buf[1] = (0x10 | sky_num);
+        memcpy(&reply_buf[3], skylander.data.data() + (block * 0x10), 0x10);
+    } else {
+        reply_buf[1] = 0x01;
+    }
+}
 
-  reply_buf[0] = 'Q';
-  reply_buf[2] = block;
-  if (skylander.status & Skylander::READY)
-  {
-    reply_buf[1] = (0x10 | sky_num);
-    memcpy(&reply_buf[3], skylander.data.data() + (block * 0x10), 0x10);
-  }
-  else
-  {
-    reply_buf[1] = 0x01;
-  }
+void SkylanderPortal::WriteBlock(u8 sky_num, u8 block, const u8* to_write_buf, u8* reply_buf) {
+    if (!IsSkylanderNumberValid(sky_num) || !IsBlockNumberValid(block))
+        return;
+
+    std::lock_guard lock(sky_mutex);
+
+    auto& skylander = skylanders[sky_num];
+
+    reply_buf[0] = 'W';
+    reply_buf[2] = block;
+
+    if (skylander.status & 1) {
+        reply_buf[1] = (0x10 | sky_num);
+        memcpy(skylander.data.data() + (block * 0x10), to_write_buf, 0x10);
+        skylander.Save();
+    } else {
+        reply_buf[1] = 0x01;
+    }
 }
 
 bool SkylanderPortal::RemoveSkylander(u8 sky_num) {
