@@ -176,7 +176,8 @@ private:
 
     std::shared_ptr<Kernel::Event> conn_status_event, send_event, receive_event;
     std::shared_ptr<Kernel::SharedMemory> shared_memory;
-    bool connected_device;
+    bool connected_circle_pad;
+    bool connected_portal;
     std::unique_ptr<BufferManager> receive_buffer;
     std::unique_ptr<BufferManager> send_buffer;
     std::unique_ptr<ExtraHID> extra_hid;

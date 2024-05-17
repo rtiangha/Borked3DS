@@ -31,10 +31,12 @@ void IR_USER::serialize(Archive& ar, const unsigned int) {
     ar & send_event;
     ar & receive_event;
     ar & shared_memory;
-    ar & connected_device;
+    ar & connected_circle_pad;
+    ar & connected_portal;
     ar & receive_buffer;
     ar & send_buffer;
     ar&* extra_hid.get();
+    ar&* ir_portal.get();
 }
 
 // This is a header that will present in the ir:USER shared memory if it is initialized with
@@ -348,7 +350,7 @@ void IR_USER::RequireConnection(Kernel::HLERequestContext& ctx) {
         shared_memory_ptr[offsetof(SharedMemoryHeader, connection_role)] = 2;
         shared_memory_ptr[offsetof(SharedMemoryHeader, connected)] = 1;
 
-        connected_device = true;
+        connected_circle_pad = true;
         extra_hid->OnConnect();
         conn_status_event->Signal();
     } else {
@@ -382,7 +384,7 @@ void IR_USER::AutoConnection(Kernel::HLERequestContext& ctx) {
     shared_memory_ptr[offsetof(SharedMemoryHeader, connection_role)] = 2;
     shared_memory_ptr[offsetof(SharedMemoryHeader, connected)] = 1;
 
-    connected_device = true;
+    connected_portal = true;
     conn_status_event->Signal();
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
@@ -418,10 +420,14 @@ void IR_USER::GetSendEvent(Kernel::HLERequestContext& ctx) {
 }
 
 void IR_USER::Disconnect(Kernel::HLERequestContext& ctx) {
-    if (connected_device) {
-        // extra_hid->OnDisconnect();
+    if (connected_circle_pad) {
+        extra_hid->OnDisconnect();
+        connected_circle_pad = false;
+        conn_status_event->Signal();
+    }
+    if (connected_portal) {
         ir_portal->OnDisconnect();
-        connected_device = false;
+        connected_portal = false;
         conn_status_event->Signal();
     }
 
@@ -447,7 +453,7 @@ void IR_USER::GetConnectionStatusEvent(Kernel::HLERequestContext& ctx) {
 void IR_USER::GetConnectionStatus(Kernel::HLERequestContext& ctx) {
     IPC::RequestBuilder rb(ctx, 0x13, 1, 0);
 
-    if (connected_device) {
+    if (connected_portal) {
         conn_status_event->Signal();
         rb.Push(ResultSuccess);
     } else {
@@ -460,10 +466,13 @@ void IR_USER::GetConnectionStatus(Kernel::HLERequestContext& ctx) {
 }
 
 void IR_USER::FinalizeIrNop(Kernel::HLERequestContext& ctx) {
-    if (connected_device) {
-        // extra_hid->OnDisconnect();
+    if (connected_circle_pad) {
+        extra_hid->OnDisconnect();
+        connected_circle_pad = false;
+    }
+    if (connected_portal) {
         ir_portal->OnDisconnect();
-        connected_device = false;
+        connected_portal = false;
     }
 
     shared_memory = nullptr;
@@ -483,11 +492,15 @@ void IR_USER::SendIrNop(Kernel::HLERequestContext& ctx) {
     ASSERT(size == buffer.size());
 
     IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-    if (connected_device) {
-        ir_portal->OnReceive(buffer);
-        // extra_hid->OnReceive(buffer);
+    if (connected_circle_pad) {
+        extra_hid->OnReceive(buffer);
         send_event->Signal();
         rb.Push(ResultSuccess);
+    } else if (connected_portal) {
+        ir_portal->OnReceive(buffer);
+        send_event->Signal();
+        rb.Push(ResultSuccess);
+
     } else {
         LOG_ERROR(Service_IR, "not connected");
         rb.Push(Result(static_cast<ErrorDescription>(13), ErrorModule::IR,
@@ -569,7 +582,8 @@ IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
 
     using namespace Kernel;
 
-    connected_device = false;
+    connected_circle_pad = false;
+    connected_portal = false;
     conn_status_event = system.Kernel().CreateEvent(ResetType::OneShot, "IR:ConnectionStatusEvent");
     send_event = system.Kernel().CreateEvent(ResetType::OneShot, "IR:SendEvent");
     receive_event = system.Kernel().CreateEvent(ResetType::OneShot, "IR:ReceiveEvent");
@@ -581,8 +595,10 @@ IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
 }
 
 IR_USER::~IR_USER() {
-    if (connected_device) {
-        // extra_hid->OnDisconnect();
+    if (connected_circle_pad) {
+        extra_hid->OnDisconnect();
+    }
+    if (connected_portal) {
         ir_portal->OnDisconnect();
     }
 }
