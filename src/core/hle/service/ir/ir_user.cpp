@@ -33,6 +33,7 @@ void IR_USER::serialize(Archive& ar, const unsigned int) {
     ar & shared_memory;
     ar & connected_circle_pad;
     ar & connected_portal;
+    ar & init_with_shared;
     ar & receive_buffer;
     ar & send_buffer;
     ar&* extra_hid.get();
@@ -243,8 +244,12 @@ void IR_USER::PutToReceive(std::span<const u8> payload) {
     // fixed value
     packet.push_back(0xA5);
     // destination network ID
-    u8 network_id = *(shared_memory->GetPointer(offsetof(SharedMemoryHeader, network_id)));
-    packet.push_back(network_id);
+    if (init_with_shared) {
+        u8 network_id = *(shared_memory->GetPointer(offsetof(SharedMemoryHeader, network_id)));
+        packet.push_back(network_id);
+    } else {
+        packet.push_back(0);
+    }
 
     // puts the size info.
     // The highest bit of the first byte is unknown, which is set to zero here. The second highest
@@ -293,8 +298,10 @@ void IR_USER::InitializeIrNopShared(Kernel::HLERequestContext& ctx) {
 
     receive_buffer = std::make_unique<BufferManager>(shared_memory, 0x10, 0x20,
                                                      recv_buff_packet_count, recv_buff_size);
-    send_buffer = std::make_unique<BufferManager>(shared_memory, 0x10, 0x20, send_buff_packet_count,
-                                                  send_buff_size);
+    send_buffer =
+        std::make_unique<BufferManager>(shared_memory, 0x20 + recv_buff_size, 0x30 + recv_buff_size,
+                                        send_buff_packet_count, send_buff_size);
+    init_with_shared = true;
     SharedMemoryHeader shared_memory_init{};
     shared_memory_init.initialized = 1;
     std::memcpy(shared_memory->GetPointer(), &shared_memory_init, sizeof(SharedMemoryHeader));
@@ -325,8 +332,9 @@ void IR_USER::InitializeIrNop(Kernel::HLERequestContext& ctx) {
 
     receive_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, recv_buff_packet_count,
                                                      recv_buff_size);
-    send_buffer = std::make_unique<BufferManager>(shared_memory, 0, 0, send_buff_packet_count,
-                                                  send_buff_size);
+    send_buffer = std::make_unique<BufferManager>(shared_memory, 0, recv_buff_size,
+                                                  send_buff_packet_count, send_buff_size);
+    init_with_shared = false;
 
     rb.Push(ResultSuccess);
 
@@ -379,10 +387,12 @@ void IR_USER::AutoConnection(Kernel::HLERequestContext& ctx) {
     const u32 param_ten = rp.Pop<u32>();
     const u8 param_eleven = rp.Pop<u8>();
 
-    u8* shared_memory_ptr = shared_memory->GetPointer();
-    shared_memory_ptr[offsetof(SharedMemoryHeader, connection_status)] = 2;
-    shared_memory_ptr[offsetof(SharedMemoryHeader, connection_role)] = 2;
-    shared_memory_ptr[offsetof(SharedMemoryHeader, connected)] = 1;
+    if (init_with_shared) {
+        u8* shared_memory_ptr = shared_memory->GetPointer();
+        shared_memory_ptr[offsetof(SharedMemoryHeader, connection_status)] = 2;
+        shared_memory_ptr[offsetof(SharedMemoryHeader, connection_role)] = 2;
+        shared_memory_ptr[offsetof(SharedMemoryHeader, connected)] = 1;
+    }
 
     connected_portal = true;
     conn_status_event->Signal();
@@ -431,9 +441,11 @@ void IR_USER::Disconnect(Kernel::HLERequestContext& ctx) {
         conn_status_event->Signal();
     }
 
-    u8* shared_memory_ptr = shared_memory->GetPointer();
-    shared_memory_ptr[offsetof(SharedMemoryHeader, connection_status)] = 0;
-    shared_memory_ptr[offsetof(SharedMemoryHeader, connected)] = 0;
+    if (init_with_shared) {
+        u8* shared_memory_ptr = shared_memory->GetPointer();
+        shared_memory_ptr[offsetof(SharedMemoryHeader, connection_status)] = 0;
+        shared_memory_ptr[offsetof(SharedMemoryHeader, connected)] = 0;
+    }
 
     IPC::RequestBuilder rb(ctx, 0x09, 1, 0);
     rb.Push(ResultSuccess);
@@ -478,6 +490,7 @@ void IR_USER::FinalizeIrNop(Kernel::HLERequestContext& ctx) {
     shared_memory = nullptr;
     receive_buffer = nullptr;
     send_buffer = nullptr;
+    init_with_shared = false;
 
     IPC::RequestBuilder rb(ctx, 0x02, 1, 0);
     rb.Push(ResultSuccess);

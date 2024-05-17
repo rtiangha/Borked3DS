@@ -178,6 +178,7 @@ private:
     std::shared_ptr<Kernel::SharedMemory> shared_memory;
     bool connected_circle_pad;
     bool connected_portal;
+    bool init_with_shared;
     std::unique_ptr<BufferManager> receive_buffer;
     std::unique_ptr<BufferManager> send_buffer;
     std::unique_ptr<ExtraHID> extra_hid;
