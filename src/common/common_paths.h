@@ -48,9 +48,9 @@
 #define CHEATS_DIR "cheats"
 #define DLL_DIR "external_dlls"
 #define SHADER_DIR "shaders"
+#define RECOMPILER_DIR "recompiler"
 #define DUMP_DIR "dump"
 #define LOAD_DIR "load"
-#define SHADER_DIR "shaders"
 #define STATES_DIR "states"
 #define ICONS_DIR "icons"
 

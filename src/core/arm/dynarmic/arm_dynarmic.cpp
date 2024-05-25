@@ -6,6 +6,7 @@
 #include <dynarmic/interface/A32/a32.h>
 #include <dynarmic/interface/optimization_flags.h>
 #include "common/assert.h"
+#include "common/file_util.h"
 #include "common/profiling.h"
 #include "common/settings.h"
 #include "core/arm/dynarmic/arm_dynarmic.h"
@@ -323,6 +324,11 @@ std::unique_ptr<Dynarmic::A32::Jit> ARM_Dynarmic::MakeJit() {
     // Multi-process state
     config.processor_id = GetID();
     config.global_monitor = &exclusive_monitor.monitor;
+
+    // IR cache
+    if (Settings::values.ir_cache) {
+        config.ir_cache_path = FileUtil::GetUserPath(FileUtil::UserPath::RecompilerDir);
+    }
 
     return std::make_unique<Dynarmic::A32::Jit>(config);
 }
