@@ -91,6 +91,12 @@ udp_pad_index=
 # 0: Interpreter (slow), 1 (default): JIT (fast)
 use_cpu_jit =
 
+# Recompiler Cache
+# Caches optimized IR from recompiler. Improves performance in some scenarios at
+# the cost of increased disk activity and space consumption.
+# 0: Off, 1: On
+ir_cache = 
+
 # Change the Clock Frequency of the emulated 3DS CPU.
 # Underclocking can increase the performance of the game at the risk of freezing.
 # Overclocking may fix lag that happens on console, but also comes with the risk of freezing.

@@ -71,6 +71,7 @@ ConfigureDebug::ConfigureDebug(bool is_powered_on_, QWidget* parent)
 #endif
 
     ui->toggle_cpu_jit->setEnabled(!is_powered_on);
+    ui->toggle_ir_cache->setEnabled(!is_powered_on);
     ui->toggle_renderer_debug->setEnabled(!is_powered_on);
     ui->toggle_dump_command_buffers->setEnabled(!is_powered_on);
 
@@ -103,6 +104,7 @@ void ConfigureDebug::SetConfiguration() {
     ui->log_regex_filter_edit->setText(
         QString::fromStdString(Settings::values.log_regex_filter.GetValue()));
     ui->toggle_cpu_jit->setChecked(Settings::values.use_cpu_jit.GetValue());
+    ui->toggle_ir_cache->setChecked(Settings::values.ir_cache.GetValue());
     ui->delay_start_for_lle_modules->setChecked(
         Settings::values.delay_start_for_lle_modules.GetValue());
     ui->toggle_renderer_debug->setChecked(Settings::values.renderer_debug.GetValue());
@@ -141,6 +143,7 @@ void ConfigureDebug::ApplyConfiguration() {
     Common::Log::SetGlobalFilter(filter);
     Common::Log::SetRegexFilter(Settings::values.log_regex_filter.GetValue());
     Settings::values.use_cpu_jit = ui->toggle_cpu_jit->isChecked();
+    Settings::values.ir_cache = ui->toggle_ir_cache->isChecked();
     Settings::values.delay_start_for_lle_modules = ui->delay_start_for_lle_modules->isChecked();
     Settings::values.renderer_debug = ui->toggle_renderer_debug->isChecked();
     Settings::values.dump_command_buffers = ui->toggle_dump_command_buffers->isChecked();
@@ -168,6 +171,7 @@ void ConfigureDebug::SetupPerGameUI() {
     ui->groupBox->setVisible(false);
     ui->groupBox_2->setVisible(false);
     ui->toggle_cpu_jit->setVisible(false);
+    ui->toggle_ir_cache->setVisible(false);
 }
 
 void ConfigureDebug::RetranslateUI() {

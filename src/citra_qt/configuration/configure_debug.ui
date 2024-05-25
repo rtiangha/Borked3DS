@@ -217,6 +217,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="toggle_ir_cache">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Caches optimized IR from recompiler. Improves performance in some scenarios at cost of increased disk activity and space consumption.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Enable Recompiler Cache</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="toggle_renderer_debug">
         <property name="text">
          <string>Enable Debug Renderer</string>

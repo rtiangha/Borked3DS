@@ -95,6 +95,7 @@ void LogSettings() {
 
     LOG_INFO(Config, "Citra Configuration:");
     log_setting("Core_UseCpuJit", values.use_cpu_jit.GetValue());
+    log_setting("Core_IRCache", values.ir_cache.GetValue());
     log_setting("Core_CPUClockPercentage", values.cpu_clock_percentage.GetValue());
     log_setting("Core_RaiseTicks", values.raise_cpu_ticks.GetValue());
     log_setting("Core_DowncountHack", values.core_downcount_hack.GetValue());
