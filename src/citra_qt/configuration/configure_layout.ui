@@ -369,7 +369,7 @@
            <item>
             <widget class="QLabel" name="lb_opacity_second_layer">
              <property name="text">
-              <string>Bottom Screen Opacity % (OpenGL Only)</string>
+              <string>Bottom Screen Opacity %</string>
              </property>
             </widget>
            </item>

@@ -22,6 +22,8 @@
 #include "video_core/host_shaders/vulkan_present_vert.h"
 
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 namespace Vulkan {
 
@@ -787,10 +789,12 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
     if (!Settings::values.swap_screen.GetValue()) {
         DrawTopScreen(layout, top_screen);
         draw_info.layer = 0;
+        ApplySecondLayerOpacity();
         DrawBottomScreen(layout, bottom_screen);
     } else {
         DrawBottomScreen(layout, bottom_screen);
         draw_info.layer = 0;
+        ApplySecondLayerOpacity();
         DrawTopScreen(layout, top_screen);
     }
 
@@ -803,7 +807,85 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
         }
     }
 
+    ResetSecondLayerOpacity();
     scheduler.Record([](vk::CommandBuffer cmdbuf) { cmdbuf.endRenderPass(); });
+}
+
+void RendererVulkan::ApplySecondLayerOpacity() {
+#ifndef ANDROID // TODO: Implement custom layouts on Android
+
+    if ((Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout ||
+         Settings::values.custom_layout || Settings::values.new_custom_layout) &&
+        (Settings::values.custom_second_layer_opacity.GetValue() < 100 ||
+         Settings::values.new_custom_second_layer_opacity.GetValue() < 100)) {
+
+        float customSecondLayerOpacity;
+
+        // Legacy Custom Layout options takes priority
+        if (Settings::values.custom_second_layer_opacity.GetValue() < 100) {
+            customSecondLayerOpacity =
+                Settings::values.custom_second_layer_opacity.GetValue() / 100.0f;
+        } else if (Settings::values.new_custom_second_layer_opacity.GetValue() < 100) {
+            customSecondLayerOpacity =
+                Settings::values.new_custom_second_layer_opacity.GetValue() / 100.0f;
+        }
+
+        scheduler.Record([customSecondLayerOpacity](vk::CommandBuffer cmdbuf) {
+            const vk::PipelineColorBlendAttachmentState colorBlendAttachment = {
+                .blendEnable = true,
+                .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                .colorBlendOp = vk::BlendOp::eAdd,
+                .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+                .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+                .alphaBlendOp = vk::BlendOp::eAdd,
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                                  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            };
+
+            const vk::PipelineColorBlendStateCreateInfo info = {
+                .logicOpEnable = false,
+                .logicOp = vk::LogicOp::eAnd,
+                .attachmentCount = 1,
+                .pAttachments = &colorBlendAttachment,
+                .blendConstants = std::array{0.0f, 0.0f, 0.0f, customSecondLayerOpacity},
+            };
+        });
+
+    } // end if settings
+#endif
+}
+
+void RendererVulkan::ResetSecondLayerOpacity() {
+#ifndef ANDROID // TODO: Implement custom layouts on Android
+
+    if ((Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout ||
+         Settings::values.custom_layout || Settings::values.new_custom_layout) &&
+        Settings::values.custom_second_layer_opacity.GetValue() < 100) {
+
+        scheduler.Record([](vk::CommandBuffer cmdbuf) {
+            const vk::PipelineColorBlendAttachmentState colorBlendAttachment = {
+                .blendEnable = false,
+                .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                .colorBlendOp = vk::BlendOp::eAdd,
+                .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+                .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+                .alphaBlendOp = vk::BlendOp::eAdd,
+                .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                                  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+            };
+
+            const vk::PipelineColorBlendStateCreateInfo info = {
+                .logicOpEnable = false,
+                .logicOp = vk::LogicOp::eCopy,
+                .attachmentCount = 1,
+                .pAttachments = &colorBlendAttachment,
+                .blendConstants = std::array{0.0f, 0.0f, 0.0f, 0.0f},
+            };
+        });
+    }
+#endif
 }
 
 void RendererVulkan::SwapBuffers() {
