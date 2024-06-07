@@ -11,13 +11,8 @@
 #include "core/frontend/emu_window.h"
 #include "video_core/gpu.h"
 #include "video_core/pica/pica_core.h"
-#include "video_core/renderer_vulkan/pica_to_vk.h"
 #include "video_core/renderer_vulkan/renderer_vulkan.h"
-#include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_memory_util.h"
-#include "video_core/renderer_vulkan/vk_pipeline_cache.h"
-#include "video_core/renderer_vulkan/vk_render_manager.h"
-#include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
 
 #include "video_core/host_shaders/vulkan_present_anaglyph_dubois_frag.h"
@@ -27,13 +22,6 @@
 #include "video_core/host_shaders/vulkan_present_vert.h"
 
 #include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_funcs.hpp>
-#include <vulkan/vulkan_handles.hpp>
-
-using namespace Pica::Shader::Generator;
-using Pica::Shader::FSConfig;
 
 namespace Vulkan {
 
@@ -840,31 +828,6 @@ void RendererVulkan::ApplySecondLayerOpacity() {
                 Settings::values.new_custom_second_layer_opacity.GetValue() / 100.0f;
         }
 
-        /*
-                scheduler.Record([customSecondLayerOpacity](vk::CommandBuffer cmdbuf) {
-                    const vk::PipelineColorBlendAttachmentState colorBlendAttachment = {
-                        .blendEnable = true,
-                        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-                        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-                        .colorBlendOp = vk::BlendOp::eAdd,
-                        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-                        .alphaBlendOp = vk::BlendOp::eAdd,
-                        .colorWriteMask = vk::ColorComponentFlagBits::eR |
-           vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB |
-           vk::ColorComponentFlagBits::eA,
-                    };
-
-                    const vk::PipelineColorBlendStateCreateInfo info = {
-                        .logicOpEnable = false,
-                        .logicOp = vk::LogicOp::eAnd,
-                        .attachmentCount = 1,
-                        .pAttachments = &colorBlendAttachment,
-                        .blendConstants = std::array{0.0f, 0.0f, 0.0f, customSecondLayerOpacity},
-                    };
-                });
-        */
-
         float blendConstants[] = {0.0f, 0.0f, 0.0f, customSecondLayerOpacity};
 
         scheduler.Record([blendConstants](vk::CommandBuffer cmdbuf) {
@@ -881,31 +844,6 @@ void RendererVulkan::ResetSecondLayerOpacity() {
     if ((Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout ||
          Settings::values.custom_layout || Settings::values.new_custom_layout) &&
         Settings::values.custom_second_layer_opacity.GetValue() < 100) {
-
-        /*
-                scheduler.Record([](vk::CommandBuffer cmdbuf) {
-                    const vk::PipelineColorBlendAttachmentState colorBlendAttachment = {
-                        .blendEnable = false,
-                        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-                        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-                        .colorBlendOp = vk::BlendOp::eAdd,
-                        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-                        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-                        .alphaBlendOp = vk::BlendOp::eAdd,
-                        .colorWriteMask = vk::ColorComponentFlagBits::eR |
-           vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB |
-           vk::ColorComponentFlagBits::eA,
-                    };
-
-                    const vk::PipelineColorBlendStateCreateInfo info = {
-                        .logicOpEnable = false,
-                        .logicOp = vk::LogicOp::eCopy,
-                        .attachmentCount = 1,
-                        .pAttachments = &colorBlendAttachment,
-                        .blendConstants = std::array{0.0f, 0.0f, 0.0f, 0.0f},
-                    };
-                });
-        */
 
         float blendConstants[] = {0.0f, 0.0f, 0.0f, 0.0f};
 
