@@ -341,6 +341,7 @@ void RendererVulkan::BuildPipelines() {
     const std::array dynamic_states = {
         vk::DynamicState::eViewport,
         vk::DynamicState::eScissor,
+        vk::DynamicState::eBlendConstants,
     };
 
     const vk::PipelineDynamicStateCreateInfo dynamic_info = {
