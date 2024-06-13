@@ -78,7 +78,6 @@ private:
      */
     void InitializeIrNopShared(Kernel::HLERequestContext& ctx);
 
-
     void InitializeIrNop(Kernel::HLERequestContext& ctx);
 
     /**

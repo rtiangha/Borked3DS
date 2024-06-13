@@ -784,8 +784,9 @@ void SkylanderPortalWindow::create_skylander(u8 slot) {
 }
 
 void SkylanderPortalWindow::load_skylander(u8 slot) {
-    const QString file_path = QFileDialog::getOpenFileName(
-        this, tr("Select Skylander File"), last_skylander_path, tr("Skylander (*.sky *.bin *.dmp *.dump);;All Files (*)"));
+    const QString file_path =
+        QFileDialog::getOpenFileName(this, tr("Select Skylander File"), last_skylander_path,
+                                     tr("Skylander (*.sky *.bin *.dmp *.dump);;All Files (*)"));
     if (file_path.isEmpty()) {
         return;
     }

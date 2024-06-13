@@ -7,8 +7,7 @@
 
 constexpr auto UI_SKY_NUM = 8;
 
-class CreateSkylanderDialog : public QDialog
-{
+class CreateSkylanderDialog : public QDialog {
     Q_OBJECT
 
 public:
@@ -19,8 +18,7 @@ protected:
     QString file_path;
 };
 
-class SkylanderPortalWindow : public QDialog
-{
+class SkylanderPortalWindow : public QDialog {
     Q_OBJECT
 
 public:
