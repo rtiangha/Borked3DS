@@ -656,7 +656,7 @@ CreateSkylanderDialog::CreateSkylanderDialog(QWidget* parent) : QDialog(parent) 
 
         std::random_device rd;
         std::mt19937 mt(rd());
-        std::uniform_int_distribution<u8> dist(0, 255);
+        std::uniform_int_distribution<unsigned int> dist(0, 255);
 
         data[0] = dist(mt);
         data[1] = dist(mt);
