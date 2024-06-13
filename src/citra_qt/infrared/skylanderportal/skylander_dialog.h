@@ -5,6 +5,8 @@
 #include <QDialog>
 #include <QLineEdit>
 
+#include "common/common_types.h"
+
 constexpr auto UI_SKY_NUM = 8;
 
 class CreateSkylanderDialog : public QDialog {
