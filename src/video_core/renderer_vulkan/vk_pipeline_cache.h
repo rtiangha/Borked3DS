@@ -99,7 +99,7 @@ private:
     const Instance& instance;
     Scheduler& scheduler;
     RenderManager& renderpass_cache;
-    DescriptorUpdateQueue& update_queue;
+    [[maybe_unused]] DescriptorUpdateQueue& update_queue;
 
     Pica::Shader::Profile profile{};
     vk::UniquePipelineCache pipeline_cache;
