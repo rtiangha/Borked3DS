@@ -89,7 +89,7 @@
     url = https://github.com/rtiangha/ext-library-headers.git
 [submodule "libadrenotools"]
     path = externals/libadrenotools
-    url = https://github.com/bylaws/libadrenotools
+    url = https://github.com/rtiangha/libadrenotools
 [submodule "oaknut"]
     path = externals/oaknut
     url = https://github.com/rtiangha/oaknut.git
