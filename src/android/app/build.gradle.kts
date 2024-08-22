@@ -79,6 +79,7 @@ android {
                     "-DENABLE_QT=0", // Don't use QT
                     "-DENABLE_SDL2=0", // Don't use SDL
                     "-DANDROID_ARM_NEON=true", // cryptopp requires Neon to work
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", // Support Android V 16KiB page sizes
                     "-DUSE_SYSTEM_BOOST=OFF",
                     "-DUSE_SYSTEM_CATCH2=OFF",
                     "-DUSE_SYSTEM_CRYPTOPP=OFF",
