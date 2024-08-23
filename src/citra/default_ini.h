@@ -390,7 +390,7 @@ init_ticks_type =
 # Defaults to 0.
 init_ticks_override =
 
-# Number of steps per hour reported by the pedometer.
+# Number of steps per hour reported by the pedometer. Range from 0-65535.
 # Defaults to 0.
 steps_per_hour =
 
