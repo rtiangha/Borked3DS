@@ -57,7 +57,7 @@ jobs:
           repo-name: cmake
           keys-asc: https://apt.kitware.com/keys/kitware-archive-latest.asc
       - name: Update System Packages
-        run: sudo apt-get update && && sudo apt-get install kitware-archive-keyring && sudo apt-get -y dist-upgrade
+        run: sudo apt-get update && sudo apt-get install kitware-archive-keyring && sudo apt-get -y dist-upgrade
       - name: Install New Packages
         run: |
           sudo apt-get -y install cmake ccache ninja-build clang-18 clang-tools-18 clang-18-doc libclang-common-18-dev libclang-18-dev libclang1-18 clang-format-18 python3-clang-18 clangd-18 clang-tidy-18 clang-format-15 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev 
@@ -115,7 +115,7 @@ jobs:
           repo-name: cmake
           keys-asc: https://apt.kitware.com/keys/kitware-archive-latest.asc
       - name: Update System Packages
-        run: sudo apt-get update && && sudo apt-get install kitware-archive-keyring && sudo apt-get -y dist-upgrade
+        run: sudo apt-get update && sudo apt-get install kitware-archive-keyring && sudo apt-get -y dist-upgrade
       - name: Install New Packages
         run: |
           sudo apt-get -y install cmake ccache ninja-build gcc-14 clang-format-15 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev
@@ -180,7 +180,7 @@ jobs:
           keys-asc: https://apt.kitware.com/keys/kitware-archive-latest.asc
       - name: Update System Packages
         run: |
-          sudo apt-get update && sudo apt-get install kitware-keyring-archive && sudo apt-get -y dist-upgrade
+          sudo apt-get update && sudo apt-get install kitware-archive-keyring && sudo apt-get -y dist-upgrade
       - name: Install Cross-Compile Support (ARM64)
         uses: cyberjunk/gha-ubuntu-cross@v4
         with:
@@ -239,7 +239,7 @@ jobs:
           keys-asc: https://apt.kitware.com/keys/kitware-archive-latest.asc
       - name: Update System Packages
         run: |
-          sudo apt-get update && sudo apt-get install kitware-keyring-archive && sudo apt-get -y dist-upgrade
+          sudo apt-get update && sudo apt-get install kitware-archive-keyring && sudo apt-get -y dist-upgrade
       - name: Install Cross-Compile Support (ARM64)
         uses: cyberjunk/gha-ubuntu-cross@v4
         with:
