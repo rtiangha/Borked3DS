@@ -98,7 +98,7 @@ if ("x86_64" IN_LIST ARCHITECTURE)
 endif()
 
 # Oaknut
-if ("arm64" IN_LIST ARCHITECTURE)
+if ("arm64" IN_LIST ARCHITECTURE OR CITRA_CROSS_COMPILE)
     add_subdirectory(oaknut EXCLUDE_FROM_ALL)
 endif()
 
