@@ -24,8 +24,6 @@ cmake .. -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-    -DCMAKE_CXX_FLAGS="--target=aarch64-linux-gnueabihf" \
-    -DCMAKE_C_FLAGS="--target=aarch64-linux-gnueabihf" \
     "${EXTRA_CMAKE_FLAGS[@]}" \
     -DUSE_SYSTEM_BOOST=OFF \
     -DUSE_SYSTEM_CATCH2=OFF \
