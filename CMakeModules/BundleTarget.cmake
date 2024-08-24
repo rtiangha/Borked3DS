@@ -295,13 +295,13 @@ else()
 
         # On Linux, add a command to prepare linuxdeploy and any required plugins before any bundling occurs.
         if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-            if (CITRA_CROSS_COMPILE)
+            if (CITRA_CROSS_COMPILE_AARCH64)
                 add_custom_command(
                     TARGET bundle
                     COMMAND ${CMAKE_COMMAND}
                     "-DBUNDLE_TARGET_DOWNLOAD_LINUXDEPLOY=1"
                     "-DLINUXDEPLOY_PATH=${CMAKE_BINARY_DIR}/externals/linuxdeploy"
-                    "-DLINUXDEPLOY_ARCH=arm_aarch64"
+                    "-DLINUXDEPLOY_ARCH=x86_64"
                     -P "${CMAKE_SOURCE_DIR}/CMakeModules/BundleTarget.cmake"
                     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
             else()
