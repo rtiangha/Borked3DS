@@ -111,7 +111,7 @@ jobs:
       - name: Install CMake PPA
         uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb https://apt.kitware.com/ubuntu/ jammy main
+          repo: deb https://apt.kitware.com/ubuntu/ noble main
           repo-name: cmake
           keys-asc: https://apt.kitware.com/keys/kitware-archive-latest.asc
       - name: Update System Packages
@@ -439,11 +439,17 @@ jobs:
               echo "GIT_TAG_NAME=$GITHUB_REF_NAME" >> $GITHUB_ENV
           fi
           echo $GIT_TAG_NAME
+      - name: Install CMake PPA
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb https://apt.kitware.com/ubuntu/ noble main
+          repo-name: cmake
+          keys-asc: https://apt.kitware.com/keys/kitware-archive-latest.asc
       - name: Install system apps
         run: |
           sudo apt-get update -y
           sudo apt-get dist-upgrade -y
-          sudo apt-get install ccache apksigner clang-format-15 -y
+          sudo apt-get install kitware-archive-keyring cmake ccache apksigner clang-format-15 -y
           sudo apt-get clean
       - name: Set up JDK 22
         uses: actions/setup-java@v4
