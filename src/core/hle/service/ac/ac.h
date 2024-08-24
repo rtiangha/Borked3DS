@@ -86,8 +86,6 @@ public:
          */
         void GetWifiStatus(Kernel::HLERequestContext& ctx);
 
-        void ScanAPs(Kernel::HLERequestContext& ctx);
-
         /**
          * AC::GetInfraPriority service function
          *  Inputs:

@@ -5,7 +5,6 @@
 #include <vector>
 #include "common/archives.h"
 #include "common/common_types.h"
-#include "common/file_util.h"
 #include "common/logging/log.h"
 #include "common/settings.h"
 #include "core/core.h"
@@ -111,33 +110,6 @@ void Module::Interface::GetWifiStatus(Kernel::HLERequestContext& ctx) {
                                                             ? WifiStatus::STATUS_CONNECTED_N3DS
                                                             : WifiStatus::STATUS_CONNECTED_O3DS)
                                                      : WifiStatus::STATUS_DISCONNECTED));
-}
-
-void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
-    IPC::RequestParser rp(ctx);
-    u32 size = rp.Pop<u32>();
-    std::vector<u8> buffer(size);
-
-    FileUtil::IOFile file(FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir) + "acData.bin", "rb");
-    if (!file) {
-        LOG_ERROR(Service_AC, "Failed to open AC Data to emulate");
-        IPC::RequestBuilder rb = rp.MakeBuilder(2, 0);
-        rb.Push(ResultSuccess);
-        rb.Push<u32>(0);
-        return;
-    }
-    // one entry has size of 0x34
-    u8 num_entries = 0;
-    file.ReadBytes(&num_entries, sizeof(num_entries));
-    if (num_entries > size / 0x34) {
-        file.ReadBytes(buffer.data(), size);
-    } else {
-        file.ReadBytes(buffer.data(), file.GetSize());
-    }
-    IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
-    rb.Push(ResultSuccess);
-    rb.Push<u32>(num_entries);
-    rb.PushStaticBuffer(std::move(buffer), 0);
 }
 
 void Module::Interface::GetInfraPriority(Kernel::HLERequestContext& ctx) {
