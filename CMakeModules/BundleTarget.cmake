@@ -301,7 +301,7 @@ else()
                     COMMAND ${CMAKE_COMMAND}
                     "-DBUNDLE_TARGET_DOWNLOAD_LINUXDEPLOY=1"
                     "-DLINUXDEPLOY_PATH=${CMAKE_BINARY_DIR}/externals/linuxdeploy"
-                    "-DLINUXDEPLOY_ARCH=aarch64"
+                    "-DLINUXDEPLOY_ARCH=arm_aarch64"
                     -P "${CMAKE_SOURCE_DIR}/CMakeModules/BundleTarget.cmake"
                     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
             else()
