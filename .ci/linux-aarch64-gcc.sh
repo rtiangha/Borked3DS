@@ -2,7 +2,7 @@
 
 if [ "$TARGET" = "appimage-aarch64-gcc" ]; then
     # Compile the AppImage we distribute with Clang.
-    export EXTRA_CMAKE_FLAGS=(-DCMAKE_CXX_COMPILER=gcc -DCMAKE_C_COMPILER=gcc -DCMAKE_LINKER_TYPE="MOLD" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold -lstdc++" -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold -lstdc++" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/6.7.2/gcc_arm64)
+    export EXTRA_CMAKE_FLAGS=(-DCMAKE_CXX_COMPILER=/usr/bin/aarch64-linux-gnu-g++-12 -DCMAKE_C_COMPILER=/usr/bin/aarch64-linux-gnu-gcc-12 -DCMAKE_LINKER_TYPE="mold" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold -lstdc++" -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold -lstdc++" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/6.7.2/gcc_arm64)
     # Cross-compile vars
     export ARCHGCC=aarch64-linux-gnu
     export ARCH=aarch64
