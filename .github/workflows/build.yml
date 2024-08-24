@@ -22,11 +22,11 @@ jobs:
         with:
           name: source
           path: artifacts/
-  linux-clang:
+  linux-x86-clang:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        target: ["appimage-clang", "fresh"]
+        target: ["appimage-x86_64-clang", "fresh"]
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_COMPILERCHECK: content
@@ -73,18 +73,18 @@ jobs:
         run: ./.ci/linux-clang.sh
       - name: Pack
         run: ./.ci/pack.sh
-        if: ${{ matrix.target == 'appimage-clang' }}
+        if: ${{ matrix.target == 'appimage-x86_64-clang' }}
       - name: Upload
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == 'appimage-clang' }}
+        if: ${{ matrix.target == 'appimage-x86_64-clang' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
-  linux-gcc:
+  linux-x86-gcc:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        target: ["appimage-gcc", "fresh"]
+        target: ["appimage-x86_64-gcc", "fresh"]
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_COMPILERCHECK: content
@@ -125,10 +125,69 @@ jobs:
         run: ./.ci/linux-gcc.sh
       - name: Pack
         run: ./.ci/pack.sh
-        if: ${{ matrix.target == 'appimage-gcc' }}
+        if: ${{ matrix.target == 'appimage-x86-gcc' }}
       - name: Upload
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == 'appimage-gcc' }}
+        if: ${{ matrix.target == 'appimage-x86-gcc' }}
+        with:
+          name: ${{ env.OS }}-${{ env.TARGET }}
+          path: artifacts/
+  linux-arm64-clang:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        target: ["appimage-aarch64-clang"]
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      OS: linux
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-
+      - name: Install Clang PPA
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo-name: llvm
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Update System Packages
+        run: |
+          sudo apt-get update && sudo apt-get -y dist-upgrade
+      - name: Install Cross-Compile Support (ARM64)
+        uses: cyberjunk/gha-ubuntu-cross@v4
+        with:
+          arch: arm64
+      - name: Install New Packages
+        run: |
+          sudo apt-get -y install qt6-l10n-tools qt6-base-dev-tools clang-18 clang-tools-18 clang-18-doc libclang-common-18-dev libclang-18-dev libclang1-18 clang-format-18 python3-clang-18 clangd-18 clang-tidy-18 libgl1-mesa-dev:arm64 libpulse-dev:arm64 libxkbcommon-dev:arm64 libxcb-xkb-dev:arm64 cmake ccache ninja-build libasound-dev:arm64 xorg-dev libx11-dev:arm64 libxext-dev:arm64 jackd libpipewire-0.3-dev:arm64 libsndio-dev:arm64 libxcb-cursor-dev:arm64 libasound2-dev:arm64 libpulse-dev:arm64 libaudio-dev:arm64 libjack-dev:arm64 libsndio-dev:arm64 libx11-dev:arm64 libxext-dev:arm64 libxrandr-dev:arm64 libxcursor-dev:arm64 libxfixes-dev:arm64 libxi-dev:arm64 libxss-dev:arm64 libwayland-dev:arm64 libxkbcommon-dev:arm64 libdrm-dev:arm64 libgbm-dev:arm64 libgl1-mesa-dev:arm64 libgles2-mesa-dev:arm64 libegl1-mesa-dev:arm64 libdbus-1-dev:arm64 libibus-1.0-dev:arm64 libudev-dev:arm64 fcitx-libs-dev:arm64
+          sudo apt-get clean
+      - name: Install QT (ARM64)
+        run: |
+          pip install -U pip
+          pip install aqtinstall
+          aqt install-qt linux_arm64 desktop 6.7.2 linux_gcc_arm64 -m qtwaylandcompositor qtmultimedia
+      - name: Install mold linker
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: false
+      - name: Build
+        run: ./.ci/linux-aarch64-clang.sh
+      - name: Pack
+        run: ./.ci/pack.sh
+        if: ${{ matrix.target == 'appimage-aarch64-clang' }}
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == 'appimage-aarch64-clang' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
