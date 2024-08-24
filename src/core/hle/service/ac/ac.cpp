@@ -20,6 +20,7 @@
 #include "core/hle/service/ac/ac_i.h"
 #include "core/hle/service/ac/ac_u.h"
 #include "core/hle/service/nwm/nwm_inf.h"
+#include "core/hle/service/nwm/nwm_uds.h"
 #include "core/hle/service/soc/soc_u.h"
 #include "core/memory.h"
 #include "network/network.h"
@@ -196,60 +197,32 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     // Arg 3 is PID
     const u32 pid = rp.PopPID();
 
-    std::shared_ptr<Kernel::Thread> thread = ctx.ClientThread();
-    auto current_process = Core::System::GetInstance().Kernel().GetCurrentProcess();
-    Memory::MemorySystem& memory = Core::System::GetInstance().Memory();
+    // Testing what struct is correct input
 
-    // According to 3dbrew, the output structure pointer is located 0x100 bytes after the beginning
-    // of cmd_buff
-    VAddr cmd_addr = thread->GetCommandBufferAddress();
-    VAddr buffer_vaddr = cmd_addr + 0x100;
-    const u32 descr = memory.Read32(buffer_vaddr);
-    ASSERT(descr == ((size << 14) | 2));                           // preliminary check
-    const VAddr output_buffer = memory.Read32(buffer_vaddr + 0x4); // address to output buffer
+    std::array<u8, 3> oui;
+    oui[0] = 0;
+    oui[1] = 0x1F;
+    oui[2] = 0x32;
+    Service::NWM::NetworkInfo net_info{
+        Network::BroadcastMac,
+        0,      // dummy value
+        1,      // true value
+        oui,    // default oui
+        21,     // default follow up
+        0,      // dummy wlan id
+        0,      // dummy id
+        0xFFFF, // dummy attributes
+        0,      // dummy id
+        0,      // no nodes connected
+        0xFF,   // max nodes possible
+        1,      // size of 1 (not sure what 0 would do)
+        0       // empty data
+    };
 
-    // At this point, we have all the input given to us
-    // 3dbrew stated that AC:ScanAPs relies on NWM_INF:RecvBeaconBroadcastData to obtain
-    // info on all nearby APs
-    // Thus this method prepares to call that service
-    // Since I do not know the proper way, I copied various pieces of code that seemed to work
-    // MAC address gets split, but I am not sure this is the proper way to do so
-    Network::MacAddress mac = Network::BroadcastMac;
-
-    std::array<u32, IPC::COMMAND_BUFFER_LENGTH + 2 * IPC::MAX_STATIC_BUFFERS> cmd_buf;
-    cmd_buf[0] = 0x000603C4; // Command header
-    cmd_buf[1] = size;       // size of buffer
-    cmd_buf[2] = 0;          // dummy data
-    cmd_buf[3] = 0;          // dummy data
-    std::memcpy(cmd_buf.data() + 4, mac.data(), sizeof(Network::MacAddress));
-    cmd_buf[16] = 0;                // 0x0 handle header
-    cmd_buf[17] = 0;                // set to 0 to ignore it
-    cmd_buf[18] = (size << 4) | 12; // should be considered correct for mapped buffer
-    cmd_buf[19] = output_buffer;    // address of output buffer
-
-    // Create context for call to NWM_INF::RecvBeaconBroadcastData
-    auto context = std::make_shared<Kernel::HLERequestContext>(Core::System::GetInstance().Kernel(),
-                                                               ctx.Session(), thread);
-    context->PopulateFromIncomingCommandBuffer(cmd_buf.data(), current_process);
-
-    // Retrieve service from service manager
-    auto nwm_inf =
-        Core::System::GetInstance().ServiceManager().GetService<Service::NWM::NWM_INF>("nwm::INF");
-    // Perform delegated task
-    nwm_inf->HandleSyncRequest(*context);
-
-    // Response should be
-    // 0: Header Code (ignored)
-    // 1: Result Code (Success/Unknown/etc.)
-    // 2: ¿Parsed? beacon data
-
-    // Since the way to parse is yet unknown, it is currently only passing on raw
-    IPC::RequestBuilder rb = rp.MakeBuilder(1, 2);
-    IPC::RequestParser rp2(*context);
-    rb.Push(rp2.Pop<u32>());
-    // Mapped buffer at virtual address output_buffer
-    Kernel::MappedBuffer mapped_buffer = rp2.PopMappedBuffer();
-    rb.PushMappedBuffer(mapped_buffer);
+    IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
+    rb.Push(ResultSuccess);
+    rb.Push(1);
+    rb.PushStaticBuffer(std::move(net_info), 0);
     LOG_WARNING(Service_AC, "(STUBBED) called, pid={}", pid);
 }
 
