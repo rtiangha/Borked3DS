@@ -10,6 +10,7 @@
 #include "common/common_types.h"
 #include "common/swap.h"
 #include "core/hle/service/service.h"
+#include "core/hle/service/nwm/nwm_uds.h"
 
 namespace Service::NWM {
 
@@ -93,6 +94,12 @@ struct EncryptedDataTag {
 };
 
 static_assert(sizeof(EncryptedDataTag) == 6, "EncryptedDataTag has incorrect size.");
+
+struct ScanResult {
+    BeaconEntryHeader entry;
+    NetworkInfo net_info;
+    std::array<NodeInfo, UDSMaxNodes> nodes;
+}
 
 #pragma pack(push, 1)
 // The raw bytes of this structure are the CTR used in the encryption (AES-CTR)
