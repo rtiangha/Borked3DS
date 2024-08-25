@@ -201,7 +201,7 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     oui[0] = 0;
     oui[1] = 0x1F;
     oui[2] = 0x32;
-    std::array<u8, 200> app_data;
+    std::array<u8, 200> app_data = new std::array<u8, 200>;
 
     // Testing what struct is correct input
     Service::NWM::NetworkInfo net_info{};
