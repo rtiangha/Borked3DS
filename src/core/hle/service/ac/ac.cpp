@@ -21,6 +21,7 @@
 #include "core/hle/service/ac/ac_u.h"
 #include "core/hle/service/nwm/nwm_inf.h"
 #include "core/hle/service/nwm/nwm_uds.h"
+#include "core/hle/service/nwm/uds_beacon.h"
 #include "core/hle/service/soc/soc_u.h"
 #include "core/memory.h"
 #include "network/network.h"

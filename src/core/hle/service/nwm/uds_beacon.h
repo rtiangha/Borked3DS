@@ -95,12 +95,6 @@ struct EncryptedDataTag {
 
 static_assert(sizeof(EncryptedDataTag) == 6, "EncryptedDataTag has incorrect size.");
 
-struct ScanResult {
-    BeaconEntryHeader entry;
-    NetworkInfo net_info;
-    std::array<NodeInfo, UDSMaxNodes> nodes;
-}
-
 #pragma pack(push, 1)
 // The raw bytes of this structure are the CTR used in the encryption (AES-CTR)
 // of the beacon data stored in the EncryptedDataTags.
@@ -129,6 +123,12 @@ struct BeaconData {
 #pragma pack(pop)
 
 static_assert(sizeof(BeaconData) == 0x12, "BeaconData has incorrect size.");
+
+struct ScanResult {
+    BeaconEntryHeader entry;
+    NetworkInfo net_info;
+    std::array<NodeInfo, UDSMaxNodes> nodes;
+}
 
 /**
  * Decrypts the beacon data buffer for the network described by `network_info`.
