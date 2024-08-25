@@ -128,7 +128,7 @@ struct ScanResult {
     BeaconEntryHeader entry;
     NetworkInfo net_info;
     std::array<NodeInfo, UDSMaxNodes> nodes;
-}
+};
 
 /**
  * Decrypts the beacon data buffer for the network described by `network_info`.

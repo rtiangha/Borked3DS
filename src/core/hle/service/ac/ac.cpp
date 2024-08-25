@@ -206,9 +206,10 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
 
     Service::NWM::ScanResult result;
 
-    std::array<Service::NWM::NetworkInfo, Service::NWM::UDSMaxNodes> nodes = new std::array<Service::NWM::NetworkInfo, Service::NWM::UDSMaxNodes>;
+    std::array<Service::NWM::NetworkInfo, Service::NWM::UDSMaxNodes> *nodes = 
+        new std::array<Service::NWM::NetworkInfo, Service::NWM::UDSMaxNodes>;
 
-    result.nodes = nodes;
+    result.nodes = *nodes;
 
     // Testing what struct is correct input
     Service::NWM::NetworkInfo net_info;
