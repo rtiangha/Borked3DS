@@ -217,11 +217,12 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     net_info.max_nodes = 0xFF;
     net_info.application_data_size = 1;
     net_info.application_data = 0;
+    std::vector<u8> buffer = static_cast<std::vector<u8>>(net_info);
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
     rb.Push(ResultSuccess);
     rb.Push(1);
-    rb.PushStaticBuffer(std::move(net_info), 0);
+    rb.PushStaticBuffer(std::move(buffer), 0);
     LOG_WARNING(Service_AC, "(STUBBED) called, pid={}", pid);
 }
 
