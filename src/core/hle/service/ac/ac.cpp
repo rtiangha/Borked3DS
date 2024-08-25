@@ -206,8 +206,8 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
 
     Service::NWM::ScanResult result;
 
-    std::array<Service::NWM::NetworkInfo, Service::NWM::UDSMaxNodes> *nodes = 
-        new std::array<Service::NWM::NetworkInfo, Service::NWM::UDSMaxNodes>;
+    std::array<Service::NWM::NodeInfo, Service::NWM::UDSMaxNodes> *nodes = 
+        new std::array<Service::NWM::NodeInfo, Service::NWM::UDSMaxNodes>;
 
     result.nodes = *nodes;
 
