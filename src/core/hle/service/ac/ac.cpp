@@ -197,27 +197,26 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     // Arg 3 is PID
     const u32 pid = rp.PopPID();
 
-    // Testing what struct is correct input
-
     std::array<u8, 3> oui;
     oui[0] = 0;
     oui[1] = 0x1F;
     oui[2] = 0x32;
-    Service::NWM::NetworkInfo net_info{
-        Network::BroadcastMac,
-        0,      // dummy value
-        1,      // true value
-        oui,    // default oui
-        21,     // default follow up
-        0,      // dummy wlan id
-        0,      // dummy id
-        0xFFFF, // dummy attributes
-        0,      // dummy id
-        0,      // no nodes connected
-        0xFF,   // max nodes possible
-        1,      // size of 1 (not sure what 0 would do)
-        0       // empty data
-    };
+
+    // Testing what struct is correct input
+    Service::NWM::NetworkInfo net_info{};
+    net_info.host_mac_address = Network::BroadcastMac;
+    net_info.channel = 0;
+    net_info.initialized = 1;
+    net_info.oui_value = oui;
+    net_info.oui_type = 21;
+    net_info.wlan_comm_id = 0;
+    net_info.id = 0;
+    net_info.attributes = 0xFFFF;
+    net_info.network_id = 0;
+    net_info.total_nodes = 0;
+    net_info.max_nodes = 0xFF;
+    net_info.application_data_size = 1;
+    net_info.application_data = 0;
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
     rb.Push(ResultSuccess);
