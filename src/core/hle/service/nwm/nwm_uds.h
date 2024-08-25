@@ -19,6 +19,7 @@
 #include "common/common_types.h"
 #include "common/swap.h"
 #include "core/hle/service/service.h"
+#include "core/hle/service/nwm/uds_beacon.h"
 #include "network/network.h"
 
 namespace Core {
@@ -117,6 +118,12 @@ struct NetworkInfo {
 static_assert(offsetof(NetworkInfo, oui_value) == 0xC, "oui_value is at the wrong offset.");
 static_assert(offsetof(NetworkInfo, wlan_comm_id) == 0x10, "wlancommid is at the wrong offset.");
 static_assert(sizeof(NetworkInfo) == 0x108, "NetworkInfo has incorrect size.");
+
+struct ScanResult {
+    BeaconEntryHeader entry;
+    NetworkInfo net_info;
+    std::array<NodeInfo, UDSMaxNodes> nodes;
+}
 
 /// Additional block tag ids in the Beacon and Association Response frames
 enum class TagId : u8 {
