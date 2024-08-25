@@ -201,7 +201,7 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     oui[0] = 0;
     oui[1] = 0x1F;
     oui[2] = 0x32;
-    std::array<u8, 0> app_data;
+    std::array<u8, 200> app_data;
 
     // Testing what struct is correct input
     Service::NWM::NetworkInfo net_info{};
@@ -218,7 +218,7 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     net_info.max_nodes = 0xFF;
     net_info.application_data_size = 0;
     net_info.application_data = app_data;
-    std::vector<u8> buffer(sizeof(net_info));
+    std::vector<u8> buffer(sizeof(Service::NWM::NetworkInfo));
     std::memcpy(buffer.data(), &net_info, buffer.size());
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
