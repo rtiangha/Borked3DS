@@ -1,3 +1,7 @@
+// Copyright 2024 Mandarine Project
+// Licensed under GPLv2 or any later version
+// Refer to the license.txt file included.
+
 package org.citra.citra_emu.dialogs
 
 import android.content.Context
@@ -5,11 +9,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import org.citra.citra_emu.R
+import org.citra.citra_emu.databinding.DialogBottomSheetBinding
 import org.citra.citra_emu.utils.CompatUtils
 
 open class BaseSheetDialog(context: Context) : BottomSheetDialog(CompatUtils.findActivity(context)) {
     private val contentView: LinearLayout
+    private val binding = DialogBottomSheetBinding.inflate(layoutInflater)
 
     init {
         val width = CompatUtils.findActivity(context).window.decorView.measuredWidth
@@ -20,8 +25,8 @@ open class BaseSheetDialog(context: Context) : BottomSheetDialog(CompatUtils.fin
         behavior.maxHeight = (height * heightScale).toInt()
         behavior.maxWidth = width
 
-        super.setContentView(R.layout.dialog_bottom_sheet)
-        contentView = super.findViewById(R.id.content)!!
+        super.setContentView(binding.root)
+        contentView = binding.content
     }
 
     override fun setContentView(view: View) {

@@ -31,6 +31,7 @@ import org.citra.citra_emu.R
 import org.citra.citra_emu.camera.StillImageCameraHelper.OnFilePickerResult
 import org.citra.citra_emu.contracts.OpenFileResultContract
 import org.citra.citra_emu.databinding.ActivityEmulationBinding
+import org.citra.citra_emu.dialogs.NetPlayDialog
 import org.citra.citra_emu.dialogs.TweaksDialog
 import org.citra.citra_emu.display.ScreenAdjustmentUtil
 import org.citra.citra_emu.features.hotkeys.HotkeyUtility
@@ -139,6 +140,13 @@ class EmulationActivity : AppCompatActivity() {
         isEmulationRunning = savedInstanceState.getBoolean("isEmulationRunning", false)
     }
 
+    fun addNetPlayMessage(msg: String) {
+        if (msg.isEmpty()) {
+            return
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
     override fun onDestroy() {
         NativeLibrary.enableAdrenoTurboMode(false)
         EmulationLifecycleUtil.clear()
@@ -196,6 +204,11 @@ class EmulationActivity : AppCompatActivity() {
 
     fun displayTweaks() {
         val dialog = TweaksDialog(this)
+        dialog.show()
+    }
+
+    fun displayMultiplayerDialog() {
+        val dialog = NetPlayDialog(this)
         dialog.show()
     }
 

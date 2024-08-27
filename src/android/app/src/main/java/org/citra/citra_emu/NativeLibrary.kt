@@ -24,6 +24,7 @@ import org.citra.citra_emu.activities.EmulationActivity
 import org.citra.citra_emu.utils.EmulationMenuSettings
 import org.citra.citra_emu.utils.FileUtil
 import org.citra.citra_emu.utils.Log
+import org.citra.citra_emu.utils.NetPlayManager
 import java.lang.ref.WeakReference
 import java.util.Date
 
@@ -528,6 +529,12 @@ object NativeLibrary {
     external fun loadAmiibo(path: String?): Boolean
 
     external fun removeAmiibo()
+
+    @Keep
+    @JvmStatic
+    fun addNetPlayMessage(type: Int, message: String) {
+        NetPlayManager.addNetPlayMessage(type, message)
+    }
 
     const val SAVESTATE_SLOT_COUNT = 11
     const val QUICKSAVE_SLOT = 0
