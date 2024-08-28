@@ -209,11 +209,11 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
 
     std::string path = FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir) + "acData.bin";
 
-    if (FileUtil::Exists(&path) && !FileUtil::Delete(&path)) {
+    if (FileUtil::Exists(path) && !FileUtil::Delete(path)) {
         LOG_CRITICAL(Service_AC, "Could not delete previous bin file");
         return;
     }
-    FileUtil::CreateEmptyFile(&path);
+    FileUtil::CreateEmptyFile(path);
     FileUtil::IOFile file(path, "r+b");
     file.WriteBytes(buffer.data(), buffer.size());
     file.Close();
