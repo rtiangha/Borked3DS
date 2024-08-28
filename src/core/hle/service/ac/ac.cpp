@@ -201,7 +201,7 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     const u32 pid = rp.PopPID();
 
     std::vector<u8> buffer(size);
-    std::random_device rng = *(new std::random_device);
+    std::random_device rng;
     std::mt19937 mersenne_engine {rng()};
     std::uniform_int_distribution<u32> dist {0x0000'0000, 0xFFFF'FFFF};
     auto gen = std::bind(dist, mersenne_engine);
