@@ -198,54 +198,29 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     // Arg 3 is PID
     const u32 pid = rp.PopPID();
 
-    std::array<u8, 3> oui;
-    oui[0] = 0;
-    oui[1] = 0x1F;
-    oui[2] = 0x32;
-    std::array<u8, 200> *app_data = new std::array<u8, 200>;
+    std::vector<u8> buffer(size);
+    std::random_device rng = new std::random_device;
+    std::mt19937 mersenne_engine {rng()};
+    std::uniform_int_distribution<u32> dist {0x0000'0000, 0xFFFF'FFFF};
+    auto gen = std::bind(dist, mersenne_engine);
+    std::generate(vec.begin(), vec.end(), gen);
 
-    Service::NWM::ScanResult result;
+    std::string path = FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir) + "acData.bin";
 
-    std::array<Service::NWM::NodeInfo, Service::NWM::UDSMaxNodes> *nodes = 
-        new std::array<Service::NWM::NodeInfo, Service::NWM::UDSMaxNodes>;
-
-    result.nodes = *nodes;
-
-    // Testing what struct is correct input
-    Service::NWM::NetworkInfo net_info;
-    net_info.host_mac_address = Network::BroadcastMac;
-    net_info.channel = Service::NWM::DefaultNetworkChannel;
-    net_info.initialized = 1;
-    net_info.oui_value = oui;
-    net_info.oui_type = 21;
-    net_info.wlan_comm_id = 0;
-    net_info.id = 0;
-    net_info.attributes = 0xFFFF;
-    net_info.network_id = 0;
-    net_info.total_nodes = 0;
-    net_info.max_nodes = 0xFF;
-    net_info.application_data_size = 0;
-    net_info.application_data = *app_data;
-
-    result.net_info = net_info;
-
-    Service::NWM::BeaconEntryHeader entry;
-    entry.total_size = sizeof(Service::NWM::ScanResult);
-    entry.wifi_channel = Service::NWM::DefaultNetworkChannel;
-    entry.mac_address = Network::BroadcastMac;
-    entry.unk_size = sizeof(Service::NWM::ScanResult);
-    entry.header_size = sizeof(Service::NWM::BeaconEntryHeader);
-
-    result.entry = entry;
-
-    std::vector<u8> buffer(sizeof(size));
-    std::memcpy(buffer.data(), &result, std::min(buffer.size(), sizeof(Service::NWM::NetworkInfo)));
+    if (FileUtil::Exists(&path) && !FileUtil::Delete(&path)) {
+        LOG_CRITICAL(Service_AC, "Could not delete previous bin file");
+        return;
+    }
+    FileUtil::CreateEmptyFile(&path);
+    FileUtil::IOFile file(path, "r+b");
+    file.WriteBytes(buffer.data(), buffer.size());
+    file.Close();
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 2);
     rb.Push(ResultSuccess);
     rb.Push(1);
     rb.PushStaticBuffer(std::move(buffer), 0);
-    LOG_WARNING(Service_AC, "(STUBBED) called, pid={}", pid);
+    LOG_WARNING(Service_AC, "(STUBBED) called, size={}, pid={}", size, pid);
 }
 
 void Module::Interface::GetInfraPriority(Kernel::HLERequestContext& ctx) {
