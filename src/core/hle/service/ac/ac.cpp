@@ -3,11 +3,13 @@
 // Refer to the license.txt file included.
 
 #include <vector>
+#include <random>
 #include <boost/serialization/shared_ptr.hpp>
 #include "common/archives.h"
 #include "common/common_types.h"
 #include "common/logging/log.h"
 #include "common/settings.h"
+#include "common/file_util.h"
 #include "core/core.h"
 #include "core/hle/ipc.h"
 #include "core/hle/ipc_helpers.h"
@@ -203,7 +205,7 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     std::mt19937 mersenne_engine {rng()};
     std::uniform_int_distribution<u32> dist {0x0000'0000, 0xFFFF'FFFF};
     auto gen = std::bind(dist, mersenne_engine);
-    std::generate(vec.begin(), vec.end(), gen);
+    std::generate(buffer.begin(), buffer.end(), gen);
 
     std::string path = FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir) + "acData.bin";
 
