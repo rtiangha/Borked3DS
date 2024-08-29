@@ -259,26 +259,6 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             view.findNavController().navigate(action)
         }
 
-        bottomSheetView.findViewById<MaterialButton>(R.id.game_shortcut).setOnClickListener {
-            val shortcutManager = activity.getSystemService(ShortcutManager::class.java)
-
-            coroutineScope.launch {
-                withContext(Dispatchers.IO) {
-                    val bitmap = (bottomSheetView.findViewById<ImageView>(R.id.game_icon).drawable as BitmapDrawable).bitmap
-                    val icon = Icon.createWithBitmap(bitmap)
-
-                    val shortcut = ShortcutInfo.Builder(context, game.title)
-                        .setShortLabel(game.title)
-                        .setIcon(icon)
-                        .setIntent(game.launchIntent.apply {
-                            putExtra("launched_from_shortcut", true)
-                        })
-                        .build()
-                    shortcutManager.requestPinShortcut(shortcut, null)
-                }
-            }
-        }
-
         bottomSheetView.findViewById<MaterialButton>(R.id.cheats).setOnClickListener {
             val action = CheatsFragmentDirections.actionGlobalCheatsFragment(holder.game.titleId)
             view.findNavController().navigate(action)
