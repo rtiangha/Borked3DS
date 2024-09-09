@@ -118,16 +118,31 @@ if (BUNDLE_TARGET_EXECUTE)
         endif()
 
         message(STATUS "Creating AppDir for executable ${executable_path}")
-        execute_process(COMMAND ${CMAKE_COMMAND} -E env
-            ${extra_linuxdeploy_env}
-            "${linuxdeploy_executable}"
-            ${extra_linuxdeploy_args}
-            --plugin checkrt
-            --executable "${executable_path}"
-            --icon-file "${source_path}/dist/citra.svg"
-            --desktop-file "${source_path}/dist/${executable_name}.desktop"
-            --appdir "${appdir_path}"
-            RESULT_VARIABLE linuxdeploy_appdir_result)
+
+        if (CITRA_CROSS_COMPILE_AARCH64)
+            execute_process(COMMAND ${CMAKE_COMMAND} -E env
+                ${extra_linuxdeploy_env}
+                externals/qemu/build/qemu-aarch64 -L /usr/aarch64-linux-gnu "${linuxdeploy_executable}"
+                ${extra_linuxdeploy_args}
+                --plugin checkrt
+                --executable "${executable_path}"
+                --icon-file "${source_path}/dist/citra.svg"
+                --desktop-file "${source_path}/dist/${executable_name}.desktop"
+                --appdir "${appdir_path}"
+                RESULT_VARIABLE linuxdeploy_appdir_result)
+        else()
+            execute_process(COMMAND ${CMAKE_COMMAND} -E env
+                ${extra_linuxdeploy_env}
+                "${linuxdeploy_executable}"
+                ${extra_linuxdeploy_args}
+                --plugin checkrt
+                --executable "${executable_path}"
+                --icon-file "${source_path}/dist/citra.svg"
+                --desktop-file "${source_path}/dist/${executable_name}.desktop"
+                --appdir "${appdir_path}"
+                RESULT_VARIABLE linuxdeploy_appdir_result)
+        endif()
+
         if (NOT linuxdeploy_appdir_result EQUAL "0")
             message(FATAL_ERROR "linuxdeploy failed to create AppDir: ${linuxdeploy_appdir_result}")
         endif()
@@ -149,12 +164,22 @@ if (BUNDLE_TARGET_EXECUTE)
         endif()
 
         message(STATUS "Creating AppImage for executable ${executable_path}")
-        execute_process(COMMAND ${CMAKE_COMMAND} -E env
-            "OUTPUT=${bundle_dir}/${executable_name}.AppImage"
-            "${linuxdeploy_executable}"
-            --output appimage
-            --appdir "${appdir_path}"
-            RESULT_VARIABLE linuxdeploy_appimage_result)
+
+        if (CITRA_CROSS_COMPILE_AARCH64)
+            execute_process(COMMAND ${CMAKE_COMMAND} -E env
+                "OUTPUT=${bundle_dir}/${executable_name}.AppImage"
+                externals/qemu/build/qemu-aarch64 -L /usr/aarch64-linux-gnu "${linuxdeploy_executable}"
+                --output appimage
+                --appdir "${appdir_path}"
+                RESULT_VARIABLE linuxdeploy_appimage_result)
+        else()
+            execute_process(COMMAND ${CMAKE_COMMAND} -E env
+                "OUTPUT=${bundle_dir}/${executable_name}.AppImage"
+                "${linuxdeploy_executable}"
+                --output appimage
+                --appdir "${appdir_path}"
+                RESULT_VARIABLE linuxdeploy_appimage_result)
+        endif()
         if (NOT linuxdeploy_appimage_result EQUAL "0")
             message(FATAL_ERROR "linuxdeploy failed to create AppImage: ${linuxdeploy_appimage_result}")
         endif()
@@ -301,7 +326,7 @@ else()
                     COMMAND ${CMAKE_COMMAND}
                     "-DBUNDLE_TARGET_DOWNLOAD_LINUXDEPLOY=1"
                     "-DLINUXDEPLOY_PATH=${CMAKE_BINARY_DIR}/externals/linuxdeploy"
-                    "-DLINUXDEPLOY_ARCH=x86_64"
+                    "-DLINUXDEPLOY_ARCH=${ARCH}"
                     -P "${CMAKE_SOURCE_DIR}/CMakeModules/BundleTarget.cmake"
                     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
             else()

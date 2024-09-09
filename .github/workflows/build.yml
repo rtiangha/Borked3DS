@@ -198,6 +198,20 @@ jobs:
         uses: rui314/setup-mold@v1
         with:
           make-default: false
+      - name: Checkout qemu
+        uses: actions/checkout@v4
+        with:
+          repository: qemu/qemu
+          ref: v9.1.0
+          path: externals/qemu
+      - name: Build qemu
+        working-directory: externals/qemu
+        run: |
+          sudo apt-get install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build
+          mkdir build
+          cd build
+          ../configure --target-list=aarch64-linux-user
+          make -j4 qemu-aarch64
       - name: Build
         run: ./.ci/linux-aarch64-clang.sh
       - name: Pack
@@ -257,6 +271,20 @@ jobs:
         uses: rui314/setup-mold@v1
         with:
           make-default: false
+      - name: Checkout qemu
+        uses: actions/checkout@v4
+        with:
+          repository: qemu/qemu
+          ref: v9.1.0
+          path: externals/qemu
+      - name: Build qemu
+        working-directory: externals/qemu
+        run: |
+          sudo apt-get install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build
+          mkdir build
+          cd build
+          ../configure --target-list=aarch64-linux-user
+          make -j4 qemu-aarch64
       - name: Build
         run: ./.ci/linux-aarch64-gcc.sh
       - name: Pack

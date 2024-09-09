@@ -5,7 +5,7 @@ if [ "$TARGET" = "appimage-aarch64-gcc" ]; then
     export EXTRA_CMAKE_FLAGS=(-DCMAKE_CXX_COMPILER=/usr/bin/aarch64-linux-gnu-g++-12 -DCMAKE_C_COMPILER=/usr/bin/aarch64-linux-gnu-gcc-12 -DCMAKE_EXE_LINKER_FLAGS="-lstdc++" -DCMAKE_SHARED_LINKER_FLAGS="-lstdc++" -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/6.7.2/gcc_arm64)
     # Cross-compile vars
     export ARCHGCC=aarch64-linux-gnu
-    export ARCH=aarch64
+    export ARCH=arm_aarch64
     # Host strip does not work in a cross-compile environment
     export NO_STRIP=1
     # Bundle required QT wayland libraries
