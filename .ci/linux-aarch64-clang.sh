@@ -30,6 +30,7 @@ cmake .. -G Ninja \
     -DCMAKE_CXX_FLAGS="--target=aarch64-linux-gnueabihf" \
     -DCMAKE_C_FLAGS="--target=aarch64-linux-gnueabihf" \
     "${EXTRA_CMAKE_FLAGS[@]}" \
+    -DENABLE_SDL2_FRONTEND=OFF \
     -DUSE_SYSTEM_BOOST=OFF \
     -DUSE_SYSTEM_CATCH2=OFF \
     -DUSE_SYSTEM_CRYPTOPP=OFF \
