@@ -265,6 +265,8 @@ private slots:
     void ToggleSecondaryFullscreen();
     void ChangeScreenLayout();
     void ChangeSmallScreenPosition();
+    void ToggleEmulationSpeed();
+    void AdjustSpeedLimit(bool increase);
     void UpdateSecondaryWindowVisibility();
     void ToggleScreenLayout();
     void OnSwapScreens();
@@ -352,6 +354,9 @@ private:
 
     MultiplayerState* multiplayer_state = nullptr;
     std::unique_ptr<Config> config;
+
+    // Hotkeys
+    bool turbo_mode_active = false;
 
     // Whether emulation is currently running in Borked3DS.
     bool emulation_running = false;
