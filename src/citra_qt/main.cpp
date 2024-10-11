@@ -3746,15 +3746,16 @@ static void PrintHelp(const char* argv0) {
     std::cout
         << "\nUsage: " << argv0
         << " [options] <file path>\n"
-           "-a, --author-record-movie [author]   Sets the author of the movie to be recorded\n"
+           "-a, --author-record-movie [author]   Sets the author of the TAS movie to be recorded\n"
            "-d, --dump-video [path]              Dump video recording of emulator playback to the "
-           "given file path\n"
+           "specified file path\n"
            "-f, --fullscreen                     Start in fullscreen mode\n"
-           "-g, --gdbport [port]                 Enable gdb stub on the given port\n"
+           "-g, --gdbport [port]                 Enable gdb stub on the specified port number\n"
            "-h, --help                           Display this help and exit\n"
-           "-i, --install [path]                 Install a CIA file at the given path\n"
-           "-p, --play-movie [path]              Play a TAS movie located at the given path\n"
-           "-r, --record-movie [path]            Record a TAS movie to the given file path\n"
+           "-i, --install [path]                 Install a CIA file at the specified file path\n"
+           "-p, --play-movie [path]              Play a TAS movie located at the specified file "
+           "path\n"
+           "-r, --record-movie [path]            Record a TAS movie to the specified file path\n"
            "-v, --version                        Output version information and exit\n"
            "-w, --windowed                       Start in windowed mode\n";
 }

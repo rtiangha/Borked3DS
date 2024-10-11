@@ -63,19 +63,22 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 #endif
 
 static void PrintHelp(const char* argv0) {
-    std::cout << "Usage: " << argv0
-              << " [options] <filename>\n"
-                 "-a, --movie-record-author=AUTHOR Sets the author of the movie to be recorded\n"
-                 "-d, --dump-video=[file]    Dumps audio and video to the given video file\n"
-                 "-f, --fullscreen     Start in fullscreen mode\n"
-                 "-g, --gdbport=NUMBER Enable gdb stub on port NUMBER\n"
-                 "-h, --help           Display this help and exit\n"
-                 "-i, --install=FILE    Installs a specified CIA file\n"
-                 "-m, --multiplayer=nick:password@address:port"
-                 " Nickname, password, address and port for multiplayer\n"
-                 "-p, --play-movie=[file]    Playback the movie (game inputs) from the given file\n"
-                 "-r, --record-movie=[file]  Record a movie (game inputs) to the given file\n"
-                 "-v, --version        Output version information and exit\n";
+    std::cout
+        << "Usage: " << argv0
+        << " [options] <filename>\n"
+           "-a, --movie-record-author=[author] Sets the author of the TAS movie to be recorded\n"
+           "-d, --dump-video=[path]    Dump video recording of emulator playback to the specified "
+           "file path\n"
+           "-f, --fullscreen     Start in fullscreen mode\n"
+           "-g, --gdbport=[port] Enable gdb stub on the specified port number\n"
+           "-h, --help           Display this help and exit\n"
+           "-i, --install=[path]    Install a CIA file at the specified file path\n"
+           "-m, --multiplayer=[nick:password@address:port]"
+           " Nickname, password, address and port for multiplayer\n"
+           "-p, --play-movie=[path]    Play a TAS movie (game inputs) located at the specified "
+           "file path\n"
+           "-r, --record-movie=[path]  Record a TAS movieto the specified file path\n"
+           "-v, --version        Output version information and exit\n";
 }
 
 static void PrintVersion() {
