@@ -12,7 +12,6 @@ import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.activities.EmulationActivity
-import org.citra.citra_emu.utils.DocumentsTree
 
 @Parcelize
 @Serializable
