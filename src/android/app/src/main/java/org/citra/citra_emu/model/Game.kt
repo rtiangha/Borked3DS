@@ -12,6 +12,7 @@ import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import org.citra.citra_emu.CitraApplication
 import org.citra.citra_emu.activities.EmulationActivity
+import org.citra.citra_emu.utils.DocumentsTree
 
 @Parcelize
 @Serializable
@@ -34,7 +35,11 @@ class Game(
     val launchIntent: Intent
         get() = Intent(CitraApplication.appContext, EmulationActivity::class.java).apply {
             action = Intent.ACTION_VIEW
-            data = Uri.parse(path)
+            data = if (isInstalled) {
+                CitraApplication.documentsTree.getUri(path)
+            } else {
+                Uri.parse(path)
+            }
         }
 
     override fun equals(other: Any?): Boolean {
