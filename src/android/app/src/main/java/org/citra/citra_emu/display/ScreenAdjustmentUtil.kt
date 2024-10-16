@@ -23,7 +23,6 @@ class ScreenAdjustmentUtil(
     private val context: Context,
     private val windowManager: WindowManager,
     private val settings: Settings,
-    private var currentOrientation: Int = -1
 ) {
     fun swapScreen() {
         val isEnabled = !EmulationMenuSettings.swapScreens
@@ -34,8 +33,8 @@ class ScreenAdjustmentUtil(
         settings.saveSetting(BooleanSetting.SWAP_SCREEN, SettingsFile.FILE_NAME_CONFIG)
     }
     fun cycleLayouts() {
-        val landscapeValues = context.resources.getIntArray(R.array.landscape_values)
-        val portraitValues = context.resources.getIntArray(R.array.portrait_values)
+        val landscapeValues = context.resources.getIntArray(R.array.landscapeValues)
+        val portraitValues = context.resources.getIntArray(R.array.portraitValues)
 
         if (NativeLibrary.isPortraitMode) {
             val currentLayout = IntSetting.PORTRAIT_SCREEN_LAYOUT.int
@@ -65,21 +64,9 @@ class ScreenAdjustmentUtil(
     }
 
     fun changeActivityOrientation(orientationOption: Int) {
-        if (currentOrientation == orientationOption) {
-            return
-        }
-
-        currentOrientation = orientationOption
-
         val activity = context as? Activity ?: return
         IntSetting.ORIENTATION_OPTION.int = orientationOption
         settings.saveSetting(IntSetting.ORIENTATION_OPTION, SettingsFile.FILE_NAME_CONFIG)
-        when (orientationOption) {
-            0 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
-            1 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            2 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-            3 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            4 -> activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-            }
+        activity.requestedOrientation = orientationOption
         }
     }
