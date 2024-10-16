@@ -518,7 +518,7 @@
     <string name="small_screen_position_description">Specifies the position of the small screen relative to the large one in <b>Large Screen</b> layout mode.</string>
     <string name="small_screen_position_top_right">Top Right</string>
     <string name="small_screen_position_middle_right">Middle Right</string>
-    <string name="small_screen_position_bottom_right">Bottom Right</string>
+    <string name="small_screen_position_bottom_right">Bottom Right (Default)</string>
     <string name="small_screen_position_top_left">Top Left</string>
     <string name="small_screen_position_middle_left">Middle Left</string>
     <string name="small_screen_position_bottom_left">Bottom Left</string>

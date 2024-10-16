@@ -47,6 +47,11 @@ struct FramebufferLayout {
 };
 
 /**
+ * Method to create a rotated copy of a framebuffer layout, used to rotate to upright mode
+ */
+FramebufferLayout reverseLayout(FramebufferLayout layout);
+
+/**
  * Factory method for constructing a default FramebufferLayout with screens on top of one another
  * @param width Window framebuffer width in pixels
  * @param height Window framebuffer height in pixels
@@ -77,9 +82,7 @@ FramebufferLayout PortraitTopFullFrameLayout(u32 width, u32 height, bool is_swap
 FramebufferLayout SingleFrameLayout(u32 width, u32 height, bool is_swapped, bool upright);
 
 /**
- * Factory method for constructing a Frame with the a 4x size Top screen with a 1x size bottom
- * screen on the right
- * This is useful in particular because it matches well with a 1920x1080 resolution monitor
+ * Factory method for constructing a Frame with differently sized top and bottom windows
  * @param width Window framebuffer width in pixels
  * @param height Window framebuffer height in pixels
  * @param is_swapped if true, the bottom screen will be the large display
