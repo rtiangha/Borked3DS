@@ -34,7 +34,11 @@ class Game(
     val launchIntent: Intent
         get() = Intent(CitraApplication.appContext, EmulationActivity::class.java).apply {
             action = Intent.ACTION_VIEW
-            data = Uri.parse(path)
+            data = if (isInstalled) {
+                CitraApplication.documentsTree.getUri(path)
+            } else {
+                Uri.parse(path)
+            }
         }
 
     override fun equals(other: Any?): Boolean {
