@@ -565,6 +565,7 @@ void GameList::AddGamePopup(QMenu& context_menu, const QString& path, const QStr
                             u64 program_id, u64 extdata_id, Service::FS::MediaType media_type) {
     QAction* favorite = context_menu.addAction(tr("Favorite"));
     context_menu.addSeparator();
+    QAction* load_file = context_menu.addAction(tr("Load File"));
     QMenu* open_menu = context_menu.addMenu(tr("Open"));
     QAction* open_application_location = open_menu->addAction(tr("Application Location"));
     open_menu->addSeparator();
@@ -666,6 +667,10 @@ void GameList::AddGamePopup(QMenu& context_menu, const QString& path, const QStr
     uninstall_dlc->setEnabled(has_dlc);
 
     connect(favorite, &QAction::triggered, [this, program_id]() { ToggleFavorite(program_id); });
+    connect(load_file, &QAction::triggered, this, [this, program_id] {
+        const QString file_path = FindGameByProgramID(program_id, GameListItemPath::FullPathRole);
+        emit GameChosen(file_path);
+    });
     connect(open_save_location, &QAction::triggered, this, [this, program_id] {
         emit OpenFolderRequested(program_id, GameListOpenTarget::SAVE_DATA);
     });
