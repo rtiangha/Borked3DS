@@ -397,9 +397,11 @@ void RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
                                                  const Pica::FramebufferConfig& framebuffer) {
     vk::Device device = instance.GetDevice();
     if (texture.image_view) {
+        main_window.WaitPresent();
         device.destroyImageView(texture.image_view);
     }
     if (texture.image) {
+        main_window.WaitPresent();
         vmaDestroyImage(instance.GetAllocator(), texture.image, texture.allocation);
     }
 
