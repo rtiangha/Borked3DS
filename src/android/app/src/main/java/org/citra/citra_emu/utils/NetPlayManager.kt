@@ -37,7 +37,7 @@ object NetPlayManager {
             .show()
 
         // Set initial values and dialog title
-        binding.textTitle.setText(
+        binding.textTitle.text = activity.getString(
             if (isCreateRoom) R.string.multiplayer_create_room else R.string.multiplayer_join_room
         )
         binding.ipAddress.setText(
