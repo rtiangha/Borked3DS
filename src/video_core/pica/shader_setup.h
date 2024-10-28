@@ -18,11 +18,8 @@ using ProgramCode = std::array<u32, MAX_PROGRAM_CODE_LENGTH>;
 using SwizzleData = std::array<u32, MAX_SWIZZLE_DATA_LENGTH>;
 
 struct Uniforms {
-#ifdef __ANDROID__
-    alignas(16) std::array<Common::Vec4<f24>, 96> f; // Some games seem to crash on Android if this is set to 128
-#else
-    alignas(16) std::array<Common::Vec4<f24>, 128> f;
-#endif
+
+    alignas(16) std::array<Common::Vec4<f24>, 96> f;
     std::array<bool, 16> b;
     std::array<Common::Vec4<u8>, 4> i;
 
