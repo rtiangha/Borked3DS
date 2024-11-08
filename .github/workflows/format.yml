@@ -14,9 +14,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install New Packages
-        uses: gerlero/apt-install@v1.3.9
-        with:
-          packages: clang-format-15
+        run: sudo apt-get update && sudo apt-get -y install clang-format-15 && sudo apt-get clean
       - name: Build
         env:
           COMMIT_RANGE: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
