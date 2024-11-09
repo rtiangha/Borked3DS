@@ -135,13 +135,13 @@
             app:layout_constraintStart_toStartOf="parent">
 
             <Button
-                android:id="@+id/button_delete"
+                android:id="@+id/button_cancel"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_margin="@dimen/spacing_large"
                 android:layout_weight="1"
-                android:nextFocusUp="@id/appbar_cheat_details"
-                android:text="@string/cheats_delete" />
+                android:nextFocusUp="@id/edit_code_input"
+                android:text="@android:string/cancel" />
 
             <Button
                 android:id="@+id/button_edit"
@@ -153,13 +153,13 @@
                 android:text="@string/cheats_edit" />
 
             <Button
-                android:id="@+id/button_cancel"
+                android:id="@+id/button_delete"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_margin="@dimen/spacing_large"
                 android:layout_weight="1"
-                android:nextFocusUp="@id/edit_code_input"
-                android:text="@android:string/cancel" />
+                android:nextFocusUp="@id/appbar_cheat_details"
+                android:text="@string/cheats_delete" />
 
             <Button
                 android:id="@+id/button_ok"
