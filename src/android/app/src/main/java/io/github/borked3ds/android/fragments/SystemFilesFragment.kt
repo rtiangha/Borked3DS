@@ -221,7 +221,7 @@ class SystemFilesFragment : Fragment() {
         val valuesAdapter = ArrayAdapter.createFromResource(
             requireContext(),
             valuesId,
-            R.layout.support_simple_spinner_dropdown_item
+            androidx.appcompat.R.layout.support_simple_spinner_dropdown_item
         )
         dropdown.setAdapter(valuesAdapter)
         dropdown.onItemClickListener = dropdownItem
@@ -275,7 +275,7 @@ class SystemFilesFragment : Fragment() {
             binding.dropdownSystemRegionStart.setAdapter(
                 ArrayAdapter(
                     requireContext(),
-                    R.layout.support_simple_spinner_dropdown_item,
+                    androidx.appcompat.R.layout.support_simple_spinner_dropdown_item,
                     availableMenus.keys.toList()
                 )
             )
