@@ -29,7 +29,7 @@
     <string name="select_gpu_driver_default">Standard</string>
     <string name="select_gpu_driver_install_success">%s wurde installiert</string>
     <string name="system_gpu_driver">System GPU-Treiber</string>
-    <string name="installing_driver">Treiber wird installiert...</string>
+    <string name="installing_driver">Treiber wird installiert… </string>
 
     <!-- About screen strings -->
     <string name="copied_to_clipboard">In die Zwischenablage kopiert</string>
@@ -91,12 +91,12 @@
     <string name="start">Start</string>
     <string name="system_type_minimal">Minimal</string>
     <string name="system_type_new_3ds">New 3DS</string>
-    <string name="downloading_files">Dateien werden heruntergeladen...</string>
+    <string name="downloading_files">Dateien werden heruntergeladen… </string>
     <string name="downloading_files_description">Bitte nicht die App schließen.</string>
     <string name="download_failed">Download fehlgeschlagen</string>
     <string name="download_success">Download abgeschlossen!</string>
     <string name="download_cancelled">Download abgebrochen</string>
-    <string name="cancelling">Abbrechen...</string>
+    <string name="cancelling">Abbrechen… </string>
     <string name="home_menu">HOME-Menü</string>
     <string name="home_menu_warning">Systemdatei-Warnung</string>
     <string name="home_menu_warning_description">Aufgrund der langsamen Zugriffsgeschwindigkeit von Android auf Borked3DSs Dateien, kann das Herunterladen mehrerer Versionen von Systemdateien das Laden von Spielen, Speicherständen und der Spieleliste erheblich verlangsamen. Laden Sie nur die Dateien herunter, die Sie benötigen, um Probleme mit den Ladezeiten zu vermeiden.</string>
@@ -182,7 +182,7 @@
     <string name="ini_saved">Einstellungen gespeichert</string>
     <string name="gameid_saved">Einstellungen gespeichert für %1$s</string>
     <string name="error_saving">Fehler beim Speichern von %1$s.ini: %2$s</string>
-    <string name="loading">Lädt...</string>
+    <string name="loading">Lädt… </string>
     <string name="next">Weiter</string>
     <string name="back">Zurück</string>
     <string name="learn_more">Mehr erfahren</string>
@@ -251,7 +251,7 @@
     <string name="pause_emulation">Emulation pausieren</string>
     <string name="resume_emulation">Emulation fortsetzen</string>
     <string name="write_permission_needed">Schreibzugriff auf den externen Speicher muss erlaubt sein, damit der Emulator funktioniert</string>
-    <string name="load_settings">Einstellungen werden geladen...</string>
+    <string name="load_settings">Einstellungen werden geladen… </string>
 
     <string name="external_storage_not_mounted">Der externe Speicher muss verfügbar sein, um Borked3DS nutzen zu können</string>
 

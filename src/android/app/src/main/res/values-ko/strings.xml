@@ -127,7 +127,7 @@
     <string name="amiibo_load_error_message">지정된 아미보 파일을 여는 중에 오류가 발생했습니다. 파일이 올바른지 확인하세요.</string>
 
     <string name="write_permission_needed">에뮬레이터가 작동하려면 외부 저장소에 대한 쓰기 액세스를 허용해야합니다.</string>
-    <string name="load_settings"> 설정 불러오는중...</string>
+    <string name="load_settings"> 설정 불러오는중… </string>
 
     <string name="external_storage_not_mounted">Borked3DS를 사용하려면 외부 저장소를 사용할 수 있어야합니다</string>
 

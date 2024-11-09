@@ -42,7 +42,7 @@
     <string name="select_gpu_driver_use_default">使用默认 GPU 驱动</string>
     <string name="select_gpu_driver_error">您选择了无效的驱动，仅使用系统默认驱动。</string>
     <string name="system_gpu_driver">系统 GPU 驱动</string>
-    <string name="installing_driver">正在安装驱动...</string>
+    <string name="installing_driver">正在安装驱动… </string>
 
     <!-- About screen strings -->
     <string name="copied_to_clipboard">已复制到剪贴板</string>
@@ -131,14 +131,14 @@
     <string name="system_type_minimal">最小化</string>
     <string name="system_type_old_3ds">老版 3DS</string>
     <string name="system_type_new_3ds">新版 3DS</string>
-    <string name="downloading_files">下载中...</string>
+    <string name="downloading_files">下载中… </string>
     <string name="downloading_files_description">请不要关闭 Borked3DS。</string>
     <string name="download_failed">下载失败</string>
     <string name="download_failed_description">请确保您的网络连接正常，然后重试。</string>
     <string name="download_success">下载完成！</string>
     <string name="download_cancelled">下载已取消</string>
     <string name="download_cancelled_description">请重新下载，以防止系统文件不完整。</string>
-    <string name="cancelling">取消中...</string>
+    <string name="cancelling">取消中… </string>
     <string name="home_menu">HOME 菜单</string>
     <string name="home_menu_warning">系统文件警告</string>
     <string name="home_menu_warning_description">由于 Android 存储访问框架访问 Borked3DS 文件的速度非常慢，下载多个版本的系统文件会大大降低游戏加载、即时存档和刷新游戏列表的速度。只下载您需要的文件，以免加载速度出现问题。</string>
@@ -255,7 +255,7 @@
     <string name="ini_saved">已保存的设置</string>
     <string name="gameid_saved">已将设置保存于 %1$s 中</string>
     <string name="error_saving">保存 %1$s.ini 失败：%2$s</string>
-    <string name="loading">加载中...</string>
+    <string name="loading">加载中… </string>
     <string name="next">下一步</string>
     <string name="back">上一步</string>
     <string name="learn_more">了解更多</string>
@@ -343,7 +343,7 @@
     <string name="unlock_drawer">解锁侧滑菜单</string>
 
     <string name="write_permission_needed">您需要允许 Borked3DS 对外部存储器进行读写访问，以便模拟器正常工作。</string>
-    <string name="load_settings">正在加载设置...</string>
+    <string name="load_settings">正在加载设置… </string>
 
     <string name="external_storage_not_mounted">需要有可用的外部存储器，Borked3DS 才能正常工作。</string>
 
@@ -353,7 +353,7 @@
     <string name="do_not_show_this_again">不要再显示</string>
     <string name="searching_directory">正在搜索目录: %s</string>
     <string name="move_data">数据移动</string>
-    <string name="moving_data">移动数据...</string>
+    <string name="moving_data">移动数据… </string>
     <string name="copy_file_name">复制文件: %s</string>
     <string name="copy_complete">复制完成</string>
     <string name="savestates">保存存档</string>

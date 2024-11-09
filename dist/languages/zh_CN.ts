@@ -119,8 +119,8 @@ p, li { white-space: pre-wrap; }
     <name>CalibrationConfigurationDialog</name>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="23"/>
-        <source>Communicating with the server...</source>
-        <translation>正在连接服务器......</translation>
+        <source>Communicating with the server… </source>
+        <translation>正在连接服务器… … </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="24"/>
@@ -260,8 +260,8 @@ This would ban both their forum username and their IP address.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="47"/>
-        <source>Moderation...</source>
-        <translation>管理...</translation>
+        <source>Moderation… </source>
+        <translation>管理… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="57"/>
@@ -604,8 +604,8 @@ This would ban both their forum username and their IP address.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="179"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="190"/>
@@ -1388,7 +1388,7 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="289"/>
-        <source>...</source>
+        <source>… </source>
         <translation>…</translation>
     </message>
     <message>
@@ -1818,8 +1818,8 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="754"/>
-        <source>Motion / Touch...</source>
-        <translation>体感 / 触摸...</translation>
+        <source>Motion / Touch… </source>
+        <translation>体感 / 触摸… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="782"/>
@@ -3354,8 +3354,8 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
-        <source>Downloading files...</source>
-        <translation>下载中...</translation>
+        <source>Downloading files… </source>
+        <translation>下载中… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
@@ -3693,8 +3693,8 @@ Drag points to change position, or double-click table cells to edit values.</sou
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="63"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="106"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="173"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="53"/>
@@ -3943,8 +3943,8 @@ Please check your FFmpeg installation used for compilation.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
-        <source>Dumping...</source>
-        <translation>转储中...</translation>
+        <source>Dumping… </source>
+        <translation>转储中… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
@@ -4075,8 +4075,8 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1858"/>
-        <source>Uninstalling &apos;%1&apos;...</source>
-        <translation>正在卸载“ %1 ”...</translation>
+        <source>Uninstalling &apos;%1&apos;… </source>
+        <translation>正在卸载“ %1 ”… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1893"/>
@@ -4105,7 +4105,7 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1988"/>
-        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure... &amp;gt; Web to do so.</source>
+        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure…  &amp;gt; Web to do so.</source>
         <translation>您必须设置您的 Borked3DS 帐户来提交测试用例。&lt;br/&gt;请前往模拟 &gt; 设置… &gt; 网络进行设置。</translation>
     </message>
     <message>
@@ -5369,12 +5369,12 @@ Debug Message: </source>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.ui" line="111"/>
         <source>Loading Shaders 387 / 1628</source>
-        <translation>正在加载着色器... 387 / 1628</translation>
+        <translation>正在加载着色器…  387 / 1628</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.ui" line="148"/>
         <source>Loading Shaders %v out of %m</source>
-        <translation>正在加载着色器... %v / %m</translation>
+        <translation>正在加载着色器…  %v / %m</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.ui" line="162"/>
@@ -5383,28 +5383,28 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="65"/>
-        <source>Loading...</source>
-        <translation>正在加载...</translation>
+        <source>Loading… </source>
+        <translation>正在加载… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="67"/>
         <source>Preloading Textures %1 / %2</source>
-        <translation>正在预加载纹理... %1 / %2</translation>
+        <translation>正在预加载纹理…  %1 / %2</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="69"/>
         <source>Preparing Shaders %1 / %2</source>
-        <translation>正在准备着色器... %1 / %2</translation>
+        <translation>正在准备着色器…  %1 / %2</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="71"/>
         <source>Loading Shaders %1 / %2</source>
-        <translation>正在加载着色器... %1 / %2</translation>
+        <translation>正在加载着色器…  %1 / %2</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="72"/>
-        <source>Launching...</source>
-        <translation>载入中...</translation>
+        <source>Launching… </source>
+        <translation>载入中… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="143"/>
@@ -5587,12 +5587,12 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="217"/>
-        <source>Load File...</source>
+        <source>Load File… </source>
         <translation>加载文件…</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="222"/>
-        <source>Install CIA...</source>
+        <source>Install CIA… </source>
         <translation>安装 CIA…</translation>
     </message>
     <message>
@@ -5682,7 +5682,7 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="330"/>
-        <source>Configure...</source>
+        <source>Configure… </source>
         <translation>设置…</translation>
     </message>
     <message>
@@ -5707,13 +5707,13 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="367"/>
-        <source>Record...</source>
-        <translation>录制...</translation>
+        <source>Record… </source>
+        <translation>录制… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="372"/>
-        <source>Play...</source>
-        <translation>播放...</translation>
+        <source>Play… </source>
+        <translation>播放… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="377"/>
@@ -5847,8 +5847,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="577"/>
-        <source>Load...</source>
-        <translation>加载...</translation>
+        <source>Load… </source>
+        <translation>加载… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="585"/>
@@ -5862,7 +5862,7 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="598"/>
-        <source>Configure Current Game...</source>
+        <source>Configure Current Game… </source>
         <translation>配置当前游戏…</translation>
     </message>
 </context>
@@ -5938,8 +5938,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="48"/>
@@ -6030,8 +6030,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="39"/>
@@ -6221,7 +6221,7 @@ Debug Message: </source>
 Please go to Emulation &gt; Configure &gt; System to regenerate your Console ID.</source>
         <translation>你的设备 ID 与房间中的另一玩家产生冲突。
 
-请到模拟 &gt; 设置... &gt; 系统重新生成设备 ID。</translation>
+请到模拟 &gt; 设置…  &gt; 系统重新生成设备 ID。</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/message.cpp" line="53"/>

@@ -119,8 +119,8 @@ p, li { white-space: pre-wrap; }
     <name>CalibrationConfigurationDialog</name>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="23"/>
-        <source>Communicating with the server...</source>
-        <translation>Kommunikálás a szerverrel...</translation>
+        <source>Communicating with the server… </source>
+        <translation>Kommunikálás a szerverrel… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="24"/>
@@ -258,8 +258,8 @@ This would ban both their forum username and their IP address.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="47"/>
-        <source>Moderation...</source>
-        <translation>Moderáció...</translation>
+        <source>Moderation… </source>
+        <translation>Moderáció… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="57"/>
@@ -602,8 +602,8 @@ This would ban both their forum username and their IP address.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="179"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="190"/>
@@ -1386,8 +1386,8 @@ Szeretnéd figyelmen kívül hagyni a hibát, és folytatod?</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="289"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="302"/>
@@ -1816,7 +1816,7 @@ Szeretnéd figyelmen kívül hagyni a hibát, és folytatod?</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="754"/>
-        <source>Motion / Touch...</source>
+        <source>Motion / Touch… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -3352,8 +3352,8 @@ Szeretnéd figyelmen kívül hagyni a hibát, és folytatod?</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
-        <source>Downloading files...</source>
-        <translation>Fájlok letöltése...</translation>
+        <source>Downloading files… </source>
+        <translation>Fájlok letöltése… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
@@ -3690,8 +3690,8 @@ Drag points to change position, or double-click table cells to edit values.</sou
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="63"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="106"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="173"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="53"/>
@@ -3939,8 +3939,8 @@ Please check your FFmpeg installation used for compilation.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
-        <source>Dumping...</source>
-        <translation>Kimentés...</translation>
+        <source>Dumping… </source>
+        <translation>Kimentés… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
@@ -4070,8 +4070,8 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1858"/>
-        <source>Uninstalling &apos;%1&apos;...</source>
-        <translation>&apos;%1&apos; eltávolítása...</translation>
+        <source>Uninstalling &apos;%1&apos;… </source>
+        <translation>&apos;%1&apos; eltávolítása… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1893"/>
@@ -4100,7 +4100,7 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1988"/>
-        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure... &amp;gt; Web to do so.</source>
+        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure…  &amp;gt; Web to do so.</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -5369,8 +5369,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="65"/>
-        <source>Loading...</source>
-        <translation>Betöltés...</translation>
+        <source>Loading… </source>
+        <translation>Betöltés… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="67"/>
@@ -5389,8 +5389,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="72"/>
-        <source>Launching...</source>
-        <translation>Indítás...</translation>
+        <source>Launching… </source>
+        <translation>Indítás… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="143"/>
@@ -5573,13 +5573,13 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="217"/>
-        <source>Load File...</source>
-        <translation>Fájl Betöltése...</translation>
+        <source>Load File… </source>
+        <translation>Fájl Betöltése… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="222"/>
-        <source>Install CIA...</source>
-        <translation>CIA Telepítése...</translation>
+        <source>Install CIA… </source>
+        <translation>CIA Telepítése… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="227"/>
@@ -5668,8 +5668,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="330"/>
-        <source>Configure...</source>
-        <translation>Konfiguráció...</translation>
+        <source>Configure… </source>
+        <translation>Konfiguráció… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="341"/>
@@ -5693,13 +5693,13 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="367"/>
-        <source>Record...</source>
-        <translation>Felvétel...</translation>
+        <source>Record… </source>
+        <translation>Felvétel… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="372"/>
-        <source>Play...</source>
-        <translation>Lejátszás...</translation>
+        <source>Play… </source>
+        <translation>Lejátszás… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="377"/>
@@ -5833,8 +5833,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="577"/>
-        <source>Load...</source>
-        <translation>Betöltés...</translation>
+        <source>Load… </source>
+        <translation>Betöltés… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="585"/>
@@ -5848,8 +5848,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="598"/>
-        <source>Configure Current Game...</source>
-        <translation>Jelenlegi játék konfigurálása...</translation>
+        <source>Configure Current Game… </source>
+        <translation>Jelenlegi játék konfigurálása… </translation>
     </message>
 </context>
 <context>
@@ -5924,8 +5924,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="48"/>
@@ -6016,8 +6016,8 @@ Debug Message: </source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="39"/>

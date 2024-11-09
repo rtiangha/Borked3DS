@@ -119,8 +119,8 @@ p, li { white-space: pre-wrap; }
     <name>CalibrationConfigurationDialog</name>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="23"/>
-        <source>Communicating with the server...</source>
-        <translation>서버와 통신중...</translation>
+        <source>Communicating with the server… </source>
+        <translation>서버와 통신중… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="24"/>
@@ -260,8 +260,8 @@ This would ban both their forum username and their IP address.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="47"/>
-        <source>Moderation...</source>
-        <translation>관리...</translation>
+        <source>Moderation… </source>
+        <translation>관리… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="57"/>
@@ -604,8 +604,8 @@ This would ban both their forum username and their IP address.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="179"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="190"/>
@@ -1388,8 +1388,8 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="289"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="302"/>
@@ -1818,8 +1818,8 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="754"/>
-        <source>Motion / Touch...</source>
-        <translation>모션 / 터치...</translation>
+        <source>Motion / Touch… </source>
+        <translation>모션 / 터치… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="782"/>
@@ -3354,8 +3354,8 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
-        <source>Downloading files...</source>
-        <translation>파일 다운로드 중...</translation>
+        <source>Downloading files… </source>
+        <translation>파일 다운로드 중… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
@@ -3693,8 +3693,8 @@ Drag points to change position, or double-click table cells to edit values.</sou
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="63"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="106"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="173"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="53"/>
@@ -3943,8 +3943,8 @@ Please check your FFmpeg installation used for compilation.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
-        <source>Dumping...</source>
-        <translation>덤프중...</translation>
+        <source>Dumping… </source>
+        <translation>덤프중… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
@@ -4075,7 +4075,7 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1858"/>
-        <source>Uninstalling &apos;%1&apos;...</source>
+        <source>Uninstalling &apos;%1&apos;… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -4105,8 +4105,8 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1988"/>
-        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure... &amp;gt; Web to do so.</source>
-        <translation>테스트를 제출하기 위해서는 Borked3DS계정을 연결해야합니다.&lt;br/&gt;연결하려면 에뮬레이션&amp;gt; 설정... &amp;gt; 웹으로 가세요.</translation>
+        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure…  &amp;gt; Web to do so.</source>
+        <translation>테스트를 제출하기 위해서는 Borked3DS계정을 연결해야합니다.&lt;br/&gt;연결하려면 에뮬레이션&amp;gt; 설정…  &amp;gt; 웹으로 가세요.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="2159"/>
@@ -5381,8 +5381,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="65"/>
-        <source>Loading...</source>
-        <translation>불러오는 중...</translation>
+        <source>Loading… </source>
+        <translation>불러오는 중… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="67"/>
@@ -5401,8 +5401,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="72"/>
-        <source>Launching...</source>
-        <translation>실행중...</translation>
+        <source>Launching… </source>
+        <translation>실행중… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="143"/>
@@ -5585,13 +5585,13 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="217"/>
-        <source>Load File...</source>
-        <translation>파일 불러오기...</translation>
+        <source>Load File… </source>
+        <translation>파일 불러오기… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="222"/>
-        <source>Install CIA...</source>
-        <translation>CIA 설치하기...</translation>
+        <source>Install CIA… </source>
+        <translation>CIA 설치하기… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="227"/>
@@ -5680,8 +5680,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="330"/>
-        <source>Configure...</source>
-        <translation>설정...</translation>
+        <source>Configure… </source>
+        <translation>설정… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="341"/>
@@ -5705,13 +5705,13 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="367"/>
-        <source>Record...</source>
-        <translation>녹화하기...</translation>
+        <source>Record… </source>
+        <translation>녹화하기… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="372"/>
-        <source>Play...</source>
-        <translation>재생하기...</translation>
+        <source>Play… </source>
+        <translation>재생하기… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="377"/>
@@ -5845,8 +5845,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="577"/>
-        <source>Load...</source>
-        <translation>불러오기...</translation>
+        <source>Load… </source>
+        <translation>불러오기… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="585"/>
@@ -5860,8 +5860,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="598"/>
-        <source>Configure Current Game...</source>
-        <translation>현재 게임 설정하기...</translation>
+        <source>Configure Current Game… </source>
+        <translation>현재 게임 설정하기… </translation>
     </message>
 </context>
 <context>
@@ -5936,8 +5936,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="48"/>
@@ -6028,8 +6028,8 @@ Debug Message: </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="39"/>

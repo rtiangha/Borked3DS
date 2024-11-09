@@ -125,7 +125,7 @@
     <string name="amiibo_load_error_message">Under lasting av den angitte Amiibo-filen oppstod det en feil. Kontroller at filen er riktig.</string>
 
     <string name="write_permission_needed">Du må gi skrivetilgang til ekstern lagring for at emulatoren skal fungere</string>
-    <string name="load_settings">Laster Innstillinger...</string>
+    <string name="load_settings">Laster Innstillinger… </string>
 
     <string name="external_storage_not_mounted">Den eksterne lagringen må være tilgjengelig for å kunne bruke Borked3DS</string>
 

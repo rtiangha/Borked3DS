@@ -119,8 +119,8 @@ p, li { white-space: pre-wrap; }
     <name>CalibrationConfigurationDialog</name>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="23"/>
-        <source>Communicating with the server...</source>
-        <translation>Kommunikerer med serveren...</translation>
+        <source>Communicating with the server… </source>
+        <translation>Kommunikerer med serveren… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="24"/>
@@ -260,8 +260,8 @@ Dette vil udelukke både deres forum-brugernavn og IP-adresse.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="47"/>
-        <source>Moderation...</source>
-        <translation>Moderation...</translation>
+        <source>Moderation… </source>
+        <translation>Moderation… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="57"/>
@@ -604,7 +604,7 @@ Dette vil udelukke både deres forum-brugernavn og IP-adresse.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="179"/>
-        <source>...</source>
+        <source>… </source>
         <translation>…</translation>
     </message>
     <message>
@@ -1387,7 +1387,7 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="289"/>
-        <source>...</source>
+        <source>… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -1817,7 +1817,7 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="754"/>
-        <source>Motion / Touch...</source>
+        <source>Motion / Touch… </source>
         <translation>Bevægelse/touch</translation>
     </message>
     <message>
@@ -3353,7 +3353,7 @@ Would you like to ignore the error and continue?</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
-        <source>Downloading files...</source>
+        <source>Downloading files… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -3691,7 +3691,7 @@ Drag points to change position, or double-click table cells to edit values.</sou
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="63"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="106"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="173"/>
-        <source>...</source>
+        <source>… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -3940,7 +3940,7 @@ Please check your FFmpeg installation used for compilation.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
-        <source>Dumping...</source>
+        <source>Dumping… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -4071,7 +4071,7 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1858"/>
-        <source>Uninstalling &apos;%1&apos;...</source>
+        <source>Uninstalling &apos;%1&apos;… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -4101,8 +4101,8 @@ Refer to the log for details.</source>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1988"/>
-        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure... &amp;gt; Web to do so.</source>
-        <translation>Du skal tilknytte din Borked3DS-bruger for at indsende testcases.&lt;br/&gt;Gå til Emulering &amp;gt; Konfigurer... &amp;gt; Web for at gøre dette.</translation>
+        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure…  &amp;gt; Web to do so.</source>
+        <translation>Du skal tilknytte din Borked3DS-bruger for at indsende testcases.&lt;br/&gt;Gå til Emulering &amp;gt; Konfigurer…  &amp;gt; Web for at gøre dette.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="2159"/>
@@ -5375,7 +5375,7 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="65"/>
-        <source>Loading...</source>
+        <source>Loading… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -5395,7 +5395,7 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="72"/>
-        <source>Launching...</source>
+        <source>Launching… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -5578,12 +5578,12 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="217"/>
-        <source>Load File...</source>
+        <source>Load File… </source>
         <translation>Indlæs fil…</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="222"/>
-        <source>Install CIA...</source>
+        <source>Install CIA… </source>
         <translation>Installer CIA…</translation>
     </message>
     <message>
@@ -5673,7 +5673,7 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="330"/>
-        <source>Configure...</source>
+        <source>Configure… </source>
         <translation>Konfigurer…</translation>
     </message>
     <message>
@@ -5698,12 +5698,12 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="367"/>
-        <source>Record...</source>
+        <source>Record… </source>
         <translation type="unfinished"/>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="372"/>
-        <source>Play...</source>
+        <source>Play… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -5838,8 +5838,8 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="577"/>
-        <source>Load...</source>
-        <translation>Indlæs...</translation>
+        <source>Load… </source>
+        <translation>Indlæs… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="585"/>
@@ -5853,7 +5853,7 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="598"/>
-        <source>Configure Current Game...</source>
+        <source>Configure Current Game… </source>
         <translation type="unfinished"/>
     </message>
 </context>
@@ -5929,7 +5929,7 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="32"/>
-        <source>...</source>
+        <source>… </source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -6021,7 +6021,7 @@ Fejlfindingsbesked:</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="32"/>
-        <source>...</source>
+        <source>… </source>
         <translation type="unfinished"/>
     </message>
     <message>

@@ -42,7 +42,7 @@
     <string name="select_gpu_driver_use_default">Utilisation du pilote du GPU par défaut</string>
     <string name="select_gpu_driver_error">Pilote sélectionné non valide, utilisation du pilote système par défaut !</string>
     <string name="system_gpu_driver">Pilote du GPU du système</string>
-    <string name="installing_driver">Installation du pilote...</string>
+    <string name="installing_driver">Installation du pilote… </string>
 
     <!-- About screen strings -->
     <string name="copied_to_clipboard">Copié dans le presse-papiers</string>
@@ -132,7 +132,7 @@
     <string name="system_type_minimal">Minimal</string>
     <string name="system_type_old_3ds">Old 3DS</string>
     <string name="system_type_new_3ds">New 3DS</string>
-    <string name="downloading_files">Téléchargement des fichiers...</string>
+    <string name="downloading_files">Téléchargement des fichiers… </string>
     <string name="downloading_files_description">Veuillez ne pas fermer l\'application.</string>
     <string name="download_failed">Échec du téléchargement
  </string>
@@ -140,7 +140,7 @@
     <string name="download_success">Téléchargement terminé !</string>
     <string name="download_cancelled">Téléchargement annulé</string>
     <string name="download_cancelled_description">Veuillez redémarrer le téléchargement pour éviter des problèmes avec des fichiers système incomplets.</string>
-    <string name="cancelling">Annulation...</string>
+    <string name="cancelling">Annulation… </string>
     <string name="home_menu">Menu HOME</string>
     <string name="home_menu_warning">Avertissement sur les fichiers système</string>
     <string name="home_menu_warning_description">En raison de la lenteur du framework d\'accès au stockage d\'Android pour accéder aux fichiers de Borked3DS, le téléchargement de plusieurs versions de fichiers système peut considérablement ralentir le chargement des jeux, des états de sauvegarde et de la liste des jeux. Téléchargez uniquement les fichiers dont vous avez besoin pour éviter tout problème de vitesse de chargement.</string>
@@ -256,7 +256,7 @@
     <string name="ini_saved">Paramètres sauvegardés</string>
     <string name="gameid_saved">Paramètres sauvegardés pour %1$s</string>
     <string name="error_saving">Erreur lors de l\'enregistrement de %1$s.ini: %2$s</string>
-    <string name="loading">Chargement...</string>
+    <string name="loading">Chargement… </string>
     <string name="next">Suivant</string>
     <string name="back">Retour</string>
     <string name="learn_more">En savoir plus</string>
@@ -354,7 +354,7 @@
     <string name="do_not_show_this_again">Ne pas afficher à nouveau cela</string>
     <string name="searching_directory">Recherche dans le répertoire : %s</string>
     <string name="move_data">Déplacer les données</string>
-    <string name="moving_data">Déplacement des données...</string>
+    <string name="moving_data">Déplacement des données… </string>
     <string name="copy_file_name">Copier le fichier : %s</string>
     <string name="copy_complete">Copie terminée</string>
     <string name="savestates">Save States</string>

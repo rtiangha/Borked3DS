@@ -116,7 +116,7 @@
     <string name="ini_saved">Impostazioni salvate</string>
     <string name="gameid_saved">Impostazioni salvate per %1$s</string>
     <string name="error_saving">Errore di salvataggio %1$s.ini: %2$s</string>
-    <string name="loading">Caricamento...</string>
+    <string name="loading">Caricamento… </string>
     <!-- Add Directory Screen-->
     <string name="select_game_folder">Seleziona cartella dei giochi</string>
 
@@ -168,7 +168,7 @@
     <string name="amiibo_load_error">Impossibile caricare l\'Amiibo</string>
     <string name="amiibo_load_error_message">Durante il caricamento di un file Amiibo, si è verificato un errore. Controlla che il file sia corretto.</string>
     <string name="write_permission_needed">L\'emulatore ha bisogno dei permessi per l\'archiviazione dei dati su memoria esterna per funzionare correttamente</string>
-    <string name="load_settings">Caricando le Impostazioni...</string>
+    <string name="load_settings">Caricando le Impostazioni… </string>
 
     <string name="external_storage_not_mounted">C\'è bisogno di una memoria esterna disponibile per poter utilizzare Borked3DS</string>
 

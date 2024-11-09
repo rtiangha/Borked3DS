@@ -42,7 +42,7 @@
     <string name="select_gpu_driver_use_default">Usando el driver por defecto de la GPU</string>
     <string name="select_gpu_driver_error">¡Driver no válido seleccionado, usando el driver por defecto del sistema!</string>
     <string name="system_gpu_driver">Driver de la GPU del Sistema</string>
-    <string name="installing_driver">Instalando driver...</string>
+    <string name="installing_driver">Instalando driver… </string>
 
     <!-- About screen strings -->
     <string name="copied_to_clipboard">Copiado al portapapeles</string>
@@ -131,14 +131,14 @@
     <string name="system_type_minimal">Mínimo</string>
     <string name="system_type_old_3ds">Old 3DS</string>
     <string name="system_type_new_3ds">New 3DS</string>
-    <string name="downloading_files">Descargando Archivos...</string>
+    <string name="downloading_files">Descargando Archivos… </string>
     <string name="downloading_files_description">Por favor, no cierre la app.</string>
     <string name="download_failed">Descarga Fallida</string>
     <string name="download_failed_description">Asegúrese de estar conectado/a al Internet e inténtelo de nuevo.</string>
     <string name="download_success">¡Descarga Completada!</string>
     <string name="download_cancelled">Descarga Cancelada</string>
     <string name="download_cancelled_description">Por favor, reinicie la descarga para prevenir problemas con los archivos de sistema incompletos.</string>
-    <string name="cancelling">Cancelando...</string>
+    <string name="cancelling">Cancelando… </string>
     <string name="home_menu">Menú HOME</string>
     <string name="home_menu_warning">Advertencia de los Archivos de Sistema</string>
     <string name="home_menu_warning_description">Debido a la lentitud del framework de Android de acceso al almacenamiento para acceder a los archivos de Borked3DS, descargar múltiples versiones de los archivos de sistema pueden aumentar trágicamente los tiempos de carga para los juegos, los estados, y la lista de juegos. Sólo descarga los archivos que necesites para evitar problemas con las velocidades de carga.</string>
@@ -269,7 +269,7 @@ Se esperan fallos gráficos temporales cuando ésta esté activado.</string>
     <string name="ini_saved">Configuración guardada</string>
     <string name="gameid_saved">Configuración guardada para %1$s</string>
     <string name="error_saving">Error guardando %1$s.ini: %2$s</string>
-    <string name="loading">Cargando...</string>
+    <string name="loading">Cargando… </string>
     <string name="next">Siguiente</string>
     <string name="back">Atrás</string>
     <string name="learn_more">Más Información</string>
@@ -364,7 +364,7 @@ Se esperan fallos gráficos temporales cuando ésta esté activado.</string>
     <string name="unlock_drawer">Desbloquear Menú Cajón</string>
 
     <string name="write_permission_needed">Necesitas dar permisos de escritura al almacenamiento externo para que funcione el emulador.</string>
-    <string name="load_settings">Cargando la configuración...</string>
+    <string name="load_settings">Cargando la configuración… </string>
 
     <string name="external_storage_not_mounted">El almacenamiento externo necesita estar disponible para poder usar Borked3DS.</string>
 
@@ -374,7 +374,7 @@ Se esperan fallos gráficos temporales cuando ésta esté activado.</string>
     <string name="do_not_show_this_again">No mostrar ésto otra vez</string>
     <string name="searching_directory">Buscando directorio: %s</string>
     <string name="move_data">Mover Datos</string>
-    <string name="moving_data">Moviendo datos...</string>
+    <string name="moving_data">Moviendo datos… </string>
     <string name="copy_file_name">Copiar archivo: %s</string>
     <string name="copy_complete">Copia completa</string>
     <string name="savestates">Estados</string>

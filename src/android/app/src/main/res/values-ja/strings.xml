@@ -93,7 +93,7 @@
     <string name="emulation_close_game">ゲームを終了</string>
     <string name="emulation_close_game_message">プレイ中のゲームを終了しますか?</string>
     <string name="write_permission_needed">動作させるためには外部ストレージへのアクセスを許可する必要があります。</string>
-    <string name="load_settings">設定を読込中...</string>
+    <string name="load_settings">設定を読込中… </string>
 
     <string name="external_storage_not_mounted">Borked3DSを利用するには外部ストレージが必要です。</string>
 

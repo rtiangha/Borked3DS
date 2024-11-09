@@ -118,14 +118,14 @@
     <string name="show_home_apps">Mostrar aplicativos do MENU INICIAL na lista de jogos</string>
     <string name="system_type_old_3ds">3DS Antigo</string>
     <string name="system_type_new_3ds">Novo 3DS</string>
-    <string name="downloading_files">Baixando arquivos...</string>
+    <string name="downloading_files">Baixando arquivos… </string>
     <string name="downloading_files_description">Por favor, não feche o aplicativo.</string>
     <string name="download_failed">Falha no download</string>
     <string name="download_failed_description">Por favor, certifique-se de que está conectado à internet e tente novamente.</string>
     <string name="download_success">Download Completo!</string>
     <string name="download_cancelled">Download Cancelado</string>
     <string name="download_cancelled_description">Por favor, reinicie o download para evitar problemas com arquivos do sistema incompletos.</string>
-    <string name="cancelling">Cancelando...</string>
+    <string name="cancelling">Cancelando… </string>
     <string name="home_menu">MENU INICIAL</string>
     <string name="home_menu_warning">Aviso de Arquivos do Sistema</string>
     <!-- Generic buttons (Shared with lots of stuff) -->
@@ -258,7 +258,7 @@
     <string name="menu_emulation_amiibo_remove">Remover</string>
     <string name="amiibo_load_error_message">Ocorreu um erro ao carregar o arquivo de Amiibo selecionado. Verifique se é o arquivo correto.</string>
     <string name="write_permission_needed">Você precisa permitir o acesso de escrita no armazenamento externo para que o emulador funcione</string>
-    <string name="load_settings">Carregando configurações...</string>
+    <string name="load_settings">Carregando configurações… </string>
 
     <string name="external_storage_not_mounted">O armazenamento externo precisa estar disponível para que o Borked3DS seja utilizado.</string>
 

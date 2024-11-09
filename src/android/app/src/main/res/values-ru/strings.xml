@@ -42,7 +42,7 @@
     <string name="select_gpu_driver_use_default">Используется стандартный драйвер GPU</string>
     <string name="select_gpu_driver_error">Выбран неверный драйвер, используется системный!</string>
     <string name="system_gpu_driver">Системный драйвер GPU</string>
-    <string name="installing_driver">Установка драйвера...</string>
+    <string name="installing_driver">Установка драйвера… </string>
 
     <!-- About screen strings -->
     <string name="copied_to_clipboard">Скопировано в буфер обмена</string>
@@ -131,14 +131,14 @@
     <string name="system_type_minimal">Минимальный</string>
     <string name="system_type_old_3ds">Старая модель 3DS</string>
     <string name="system_type_new_3ds">Новая модель 3DS</string>
-    <string name="downloading_files">Загрузка файлов...</string>
+    <string name="downloading_files">Загрузка файлов… </string>
     <string name="downloading_files_description">Пожалуйста, не закрывайте приложение.</string>
     <string name="download_failed">Ошибка загрузки</string>
     <string name="download_failed_description">Пожалуйста, проверьте соединение с Интернет и повторите попытку.</string>
     <string name="download_success">Загрузка завершена!</string>
     <string name="download_cancelled">Загрузка отменена.</string>
     <string name="download_cancelled_description">Пожалуйста, повторно запустите загрузку, чтобы избежать ошибок из-за неполных системных файлов.</string>
-    <string name="cancelling">Отмена...</string>
+    <string name="cancelling">Отмена… </string>
     <string name="home_menu">Меню HOME</string>
     <string name="home_menu_warning">Предупреждение о системных файлах</string>
     <string name="home_menu_warning_description">Используемый в Android фреймворк SAF замедляет доступ к файлам Borked3DS, поэтому скачивание нескольких версий системных файлов может существенно снизить скорость загрузки игр, сохранений и списка игр. Во избежание проблем со скоростью загрузки скачивайте только необходимые файлы.</string>
@@ -254,7 +254,7 @@
     <string name="ini_saved">Настройки сохранены</string>
     <string name="gameid_saved">Сохранены настройки для %1$s</string>
     <string name="error_saving">Ошибка сохранения %1$s.ini: %2$s</string>
-    <string name="loading">Загрузка...</string>
+    <string name="loading">Загрузка… </string>
     <string name="next">Далее</string>
     <string name="back">Назад</string>
     <string name="learn_more">Подробнее</string>
@@ -352,7 +352,7 @@
     <string name="do_not_show_this_again">Не показывать снова</string>
     <string name="searching_directory">Поиск в папке: %s</string>
     <string name="move_data">Переместить данные</string>
-    <string name="moving_data">Перемещение данных...</string>
+    <string name="moving_data">Перемещение данных… </string>
     <string name="copy_file_name">Копировать файл: %s</string>
     <string name="copy_complete">Копирование завершено</string>
     <string name="savestates">Сохранения состояния</string>

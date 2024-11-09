@@ -78,7 +78,7 @@
     <string name="emulation_swap_screens">Vaihda näytöt</string>
     <string name="emulation_close_game">Sulje peli</string>
     <string name="emulation_close_game_message">Oletko varma että haluat sulkea nykyisen pelin?</string>
-    <string name="load_settings">Ladataan asetuksia...</string>
+    <string name="load_settings">Ladataan asetuksia… </string>
 
     <!-- Software Keyboard -->
     <string name="software_keyboard">Laitteistonäppäimistö</string>

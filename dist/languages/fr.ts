@@ -119,8 +119,8 @@ p, li { white-space: pre-wrap; }
     <name>CalibrationConfigurationDialog</name>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="23"/>
-        <source>Communicating with the server...</source>
-        <translation>Communication avec le serveur en cours...</translation>
+        <source>Communicating with the server… </source>
+        <translation>Communication avec le serveur en cours… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_motion_touch.cpp" line="24"/>
@@ -260,8 +260,8 @@ Cela bannira à la fois son nom du forum et son adresse IP.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="47"/>
-        <source>Moderation...</source>
-        <translation>Modération...</translation>
+        <source>Moderation… </source>
+        <translation>Modération… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/client_room.ui" line="57"/>
@@ -604,8 +604,8 @@ Cela bannira à la fois son nom du forum et son adresse IP.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="179"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_camera.ui" line="190"/>
@@ -1388,8 +1388,8 @@ Souhaitez vous ignorer l&apos;erreur et poursuivre ?</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="289"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_general.ui" line="302"/>
@@ -1818,8 +1818,8 @@ Souhaitez vous ignorer l&apos;erreur et poursuivre ?</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="754"/>
-        <source>Motion / Touch...</source>
-        <translation>Mouvement / Tactile...</translation>
+        <source>Motion / Touch… </source>
+        <translation>Mouvement / Tactile… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_input.ui" line="782"/>
@@ -3354,8 +3354,8 @@ Souhaitez vous ignorer l&apos;erreur et poursuivre ?</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
-        <source>Downloading files...</source>
-        <translation>Téléchargement des fichiers...</translation>
+        <source>Downloading files… </source>
+        <translation>Téléchargement des fichiers… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/configuration/configure_system.cpp" line="589"/>
@@ -3693,8 +3693,8 @@ Glissez les points pour modifier la position, ou double-cliquez les cellules pou
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="63"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="106"/>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="173"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/dumping/dumping_dialog.ui" line="53"/>
@@ -3943,8 +3943,8 @@ Veuillez vérifier votre installation FFmpeg utilisée pour la compilation.</tra
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
-        <source>Dumping...</source>
-        <translation>Extraction...</translation>
+        <source>Dumping… </source>
+        <translation>Extraction… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1659"/>
@@ -4075,8 +4075,8 @@ Référez vous au fichier journal pour les détails.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1858"/>
-        <source>Uninstalling &apos;%1&apos;...</source>
-        <translation>Désinstallation de &apos;%1&apos;...</translation>
+        <source>Uninstalling &apos;%1&apos;… </source>
+        <translation>Désinstallation de &apos;%1&apos;… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1893"/>
@@ -4105,8 +4105,8 @@ Référez vous au fichier journal pour les détails.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="1988"/>
-        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure... &amp;gt; Web to do so.</source>
-        <translation>Vous devez rattacher votre compte Borked3DS pour soumettre des cas test.&lt;br/&gt;Allez sur Emulation &amp;gt; Configurer... &amp;gt; Web pour procéder.</translation>
+        <source>You must link your Borked3DS account to submit test cases.&lt;br/&gt;Go to Emulation &amp;gt; Configure…  &amp;gt; Web to do so.</source>
+        <translation>Vous devez rattacher votre compte Borked3DS pour soumettre des cas test.&lt;br/&gt;Allez sur Emulation &amp;gt; Configurer…  &amp;gt; Web pour procéder.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.cpp" line="2159"/>
@@ -5256,7 +5256,7 @@ Screen.</source>
         <location filename="../../src/borked3ds_qt/multiplayer/host_room.cpp" line="165"/>
         <source>Failed to announce the room to the public lobby. In order to host a room publicly, you must have a valid Borked3DS account configured in Emulation -&gt; Configure -&gt; Web. If you do not want to publish a room in the public lobby, then select Unlisted instead.
 Debug Message: </source>
-        <translation>L&apos;affichage du salon dans le hall public a échoué. Pour héberger un salon public, vous devez configurer un compte Borked3DS valide dans Emulation -&gt; Configurer... -&gt; Web. Si vous ne souhaitez pas publier un salon dans le hall public, choisissez Non Listé à la place.
+        <translation>L&apos;affichage du salon dans le hall public a échoué. Pour héberger un salon public, vous devez configurer un compte Borked3DS valide dans Emulation -&gt; Configurer…  -&gt; Web. Si vous ne souhaitez pas publier un salon dans le hall public, choisissez Non Listé à la place.
 Message de débogage :</translation>
     </message>
 </context>
@@ -5383,8 +5383,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="65"/>
-        <source>Loading...</source>
-        <translation>Chargement en cours...</translation>
+        <source>Loading… </source>
+        <translation>Chargement en cours… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="67"/>
@@ -5403,8 +5403,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="72"/>
-        <source>Launching...</source>
-        <translation>Démarrage...</translation>
+        <source>Launching… </source>
+        <translation>Démarrage… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/loading_screen.cpp" line="143"/>
@@ -5587,13 +5587,13 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="217"/>
-        <source>Load File...</source>
-        <translation>Charger un fichier...</translation>
+        <source>Load File… </source>
+        <translation>Charger un fichier… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="222"/>
-        <source>Install CIA...</source>
-        <translation>Installer un fichier CIA...</translation>
+        <source>Install CIA… </source>
+        <translation>Installer un fichier CIA… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="227"/>
@@ -5682,8 +5682,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="330"/>
-        <source>Configure...</source>
-        <translation>Configurer...</translation>
+        <source>Configure… </source>
+        <translation>Configurer… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="341"/>
@@ -5707,13 +5707,13 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="367"/>
-        <source>Record...</source>
-        <translation>Enregistrement...</translation>
+        <source>Record… </source>
+        <translation>Enregistrement… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="372"/>
-        <source>Play...</source>
-        <translation>Lecture...</translation>
+        <source>Play… </source>
+        <translation>Lecture… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="377"/>
@@ -5847,8 +5847,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="577"/>
-        <source>Load...</source>
-        <translation>Charger...</translation>
+        <source>Load… </source>
+        <translation>Charger… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="585"/>
@@ -5862,8 +5862,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/main.ui" line="598"/>
-        <source>Configure Current Game...</source>
-        <translation>Configurer le jeu actuel...</translation>
+        <source>Configure Current Game… </source>
+        <translation>Configurer le jeu actuel… </translation>
     </message>
 </context>
 <context>
@@ -5938,8 +5938,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_play_dialog.ui" line="48"/>
@@ -6030,8 +6030,8 @@ Message de débogage :</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="32"/>
-        <source>...</source>
-        <translation>...</translation>
+        <source>… </source>
+        <translation>… </translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/movie/movie_record_dialog.ui" line="39"/>
@@ -6221,7 +6221,7 @@ Message de débogage :</translation>
 Please go to Emulation &gt; Configure &gt; System to regenerate your Console ID.</source>
         <translation>Votre ID de console est en conflit avec celui de quelqu&apos;un d&apos;autre dans la salle.
 
-Veuillez vous rendre dans Émulation &gt; Configurer... &gt; Système pour régénérer votre ID de console.</translation>
+Veuillez vous rendre dans Émulation &gt; Configurer…  &gt; Système pour régénérer votre ID de console.</translation>
     </message>
     <message>
         <location filename="../../src/borked3ds_qt/multiplayer/message.cpp" line="53"/>
