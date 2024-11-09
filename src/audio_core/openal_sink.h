@@ -17,7 +17,7 @@ public:
     explicit OpenALSink(std::string device_id);
     ~OpenALSink() override;
 
-    unsigned int GetNativeSampleRate() const override;
+    [[nodiscard]] unsigned int GetNativeSampleRate() const override;
 
     void SetCallback(std::function<void(s16*, std::size_t)> cb) override;
 
