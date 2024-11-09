@@ -90,7 +90,9 @@
                     android:hint="@string/home_search_games"
                     android:imeOptions="flagNoFullscreen"
                     android:inputType="text"
-                    android:maxLines="1" />
+                    android:maxLines="1"
+                    android:autofillHints="name"
+                    android:importantForAutofill="auto"/>
 
             </LinearLayout>
 
