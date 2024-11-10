@@ -441,8 +441,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         if (started) {
                             ViewUtils.hideView(binding.loadingIndicator)
                             ViewUtils.showView(binding.surfaceInputOverlay)
-                            binding.inGameMenu.menu.findItem(R.id.menu_emulation_savestates)
-                                .setVisible(NativeLibrary.getSavestateInfo() != null)
+                            binding.inGameMenu.menu.findItem(R.id.menu_emulation_savestates).isVisible =
+                                NativeLibrary.getSavestateInfo() != null
                             binding.drawerLayout.setDrawerLockMode(EmulationMenuSettings.drawerLockMode)
                         }
                     }
@@ -600,7 +600,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             } else {
                 getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
             }
-            popupMenu.menu.getItem(it.slot).setTitle(text).setEnabled(enableClick)
+            popupMenu.menu.getItem(it.slot).setTitle(text).isEnabled = enableClick
         }
 
         popupMenu.show()
@@ -627,7 +627,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         savestates?.forEach {
             val text = getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
-            popupMenu.menu.getItem(it.slot - 1).setTitle(text).setEnabled(true)
+            popupMenu.menu.getItem(it.slot - 1).setTitle(text).isEnabled = true
         }
 
         popupMenu.show()
