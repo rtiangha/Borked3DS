@@ -1175,7 +1175,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 val perfStats = NativeLibrary.getPerfStats()
                 val ramUsage =
                     File("/proc/self/statm").readLines()[0].split(' ')[1].toLong() * 4096 / 1000000
-                val ramUsageText = "RAM USAGE: " + ramUsage + " MB"
+                val ramUsageText = "RAM USAGE: $ramUsage MB"
                 if (perfStats[fps] > 0) {
                     binding.showFpsText.text = String.format(
                         "FPS: %d Speed: %d%%\n%s",
