@@ -42,6 +42,7 @@
                 android:layout_height="104dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="20dp"
+                android:contentDescription="@string/ic_borked3ds"
                 android:src="@drawable/ic_borked3ds_full" />
 
             <com.google.android.material.divider.MaterialDivider

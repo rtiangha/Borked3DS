@@ -181,6 +181,14 @@
     <string name="generic_buttons">Buttons</string>
     <string name="button">Button</string>
 
+    <!-- Icon and logo descriptions (used for accessibility) -->
+    <string name="ic_borked3ds">Borked3DS Logo</string>
+    <string name="ic_clear">Clear Icon</string>
+    <string name="ic_search">Search Icon</string>
+    <string name="ic_network">Network Icon</string>
+    <string name="ic_notification">Notification Icon</string>
+    <string name="no_icon">No Icon</string>
+
     <!-- Core settings strings -->
     <string name="cpu_jit">CPU JIT Compiler</string>
     <string name="cpu_jit_description">Uses the Just-in-Time (JIT) compiler for CPU emulation. When enabled, game performance will be significantly improved.</string>

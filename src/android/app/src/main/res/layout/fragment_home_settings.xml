@@ -21,6 +21,7 @@
             android:layout_height="104dp"
             android:layout_gravity="center_horizontal"
             android:layout_margin="32dp"
+            android:contentDescription="@string/ic_borked3ds"
             android:src="@drawable/ic_borked3ds_full" />
 
         <androidx.recyclerview.widget.RecyclerView
