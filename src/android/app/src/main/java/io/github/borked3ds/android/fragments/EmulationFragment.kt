@@ -1169,18 +1169,18 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     fun updateShowFpsOverlay() {
         if (EmulationMenuSettings.showFps) {
-            val FPS = 1
-            val SPEED = 3
+            val fps = 1
+            val speed = 3
             perfStatsUpdater = Runnable {
                 val perfStats = NativeLibrary.getPerfStats()
                 val ramUsage =
                     File("/proc/self/statm").readLines()[0].split(' ')[1].toLong() * 4096 / 1000000
                 val ramUsageText = "RAM USAGE: " + ramUsage + " MB"
-                if (perfStats[FPS] > 0) {
+                if (perfStats[fps] > 0) {
                     binding.showFpsText.text = String.format(
                         "FPS: %d Speed: %d%%\n%s",
-                        (perfStats[FPS] + 0.5).toInt(),
-                        (perfStats[SPEED] * 100.0 + 0.5).toInt(),
+                        (perfStats[fps] + 0.5).toInt(),
+                        (perfStats[speed] * 100.0 + 0.5).toInt(),
                         ramUsageText
                     )
                 }
