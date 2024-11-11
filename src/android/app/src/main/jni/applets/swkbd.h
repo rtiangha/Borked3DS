@@ -30,8 +30,8 @@ void CleanupJNI(JNIEnv* env);
 // Native function calls
 extern "C" {
 JNIEXPORT jobject JNICALL Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateFilters(
-    JNIEnv* env, jclass clazz, jstring text);
+    JNIEnv* env, jobject clazz, jstring text);
 
 JNIEXPORT jobject JNICALL Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateInput(
-    JNIEnv* env, jclass clazz, jstring text);
+    JNIEnv* env, jobject clazz, jstring text);
 }

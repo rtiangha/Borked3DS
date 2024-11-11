@@ -503,7 +503,7 @@ void Java_io_github_borked3ds_android_NativeLibrary_setUserDirectory(JNIEnv* env
 }
 
 jobjectArray Java_io_github_borked3ds_android_NativeLibrary_getInstalledGamePaths(
-    JNIEnv* env, [[maybe_unused]] jclass clazz) {
+    JNIEnv* env, [[maybe_unused]] jobject clazz) {
     std::vector<std::string> games;
     const FileUtil::DirectoryEntryCallable ScanDir =
         [&games, &ScanDir](u64*, const std::string& directory, const std::string& virtual_name) {

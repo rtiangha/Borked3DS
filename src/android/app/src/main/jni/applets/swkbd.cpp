@@ -128,7 +128,7 @@ jobject ToJavaValidationError(Frontend::ValidationError error) {
 }
 
 jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateFilters(JNIEnv* env,
-                                                                                  jclass clazz,
+                                                                                  jobject clazz,
                                                                                   jstring text) {
 
     const auto ret =
@@ -137,7 +137,7 @@ jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateFilter
 }
 
 jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateInput(JNIEnv* env,
-                                                                                jclass clazz,
+                                                                                jobject clazz,
                                                                                 jstring text) {
 
     const auto ret =
