@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CIA Install -->
+    <plurals name="cia_install_toast">
+        <item quantity="one">Installing %d file. See notification for more details.</item>
+        <item quantity="other">Installing %d files. See notification for more details.</item>
+    </plurals>
+
+    <!-- Software Keyboard -->
+    <plurals name="fixed_length_required">
+        <item quantity="one">Text length is not correct (should be %d character).</item>
+        <item quantity="other">Text length is not correct (should be %d characters).</item>
+    </plurals>
+    <plurals name="max_length_exceeded">
+        <item quantity="one">Text is too long (should be no more than %d character).</item>
+        <item quantity="other">Text is too long (should be no more than %d characters).</item>
+    </plurals>
+</resources>

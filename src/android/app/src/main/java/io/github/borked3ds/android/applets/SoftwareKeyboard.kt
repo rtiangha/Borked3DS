@@ -31,13 +31,18 @@ object SoftwareKeyboard {
     fun HandleValidationError(config: KeyboardConfig, error: ValidationError) {
         val emulationActivity = NativeLibrary.sEmulationActivity.get()!!
         val message: String = when (error) {
-            ValidationError.FixedLengthRequired -> emulationActivity.getString(
-                R.string.fixed_length_required,
+            ValidationError.FixedLengthRequired -> emulationActivity.getResources().getQuantityString(
+                R.plurals.fixed_length_required,
+                config.maxTextLength,
                 config.maxTextLength
             )
 
             ValidationError.MaxLengthExceeded ->
-                emulationActivity.getString(R.string.max_length_exceeded, config.maxTextLength)
+                emulationActivity.getResources().getQuantityString(
+                R.plurals.max_length_exceeded,
+                config.maxTextLength,
+                config.maxTextLength
+            )
 
             ValidationError.BlankInputNotAllowed ->
                 emulationActivity.getString(R.string.blank_input_not_allowed)

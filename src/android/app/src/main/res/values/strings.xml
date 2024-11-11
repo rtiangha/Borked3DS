@@ -588,8 +588,6 @@
     <!-- Software Keyboard -->
     <string name="software_keyboard">Software Keyboard</string>
     <string name="i_forgot">I Forgot</string>
-    <string name="fixed_length_required">Text length is not correct (should be %d characters).</string>
-    <string name="max_length_exceeded">Text is too long (should be no more than %d characters).</string>
     <string name="blank_input_not_allowed">Blank input is not allowed.</string>
     <string name="empty_input_not_allowed">Empty input is not allowed.</string>
     <string name="invalid_input">Invalid input</string>
@@ -640,10 +638,6 @@
     <string name="cheats_error_on_line">Error on line %1$d</string>
 
     <!-- CIA Install -->
-    <plurals name="cia_install_toast">
-        <item quantity="one">Installing %d file. See notification for more details.</item>
-        <item quantity="other">Installing %d files. See notification for more details.</item>
-    </plurals>
     <string name="cia_install_notification_channel_name" translatable="false">Borked3DS CIA Install</string>
     <string name="cia_install_notification_channel_id" translatable="false">borked3ds-cia</string>
     <string name="cia_install_notification_channel_description">Borked3DS notifications during CIA Install</string>
