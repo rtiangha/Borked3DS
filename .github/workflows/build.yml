@@ -129,7 +129,7 @@ jobs:
       - name: Install New Packages
         run: sudo apt-get -y install zip unzip python3 ccache apksigner && sudo apt-get clean
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@v3.30.5
+        uses: lukka/get-cmake@v3.31.0
         with:
           cmakeVersion: latest
           ninjaVersion: latest
