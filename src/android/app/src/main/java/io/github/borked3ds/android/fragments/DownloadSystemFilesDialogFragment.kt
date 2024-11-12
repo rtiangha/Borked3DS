@@ -22,7 +22,6 @@ import io.github.borked3ds.android.R
 import io.github.borked3ds.android.databinding.DialogProgressBarBinding
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import io.github.borked3ds.android.viewmodel.SystemFilesViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 

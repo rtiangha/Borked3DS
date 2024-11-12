@@ -24,7 +24,6 @@ import io.github.borked3ds.android.R
 import io.github.borked3ds.android.databinding.FragmentCheatDetailsBinding
 import io.github.borked3ds.android.features.cheats.model.Cheat
 import io.github.borked3ds.android.features.cheats.model.CheatsViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class CheatDetailsFragment : Fragment() {

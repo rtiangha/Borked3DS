@@ -30,7 +30,6 @@ import io.github.borked3ds.android.features.cheats.model.CheatsViewModel
 import io.github.borked3ds.android.ui.TwoPaneOnBackPressedCallback
 import io.github.borked3ds.android.ui.main.MainActivity
 import io.github.borked3ds.android.viewmodel.HomeViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {

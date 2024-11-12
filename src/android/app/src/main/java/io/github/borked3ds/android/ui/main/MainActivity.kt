@@ -54,7 +54,6 @@ import io.github.borked3ds.android.utils.PermissionsHandler
 import io.github.borked3ds.android.utils.ThemeUtil
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import io.github.borked3ds.android.viewmodel.HomeViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), ThemeProvider {

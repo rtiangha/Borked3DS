@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.RecyclerView
 import io.github.borked3ds.android.databinding.CardHomeOptionBinding
 import io.github.borked3ds.android.fragments.MessageDialogFragment
 import io.github.borked3ds.android.model.HomeSetting
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class HomeSettingAdapter(
