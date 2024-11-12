@@ -42,6 +42,7 @@
     <application
         android:name="io.github.borked3ds.android.Borked3DSApplication"
         android:allowBackup="false"
+        android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:banner="@mipmap/ic_launcher"
         android:icon="@mipmap/ic_launcher"
