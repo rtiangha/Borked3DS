@@ -47,8 +47,8 @@ enum class StringSetting(
             CAMERA_OUTER_RIGHT_CONFIG
         )
 
-        fun from(key: String): StringSetting? = StringSetting.values().firstOrNull { it.key == key }
+        fun from(key: String): StringSetting? = StringSetting.entries.firstOrNull { it.key == key }
 
-        fun clear() = StringSetting.values().forEach { it.string = it.defaultValue }
+        fun clear() = StringSetting.entries.forEach { it.string = it.defaultValue }
     }
 }

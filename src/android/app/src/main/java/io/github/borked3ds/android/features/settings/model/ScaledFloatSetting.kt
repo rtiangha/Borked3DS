@@ -35,8 +35,8 @@ enum class ScaledFloatSetting(
         private val NOT_RUNTIME_EDITABLE = emptyList<ScaledFloatSetting>()
 
         fun from(key: String): ScaledFloatSetting? =
-            ScaledFloatSetting.values().firstOrNull { it.key == key }
+            ScaledFloatSetting.entries.firstOrNull { it.key == key }
 
-        fun clear() = ScaledFloatSetting.values().forEach { it.float = it.defaultValue * it.scale }
+        fun clear() = ScaledFloatSetting.entries.forEach { it.float = it.defaultValue * it.scale }
     }
 }

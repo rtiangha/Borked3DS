@@ -113,8 +113,8 @@ enum class IntSetting(
             USE_ARTIC_BASE_CONTROLLER
         )
 
-        fun from(key: String): IntSetting? = IntSetting.values().firstOrNull { it.key == key }
+        fun from(key: String): IntSetting? = IntSetting.entries.firstOrNull { it.key == key }
 
-        fun clear() = IntSetting.values().forEach { it.int = it.defaultValue }
+        fun clear() = IntSetting.entries.forEach { it.int = it.defaultValue }
     }
 }
