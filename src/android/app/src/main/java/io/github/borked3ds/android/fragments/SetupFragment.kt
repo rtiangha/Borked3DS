@@ -104,12 +104,10 @@ class SetupFragment : Fragment() {
 
         val window = requireActivity().window
         val insetsController = window.insetsController
-        if (insetsController != null) {
-            insetsController.setSystemBarsAppearance(
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            )
-        }
+        insetsController?.setSystemBarsAppearance(
+            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        )
 
         pages = mutableListOf()
         pages.apply {

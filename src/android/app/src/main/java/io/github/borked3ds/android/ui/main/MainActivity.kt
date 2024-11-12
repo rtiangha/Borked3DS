@@ -90,12 +90,10 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
 
         val insetsController = window.insetsController
-        if (insetsController != null) {
-            insetsController.setSystemBarsAppearance(
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            )
-        }
+        insetsController?.setSystemBarsAppearance(
+            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        )
 
         binding.statusBarShade.setBackgroundColor(
             ThemeUtil.getColorWithOpacity(
