@@ -75,6 +75,7 @@ import io.github.borked3ds.android.viewmodel.EmulationViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Locale
 
 class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.FrameCallback {
     private val preferences: SharedPreferences
@@ -401,6 +402,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                             binding.loadingProgressIndicator.isIndeterminate = false
                             binding.loadingProgressText.visibility = View.VISIBLE
                             binding.loadingProgressText.text = String.format(
+                                Locale.ROOT,
                                 "%d/%d",
                                 emulationViewModel.shaderProgress.value,
                                 emulationViewModel.totalShaders.value
@@ -1001,7 +1003,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             slider.valueTo = 150f
             slider.valueFrom = 0f
             slider.value = preferences.getInt(target, 50).toFloat()
-            textValue.setText((slider.value + 50).toInt().toString())
+            textValue.setText(String.format(Locale.ROOT, "%d", (slider.value + 50).toInt()))
             textValue.addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable) {
                     val value = s.toString().toIntOrNull()
@@ -1019,7 +1021,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             slider.addOnChangeListener(
                 Slider.OnChangeListener { slider: Slider, progress: Float, _: Boolean ->
                     if (textValue.text.toString() != (slider.value + 50).toInt().toString()) {
-                        textValue.setText((slider.value + 50).toInt().toString())
+                        textValue.setText(String.format(Locale.ROOT, "%d", (slider.value + 50).toInt()))
                         textValue.setSelection(textValue.length())
                         setControlScale(slider.value.toInt(), target)
                     }
@@ -1051,7 +1053,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             slider.valueFrom = 0f
             slider.valueTo = 100f
             slider.value = preferences.getInt("controlOpacity", 50).toFloat()
-            textValue.setText(slider.value.toInt().toString())
+            textValue.setText(String.format(Locale.ROOT, "%d", (slider.value + 50).toInt()))
 
             textValue.addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable) {
@@ -1072,7 +1074,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             slider.addOnChangeListener { _: Slider, value: Float, _: Boolean ->
 
                 if (textValue.text.toString() != slider.value.toInt().toString()) {
-                    textValue.setText(slider.value.toInt().toString())
+                    textValue.setText(String.format(Locale.ROOT, "%d", slider.value.toInt()))
                     textValue.setSelection(textValue.length())
                     setControlOpacity(slider.value.toInt())
                 }
@@ -1178,6 +1180,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 val ramUsageText = "RAM USAGE: $ramUsage MB"
                 if (perfStats[fps] > 0) {
                     binding.showFpsText.text = String.format(
+                        Locale.ROOT,
                         "FPS: %d Speed: %d%%\n%s",
                         (perfStats[fps] + 0.5).toInt(),
                         (perfStats[speed] * 100.0 + 0.5).toInt(),

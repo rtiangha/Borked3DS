@@ -70,6 +70,7 @@ import io.github.borked3ds.android.utils.SystemSaveGame
 import java.lang.IllegalStateException
 import java.lang.NumberFormatException
 import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.math.roundToInt
 
 class SettingsAdapter(
@@ -270,10 +271,10 @@ class SettingsAdapter(
         if (item.setting is FloatSetting) {
             textSliderValue?.let {
                 it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-                it.setText(sliderProgress.toString())
+                it.setText(String.format(Locale.ROOT, "%d", sliderProgress))
             }
         } else {
-            textSliderValue?.setText(sliderProgress.roundToInt().toString())
+            textSliderValue?.setText(String.format(Locale.ROOT, "%d", sliderProgress.roundToInt()))
         }
 
         textInputLayout?.suffixText = item.units
