@@ -88,7 +88,7 @@ class CheatDetailsFragment : Fragment() {
     private fun onDeleteClicked() {
         val name = binding.editNameInput.text.toString()
         MaterialAlertDialogBuilder(requireContext())
-            .setMessage(getString(R.string.cheats_delete_confirmation, name))
+            .setMessage(getString(R.string.cheats_delete_confirmation))
             .setPositiveButton(
                 android.R.string.ok
             ) { _: DialogInterface?, _: Int -> cheatsViewModel.deleteSelectedCheat() }
