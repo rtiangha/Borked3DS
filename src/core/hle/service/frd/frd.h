@@ -20,9 +20,9 @@ class Event;
 namespace Service::FRD {
 
 struct FriendKey {
-    u32 friend_id;
-    u32 unknown;
-    u64 friend_code;
+    u32 friend_id = 0;
+    u32 unknown = 0;
+    u64 friend_code = 0;
 
 private:
     template <class Archive>
@@ -35,7 +35,7 @@ private:
 };
 
 struct MyPresence {
-    u8 unknown[0x12C];
+    u8 unknown[0x12C] = "";
 
 private:
     template <class Archive>
@@ -46,18 +46,18 @@ private:
 };
 
 struct Profile {
-    u8 region;
-    u8 country;
-    u8 area;
-    u8 language;
-    u8 platform;
+    u8 region = 0;
+    u8 country = 0;
+    u8 area = 0;
+    u8 language = 0;
+    u8 platform = 0;
     INSERT_PADDING_BYTES(0x3);
 };
 static_assert(sizeof(Profile) == 0x8, "Profile has incorrect size");
 
 struct Game {
-    u64 title_id;
-    u16 version;
+    u64 title_id = 0;
+    u16 version = 0;
     INSERT_PADDING_BYTES(0x6);
 };
 static_assert(sizeof(Game) == 0x10, "Game has inccorect size");

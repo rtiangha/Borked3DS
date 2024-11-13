@@ -71,8 +71,8 @@ private:
 
 /// Contains decompiled data from a shader
 struct ShaderDiskCacheDecompiled {
-    std::string code;
-    bool sanitize_mul;
+    std::string code = "";
+    bool sanitize_mul = false;
 };
 
 /// Contains an OpenGL dumped binary program
