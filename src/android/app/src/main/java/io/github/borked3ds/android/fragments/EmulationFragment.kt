@@ -596,13 +596,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         savestates?.forEach {
-            var enableClick = true
             val text = if (it.slot == NativeLibrary.QUICKSAVE_SLOT) {
                 getString(R.string.emulation_occupied_quicksave_slot, it.time)
             } else {
                 getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
             }
-            popupMenu.menu.getItem(it.slot).setTitle(text).isEnabled = enableClick
+            popupMenu.menu.getItem(it.slot).setTitle(text).isEnabled = true
         }
 
         popupMenu.show()
