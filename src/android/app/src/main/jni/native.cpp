@@ -779,7 +779,7 @@ void Java_io_github_borked3ds_android_NativeLibrary_createLogFile([[maybe_unused
 void Java_io_github_borked3ds_android_NativeLibrary_logUserDirectory(JNIEnv* env,
                                                                      [[maybe_unused]] jobject obj,
                                                                      jstring j_path) {
-    std::string_view path = env->GetStringUTFChars(j_path, 0);
+    std::string_view path = env->GetStringUTFChars(j_path, nullptr);
     LOG_INFO(Frontend, "User directory path: {}", path);
     env->ReleaseStringUTFChars(j_path, path.
 

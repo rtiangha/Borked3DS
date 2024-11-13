@@ -79,7 +79,7 @@ EmuWindow_Android_OpenGL::EmuWindow_Android_OpenGL(Core::System& system_, ANativ
         LOG_CRITICAL(Frontend, "eglGetDisplay() failed 1");
         return;
     }
-    if (eglInitialize(egl_display, 0, 0) != EGL_TRUE) {
+    if (eglInitialize(egl_display, nullptr, nullptr) != EGL_TRUE) {
         LOG_CRITICAL(Frontend, "eglInitialize() failed 2");
         return;
     }
@@ -98,7 +98,8 @@ EmuWindow_Android_OpenGL::EmuWindow_Android_OpenGL(Core::System& system_, ANativ
         return;
     }
 
-    if (egl_context = eglCreateContext(egl_display, egl_config, 0, egl_context_attribs.data());
+    if (egl_context =
+            eglCreateContext(egl_display, egl_config, nullptr, egl_context_attribs.data());
         egl_context == EGL_NO_CONTEXT) {
         LOG_CRITICAL(Frontend, "eglCreateContext() failed a");
         return;
