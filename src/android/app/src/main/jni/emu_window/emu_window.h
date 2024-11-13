@@ -14,7 +14,7 @@ class System;
 
 class EmuWindow_Android : public Frontend::EmuWindow {
 public:
-    EmuWindow_Android(ANativeWindow* surface);
+    explicit EmuWindow_Android(ANativeWindow* surface);
 
     ~EmuWindow_Android();
 
