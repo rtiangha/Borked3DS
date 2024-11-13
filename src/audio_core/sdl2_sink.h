@@ -16,7 +16,7 @@ public:
     explicit SDL2Sink(std::string device_id);
     ~SDL2Sink() override;
 
-    unsigned int GetNativeSampleRate() const override;
+    [[nodiscard]] unsigned int GetNativeSampleRate() const override;
 
     void SetCallback(std::function<void(s16*, std::size_t)> cb) override;
 

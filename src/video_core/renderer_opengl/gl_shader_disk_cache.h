@@ -46,19 +46,19 @@ public:
 
     bool Save(FileUtil::IOFile& file) const;
 
-    u64 GetUniqueIdentifier() const {
+    [[nodiscard]] u64 GetUniqueIdentifier() const {
         return unique_identifier;
     }
 
-    ProgramType GetProgramType() const {
+    [[nodiscard]] ProgramType GetProgramType() const {
         return program_type;
     }
 
-    const ProgramCode& GetProgramCode() const {
+    [[nodiscard]] const ProgramCode& GetProgramCode() const {
         return program_code;
     }
 
-    const RawShaderConfig& GetRawShaderConfig() const {
+    [[nodiscard]] const RawShaderConfig& GetRawShaderConfig() const {
         return config;
     }
 
@@ -130,7 +130,7 @@ private:
     bool SaveDecompiledToCache(u64 unique_identifier, const std::string& code, bool sanitize_mul);
 
     /// Returns if the cache can be used
-    bool IsUsable() const;
+    [[nodiscard]] bool IsUsable() const;
 
     /// Opens current game's transferable file and write it's header if it doesn't exist.
     FileUtil::IOFile AppendTransferableFile();
@@ -142,7 +142,7 @@ private:
     void SavePrecompiledHeaderToVirtualPrecompiledCache();
 
     /// Create shader disk cache directories. Returns true on success.
-    bool EnsureDirectories() const;
+    [[nodiscard]] bool EnsureDirectories() const;
 
     /// Gets current game's transferable file path
     std::string GetTransferablePath();
@@ -151,15 +151,15 @@ private:
     std::string GetPrecompiledPath();
 
     /// Get user's transferable directory path
-    std::string GetTransferableDir() const;
+    [[nodiscard]] std::string GetTransferableDir() const;
 
     /// Get user's precompiled directory path
-    std::string GetPrecompiledDir() const;
+    [[nodiscard]] std::string GetPrecompiledDir() const;
 
-    std::string GetPrecompiledShaderDir() const;
+    [[nodiscard]] std::string GetPrecompiledShaderDir() const;
 
     /// Get user's shader directory path
-    std::string GetBaseDir() const;
+    [[nodiscard]] std::string GetBaseDir() const;
 
     /// Get current game's title id as u64
     u64 GetProgramID();

@@ -23,7 +23,7 @@ public:
     DspStatus Tick(DspConfiguration& config, const IntermediateMixSamples& read_samples,
                    IntermediateMixSamples& write_samples, const std::array<QuadFrame32, 3>& input);
 
-    StereoFrame16 GetOutput() const {
+    [[nodiscard]] StereoFrame16 GetOutput() const {
         return current_frame;
     }
 
@@ -54,7 +54,7 @@ private:
     /// into current_frame.
     void DownmixAndMixIntoCurrentFrame(float gain, const QuadFrame32& samples);
     /// INTERNAL: Generate DspStatus based on internal state.
-    DspStatus GetCurrentStatus() const;
+    [[nodiscard]] DspStatus GetCurrentStatus() const;
 
     template <class Archive>
     void serialize(Archive& ar, const unsigned int) {

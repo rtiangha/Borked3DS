@@ -23,7 +23,7 @@ public:
 
     /// The native rate of this sink. The sink expects to be fed samples that respect this.
     /// (Units: samples/sec)
-    virtual unsigned int GetNativeSampleRate() const = 0;
+    [[nodiscard]] virtual unsigned int GetNativeSampleRate() const = 0;
 
     /**
      * Set callback for samples
