@@ -37,11 +37,8 @@ Java_io_github_borked3ds_android_features_cheats_model_CheatEngine_saveCheatFile
         .SaveCheatFile(title_id);
 }
 
-JNIEXPORT jobjectArray
-
-    JNICALL
-    Java_io_github_borked3ds_android_features_cheats_model_CheatEngine_getCheats(JNIEnv* env,
-                                                                                 jobject) {
+JNIEXPORT jobjectArray JNICALL
+Java_io_github_borked3ds_android_features_cheats_model_CheatEngine_getCheats(JNIEnv* env, jobject) {
     auto cheats = GetEngine().GetCheats();
 
     const jobjectArray array =
