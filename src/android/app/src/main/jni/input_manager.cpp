@@ -29,7 +29,7 @@ class KeyButton final : public Input::ButtonDevice {
 public:
     explicit KeyButton(std::shared_ptr<ButtonList> button_list_) : button_list(button_list_) {}
 
-    ~KeyButton();
+    ~KeyButton() override;
 
     bool GetStatus() const override {
         return status.load();
@@ -97,7 +97,7 @@ public:
         : button_list(button_list_), threshold(threshold_),
           trigger_if_greater(trigger_if_greater_) {}
 
-    ~AnalogButton();
+    ~AnalogButton() override;
 
     bool GetStatus() const override {
         if (trigger_if_greater)
@@ -159,7 +159,7 @@ class Joystick final : public Input::AnalogDevice {
 public:
     explicit Joystick(std::shared_ptr<AnalogList> analog_list_) : analog_list(analog_list_) {}
 
-    ~Joystick();
+    ~Joystick() override;
 
     std::tuple<float, float> GetStatus() const override {
         return std::make_tuple(x_axis.load(), y_axis.load());

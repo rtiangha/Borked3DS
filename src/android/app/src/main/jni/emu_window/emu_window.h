@@ -16,7 +16,7 @@ class EmuWindow_Android : public Frontend::EmuWindow {
 public:
     explicit EmuWindow_Android(ANativeWindow* surface);
 
-    ~EmuWindow_Android();
+    ~EmuWindow_Android() override;
 
     /// Called by the onSurfaceChanges() method to change the surface
     bool OnSurfaceChanged(ANativeWindow* surface);

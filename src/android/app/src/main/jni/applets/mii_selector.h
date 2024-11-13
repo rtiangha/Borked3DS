@@ -12,7 +12,7 @@ namespace MiiSelector {
 
 class AndroidMiiSelector final : public Frontend::MiiSelector {
 public:
-    ~AndroidMiiSelector();
+    ~AndroidMiiSelector() override;
 
     void Setup(const Frontend::MiiSelectorConfig& config) override;
 };

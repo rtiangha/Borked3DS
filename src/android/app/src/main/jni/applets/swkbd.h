@@ -12,7 +12,7 @@ namespace SoftwareKeyboard {
 
 class AndroidKeyboard final : public Frontend::SoftwareKeyboard {
 public:
-    ~AndroidKeyboard();
+    ~AndroidKeyboard() override;
 
     void Execute(const Frontend::KeyboardConfig& config) override;
 

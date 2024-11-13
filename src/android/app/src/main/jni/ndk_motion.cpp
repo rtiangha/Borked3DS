@@ -126,7 +126,7 @@ public:
         }
     }
 
-    ~NDKMotion() {
+    ~NDKMotion() override {
         if (std::thread::id{} == poll_thread.get_id()) {
             Destruct();
         } else {

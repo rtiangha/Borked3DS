@@ -14,7 +14,7 @@ public:
     explicit GraphicsContext_Android(std::shared_ptr<Common::DynamicLibrary> driver_library_)
         : driver_library{driver_library_} {}
 
-    ~GraphicsContext_Android() = default;
+    ~GraphicsContext_Android() override = default;
 
     std::shared_ptr<Common::DynamicLibrary> GetDriverLibrary() override {
         return driver_library;

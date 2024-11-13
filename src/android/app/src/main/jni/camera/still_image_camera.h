@@ -21,7 +21,7 @@ class Interface final : public CameraInterface {
 public:
     Interface(SharedGlobalRef<jstring> path, const Service::CAM::Flip& flip);
 
-    ~Interface();
+    ~Interface() override;
 
     void StartCapture() override;
 
