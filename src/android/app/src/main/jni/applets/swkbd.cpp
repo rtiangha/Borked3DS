@@ -127,20 +127,20 @@ jobject ToJavaValidationError(Frontend::ValidationError error) {
             "Lio/github/borked3ds/android/applets/SoftwareKeyboard$ValidationError;"));
 }
 
-jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateFilters(JNIEnv* env,
-                                                                                  jobject clazz,
-                                                                                  jstring text) {
+extern "C" {
+JNIEXPORT jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateFilters(
+    JNIEnv* env, jobject clazz, jstring text) {
 
     const auto ret =
         Core::System::GetInstance().GetSoftwareKeyboard()->ValidateFilters(GetJString(env, text));
     return ToJavaValidationError(ret);
 }
 
-jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateInput(JNIEnv* env,
-                                                                                jobject clazz,
-                                                                                jstring text) {
+JNIEXPORT jobject Java_io_github_borked3ds_android_applets_SoftwareKeyboard_ValidateInput(
+    JNIEnv* env, jobject clazz, jstring text) {
 
     const auto ret =
         Core::System::GetInstance().GetSoftwareKeyboard()->ValidateInput(GetJString(env, text));
     return ToJavaValidationError(ret);
 }
+} // extern C
