@@ -65,7 +65,7 @@ android {
     defaultConfig {
         // TODO If this is ever modified, change application_id in strings.xml
         applicationId = "io.github.borked3ds.android"
-        minSdk = 28
+        minSdk = 30
         targetSdk = 35
         versionCode = autoVersion
         versionName = getGitVersion()
