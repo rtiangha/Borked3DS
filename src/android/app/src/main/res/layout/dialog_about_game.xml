@@ -148,6 +148,16 @@
                 android:contentDescription="@string/cheats"
                 android:text="@string/cheats" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/menu_button"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="48dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/menu"
+                app:icon="@drawable/ic_more_vert"
+                app:iconGravity="textStart" />
+
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

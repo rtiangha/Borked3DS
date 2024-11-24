@@ -686,6 +686,9 @@
     <!-- About Game Dialog -->
     <string name="play">Play</string>
     <string name="shortcut">Shortcut</string>
+    <string name="menu">More...</string>
+    <string name="uninstall_cia">Uninstall Game</string>
+    <string name="uninstalling_game">Uninstalling...</string>
 
     <!-- Cheats -->
     <string name="cheats">Cheats</string>
