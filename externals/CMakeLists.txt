@@ -74,17 +74,37 @@ endif()
 add_library(dds-ktx INTERFACE)
 target_include_directories(dds-ktx INTERFACE ./dds-ktx)
 
-# fmt and Xbyak need to be added before dynarmic
-# libfmt
-if(USE_SYSTEM_FMT)
-    add_library(fmt INTERFACE)
-    find_package(fmt REQUIRED)
-    target_link_libraries(fmt INTERFACE fmt::fmt)
-else()
-    option(FMT_INSTALL "" ON)
-    add_subdirectory(fmt EXCLUDE_FROM_ALL)
+# OpenAL Soft
+if (ENABLE_OPENAL)
+    if(USE_SYSTEM_OPENAL)
+        add_library(OpenAL INTERFACE)
+        find_package(OpenAL REQUIRED)
+        target_link_libraries(OpenAL INTERFACE OpenAL::OpenAL)
+    else()
+        set(ALSOFT_EMBED_HRTF_DATA OFF CACHE BOOL "")
+        set(ALSOFT_EXAMPLES OFF CACHE BOOL "")
+        set(ALSOFT_INSTALL OFF CACHE BOOL "")
+        set(ALSOFT_INSTALL_CONFIG OFF CACHE BOOL "")
+        set(ALSOFT_INSTALL_HRTF_DATA OFF CACHE BOOL "")
+        set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE BOOL "")
+        set(ALSOFT_UTILS OFF CACHE BOOL "")
+        set(LIBTYPE "STATIC" CACHE STRING "")
+        add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
+    endif()
 endif()
 
+# fmt and Xbyak need to be added before dynarmic
+# libfmt
+if (NOT TARGET fmt)
+    if(USE_SYSTEM_FMT)
+        add_library(fmt INTERFACE)
+        find_package(fmt REQUIRED)
+        target_link_libraries(fmt INTERFACE fmt::fmt)
+    else()
+        option(FMT_INSTALL "" ON)
+        add_subdirectory(fmt EXCLUDE_FROM_ALL)
+    endif()
+endif()
 
 # Xbyak
 if ("x86_64" IN_LIST ARCHITECTURE)
@@ -354,25 +374,6 @@ if(ANDROID)
     # libyuv
     add_subdirectory(libyuv)
     target_include_directories(yuv INTERFACE ./libyuv/include)
-endif()
-
-# OpenAL Soft
-if (ENABLE_OPENAL)
-    if(USE_SYSTEM_OPENAL)
-        add_library(OpenAL INTERFACE)
-        find_package(OpenAL REQUIRED)
-        target_link_libraries(OpenAL INTERFACE OpenAL::OpenAL)
-    else()
-        set(ALSOFT_EMBED_HRTF_DATA OFF CACHE BOOL "")
-        set(ALSOFT_EXAMPLES OFF CACHE BOOL "")
-        set(ALSOFT_INSTALL OFF CACHE BOOL "")
-        set(ALSOFT_INSTALL_CONFIG OFF CACHE BOOL "")
-        set(ALSOFT_INSTALL_HRTF_DATA OFF CACHE BOOL "")
-        set(ALSOFT_INSTALL_AMBDEC_PRESETS OFF CACHE BOOL "")
-        set(ALSOFT_UTILS OFF CACHE BOOL "")
-        set(LIBTYPE "STATIC" CACHE STRING "")
-        add_subdirectory(openal-soft EXCLUDE_FROM_ALL)
-    endif()
 endif()
 
 # OpenGL dependencies
