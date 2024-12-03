@@ -488,9 +488,9 @@
     <string name="log_critical">Critical</string>
     <string name="log_error">Error</string>
     <string name="log_warning">Warning</string>
-    <string name="log_info">Info (default)</string>
+    <string name="log_info">Info</string>
     <string name="log_debug">Debug</string>
-    <string name="log_trace">Trace</string>
+    <string name="log_trace">Trace (Default)</string>
     <string name="log_filter_critical">*:Critical</string>
     <string name="log_filter_error">*:Error</string>
     <string name="log_filter_warning">*:Warning</string>
