@@ -80,6 +80,7 @@ android {
                 arguments(
                     "-DENABLE_QT=0", // Don't use QT
                     "-DENABLE_SDL2=0", // Don't use SDL
+                    "-DENABLE_PROFILING=0", // Don't use Tracy Profiler
                     "-DCMAKE_CXX_FLAGS=-O2",
                     "-DCMAKE_C_FLAGS=-O2",
                     "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",    // Enable Thin LTO
