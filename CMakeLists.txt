@@ -281,7 +281,7 @@ if (ENABLE_QT)
        if (IOS)
            download_qt(6.7.3) # iOS build fails with QT 6.8 with undefined refs
        else()
-           download_qt(6.8.0)
+           download_qt(6.8.1)
        endif()
     endif()
 
