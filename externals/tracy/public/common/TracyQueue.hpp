@@ -42,6 +42,8 @@ enum class QueueType : uint8_t
     MemAllocCallstackNamed,
     MemFreeCallstack,
     MemFreeCallstackNamed,
+    MemDiscard,
+    MemDiscardCallstack,
     GpuZoneBegin,
     GpuZoneBeginCallstack,
     GpuZoneBeginAllocSrcLoc,
@@ -401,7 +403,9 @@ enum class GpuContextType : uint8_t
     Vulkan,
     OpenCL,
     Direct3D12,
-    Direct3D11
+    Direct3D11,
+    Metal,
+    Custom
 };
 
 enum GpuContextFlags : uint8_t
@@ -498,6 +502,13 @@ struct QueueMemFree
     int64_t time;
     uint32_t thread;
     uint64_t ptr;
+};
+
+struct QueueMemDiscard
+{
+    int64_t time;
+    uint32_t thread;
+    uint64_t name;
 };
 
 struct QueueCallstackFat
@@ -740,6 +751,7 @@ struct QueueItem
         QueueGpuContextNameFat gpuContextNameFat;
         QueueMemAlloc memAlloc;
         QueueMemFree memFree;
+        QueueMemDiscard memDiscard;
         QueueMemNamePayload memName;
         QueueThreadGroupHint threadGroupHint;
         QueueCallstackFat callstackFat;
@@ -811,6 +823,8 @@ static constexpr size_t QueueDataSize[] = {
     sizeof( QueueHeader ) + sizeof( QueueMemAlloc ),        // callstack, named
     sizeof( QueueHeader ) + sizeof( QueueMemFree ),         // callstack
     sizeof( QueueHeader ) + sizeof( QueueMemFree ),         // callstack, named
+    sizeof( QueueHeader ) + sizeof( QueueMemDiscard ),
+    sizeof( QueueHeader ) + sizeof( QueueMemDiscard ),      // callstack
     sizeof( QueueHeader ) + sizeof( QueueGpuZoneBegin ),
     sizeof( QueueHeader ) + sizeof( QueueGpuZoneBegin ),    // callstack
     sizeof( QueueHeader ) + sizeof( QueueGpuZoneBeginLean ),// allocated source location
