@@ -690,6 +690,7 @@
     <string name="uninstall_cia">Uninstall Game</string>
     <string name="uninstalling_game">Uninstalling...</string>
     <string name="game_context_open_save_dir">Open Save Data Folder</string>
+    <string name="game_context_open_app">Open Application Folder</string>
 
 
     <!-- Cheats -->

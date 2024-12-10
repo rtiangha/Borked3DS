@@ -289,16 +289,42 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 ?.findFile("00000001")
         }
 
+        fun getAppDir(): DocumentFile? {
+            var root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
+
+            val formattedPath = game.path
+                .substringBeforeLast("/")
+                .split("/")
+                .filter { it.isNotEmpty() }
+
+            for (component in formattedPath) {
+                root = root.findFile(component) ?: return null
+            }
+            return root
+        }
+
         fun showContextMenu(view: View, game: Game) {
             val popup = PopupMenu(view.context, view)
             val gameDir = game.path.substringBeforeLast("/")
             popup.menuInflater.inflate(R.menu.game_context_menu, popup.menu)
 
             popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
+            popup.menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
             popup.menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
 
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
+                    R.id.game_context_open_app -> {
+                        val appDir = getAppDir()
+                        if (appDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = appDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
                     R.id.game_context_uninstall -> {
                         IndeterminateProgressDialogFragment.newInstance(
                             activity,
