@@ -691,7 +691,8 @@
     <string name="uninstalling_game">Uninstalling...</string>
     <string name="game_context_open_save_dir">Open Save Data Folder</string>
     <string name="game_context_open_app">Open Application Folder</string>
-
+    <string name="game_context_open_mods">Open Mods Folder</string>
+    <string name="game_context_open_textures">Open Textures Folder</string>
 
     <!-- Cheats -->
     <string name="cheats">Cheats</string>

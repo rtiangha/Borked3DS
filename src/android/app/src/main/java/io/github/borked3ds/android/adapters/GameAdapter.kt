@@ -289,6 +289,22 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 ?.findFile("00000001")
         }
 
+        fun getModsDir(): DocumentFile? {
+            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
+            val loadDir = root.findFile("load") ?: root.createDirectory("load")
+            val modsDir = loadDir?.findFile("mods") ?: loadDir?.createDirectory("mods")
+            val titleId = String.format("%016X", game.titleId)
+            return modsDir?.findFile(titleId) ?: modsDir?.createDirectory(titleId)
+        }
+
+        fun getTexturesDir(): DocumentFile? {
+            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
+            val loadDir = root.findFile("load") ?: root.createDirectory("load")
+            val texturesDir = loadDir?.findFile("textures") ?: loadDir?.createDirectory("textures")
+            val titleId = String.format("%016X", game.titleId)
+            return texturesDir?.findFile(titleId) ?: texturesDir?.createDirectory(titleId)
+        }
+
         fun getAppDir(): DocumentFile? {
             var root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
 
@@ -343,6 +359,28 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         if (saveDir != null) {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 data = saveDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
+                    R.id.game_context_open_textures -> {
+                        val texturesDir = getTexturesDir()
+                        if (texturesDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = texturesDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
+                    R.id.game_context_open_mods -> {
+                        val modsDir = getModsDir()
+                        if (modsDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = modsDir.uri
                                 flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                             }
                             context.startActivity(intent)
