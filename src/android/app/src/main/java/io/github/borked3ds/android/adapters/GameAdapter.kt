@@ -6,6 +6,7 @@
 package io.github.borked3ds.android.adapters
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.BitmapDrawable
@@ -13,6 +14,7 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.SystemClock
 import android.text.TextUtils
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,7 +31,6 @@ import androidx.recyclerview.widget.AsyncDifferConfig
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-<<<<<<< HEAD:src/android/app/src/main/java/io/github/borked3ds/android/adapters/GameAdapter.kt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
@@ -44,6 +45,7 @@ import io.github.borked3ds.android.features.cheats.ui.CheatsFragmentDirections
 import io.github.borked3ds.android.fragments.IndeterminateProgressDialogFragment
 import io.github.borked3ds.android.model.Game
 import io.github.borked3ds.android.utils.GameIconUtils
+import io.github.borked3ds.android.utils.DirectoryInitialization.userDirectory
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -273,12 +275,27 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             bottomSheetDialog.dismiss()
         }
 
+        fun getSaveDir(): DocumentFile? {
+            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
+
+            return root.findFile("sdmc")
+                ?.findFile("Nintendo 3DS")
+                ?.findFile("00000000000000000000000000000000")
+                ?.findFile("00000000000000000000000000000000")
+                ?.findFile("title")
+                ?.findFile(String.format("%016x", game.titleId).lowercase().substring(0, 8))
+                ?.findFile(String.format("%016x", game.titleId).lowercase().substring(8))
+                ?.findFile("data")
+                ?.findFile("00000001")
+        }
+
         fun showContextMenu(view: View, game: Game) {
             val popup = PopupMenu(view.context, view)
             val gameDir = game.path.substringBeforeLast("/")
             popup.menuInflater.inflate(R.menu.game_context_menu, popup.menu)
 
             popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
+            popup.menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
 
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -295,9 +312,21 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
                         true
                     }
+                    R.id.game_context_open_save_dir -> {
+                        val saveDir = getSaveDir()
+                        if (saveDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = saveDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
                     else -> false
                 }
             }
+
             popup.show()
         }
 

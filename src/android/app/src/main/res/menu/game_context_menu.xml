@@ -3,4 +3,7 @@
     <item
         android:id="@+id/game_context_uninstall"
         android:title="@string/uninstall_cia" />
+     <item
+        android:id="@+id/game_context_open_save_dir"
+        android:title="@string/game_context_open_save_dir" />
 </menu>
