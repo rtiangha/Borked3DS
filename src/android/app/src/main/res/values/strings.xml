@@ -695,6 +695,7 @@
     <string name="game_context_open_textures">Open Textures Folder</string>
     <string name="game_context_open_dlc">Open DLc Folder</string>
     <string name="game_context_open_updates">Open Updates Folder</string>
+    <string name="game_context_open_extra">Open Extra Folder</string>
     <string name="game_context_uninstall_dlc">Uninstall DLC</string>
     <string name="game_context_uninstall_updates">Uninstall Updates</string>
 

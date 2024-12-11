@@ -38,6 +38,7 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.borked3ds.android.Borked3DSApplication
 import io.github.borked3ds.android.HomeNavigationDirections
+import io.github.borked3ds.android.NativeLibrary
 import io.github.borked3ds.android.R
 import io.github.borked3ds.android.adapters.GameAdapter.GameViewHolder
 import io.github.borked3ds.android.databinding.CardGameBinding
@@ -333,6 +334,17 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             ?.findFile("content")
         }
 
+        fun getExtraDir(): DocumentFile? {
+            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
+            val extDataDir = root.findFile("sdmc")
+                ?.findFile("Nintendo 3DS")
+                ?.findFile("00000000000000000000000000000000")
+                ?.findFile("00000000000000000000000000000000")
+                ?.findFile("extdata")
+                ?.findFile("00000000")
+            val titleId = String.format("%016X", game.titleId).substring(8, 14).padStart(8, '0')
+            return extDataDir?.findFile(titleId.uppercase()) ?: extDataDir?.findFile(titleId.lowercase())
+        }
         fun showContextMenu(view: View, game: Game) {
             val popup = PopupMenu(view.context, view)
             val gameDir = game.path.substringBeforeLast("/")
@@ -345,6 +357,11 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             popup.menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
             popup.menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
             popup.menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
+            popup.menu.findItem(R.id.game_context_open_textures).isEnabled = getTexturesDir() != null
+            val extDataDir = getExtraDir()
+            if (extDataDir == null) {
+                popup.menu.removeItem(R.id.game_context_open_extra)
+            }
 
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -447,6 +464,17 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         if (modsDir != null) {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 data = modsDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
+                    R.id.game_context_open_extra -> {
+                        val extraDir = getExtraDir()
+                        if (extraDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = extraDir.uri
                                 flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                             }
                             context.startActivity(intent)
