@@ -348,155 +348,66 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
 
         val gameDir = game.path.substringBeforeLast("/")
         fun showOpenContextMenu(view: View, game: Game) {
-            val popup = PopupMenu(view.context, view)
-            popup.menuInflater.inflate(R.menu.game_context_menu_open, popup.menu)
-
-            popup.menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
-            popup.menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
-            popup.menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
-            popup.menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
-            popup.menu.findItem(R.id.game_context_open_textures).isEnabled = getTexturesDir() != null
-            val extDataDir = getExtraDir()
-            if (extDataDir == null) {
-                popup.menu.removeItem(R.id.game_context_open_extra)
+            val popup = PopupMenu(view.context, view).apply {
+            menuInflater.inflate(R.menu.game_context_menu_open, menu)
+            menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
+            menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
+            menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
+            menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
+            menu.findItem(R.id.game_context_open_textures).isEnabled = getTexturesDir() != null
+            if (getExtraDir() == null) {
+                menu.removeItem(R.id.game_context_open_extra)
+            }
             }
 
             popup.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.game_context_open_app -> {
-                        val appDir = getAppDir()
-                        if (appDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = appDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
+            val intent = Intent(Intent.ACTION_VIEW)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .setType("*/*")
 
-                    R.id.game_context_open_save_dir -> {
-                        val saveDir = getSaveDir()
-                        if (saveDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = saveDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
-                    R.id.game_context_open_dlc -> {
-                        val dlcDir = getDLCAndUpdatesDir(isDLC = true)
-                        if (dlcDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = dlcDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
-                    R.id.game_context_open_updates -> {
-                        val dlcDir = getDLCAndUpdatesDir(isDLC = false)
-                        if (dlcDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = dlcDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
-                    R.id.game_context_open_textures -> {
-                        val texturesDir = getTexturesDir()
-                        if (texturesDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = texturesDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
-                    R.id.game_context_open_mods -> {
-                        val modsDir = getModsDir()
-                        if (modsDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = modsDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
-                    R.id.game_context_open_extra -> {
-                        val extraDir = getExtraDir()
-                        if (extraDir != null) {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = extraDir.uri
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            context.startActivity(intent)
-                        }
-                        true
-                    }
-                    else -> false
-                }
+            when (menuItem.itemId) {
+                R.id.game_context_open_app -> getAppDir()?.let { intent.data = it.uri }
+                R.id.game_context_open_save_dir -> getSaveDir()?.let { intent.data = it.uri }
+                R.id.game_context_open_dlc -> getDLCAndUpdatesDir(isDLC = true)?.let { intent.data = it.uri }
+                R.id.game_context_open_updates -> getDLCAndUpdatesDir(isDLC = false)?.let { intent.data = it.uri }
+                R.id.game_context_open_textures -> getTexturesDir()?.let { intent.data = it.uri }
+                R.id.game_context_open_mods -> getModsDir()?.let { intent.data = it.uri }
+                R.id.game_context_open_extra -> getExtraDir()?.let { intent.data = it.uri }
+                else -> return@setOnMenuItemClickListener false
+            }
+            view.context.startActivity(intent)
+            true
             }
 
             popup.show()
         }
 
         fun showUninstallContextMenu(view: View, game: Game) {
-            val popup = PopupMenu(view.context, view)
-            popup.menuInflater.inflate(R.menu.game_context_menu_uninstall, popup.menu)
+            val popup = PopupMenu(view.context, view).apply {
+                menuInflater.inflate(R.menu.game_context_menu_uninstall, menu)
+                menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
+                menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
+                menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
+            }
 
-            popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
-            popup.menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
-            popup.menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
             popup.setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.game_context_uninstall -> {
-                        IndeterminateProgressDialogFragment.newInstance(
-                            activity,
-                            R.string.uninstalling,
-                            false
-                        ) {
-                            LimeApplication.documentsTree.deleteDocument(gameDir)
-                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                            bottomSheetDialog.dismiss()
-                            Any()
-                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                        true
+                val uninstallAction: () -> Unit = {
+                    when (menuItem.itemId) {
+                        R.id.game_context_uninstall -> LimeApplication.documentsTree.deleteDocument(gameDir)
+                        R.id.game_context_uninstall_dlc -> FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = true)?.uri.toString())
+                        R.id.game_context_uninstall_updates -> FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = false)?.uri.toString())
                     }
-                    R.id.game_context_uninstall_dlc -> {
-                        IndeterminateProgressDialogFragment.newInstance(
-                            activity,
-                            R.string.uninstalling,
-                            false
-                        ) {
-                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = true)?.uri.toString())
-                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                            bottomSheetDialog.dismiss()
-                            Any()
-                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                        true
-                    }
-                    R.id.game_context_uninstall_updates -> {
-                        IndeterminateProgressDialogFragment.newInstance(
-                            activity,
-                            R.string.uninstalling,
-                            false
-                        ) {
-                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = false)?.uri.toString())
-                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                            bottomSheetDialog.dismiss()
-                            Any()
-                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                        true
-                    }
-                    else -> false
+                    ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                    bottomSheetDialog.dismiss()
+                }
+
+                if (menuItem.itemId in listOf(R.id.game_context_uninstall, R.id.game_context_uninstall_dlc, R.id.game_context_uninstall_updates)) {
+                    IndeterminateProgressDialogFragment.newInstance(activity, R.string.uninstalling, false, uninstallAction)
+                        .show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                    true
+                } else {
+                    false
                 }
             }
 
