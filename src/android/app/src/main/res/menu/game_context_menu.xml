@@ -15,5 +15,11 @@
     <item
         android:id="@+id/game_context_open_mods"
         android:title="@string/game_context_open_mods" />
+    <item
+        android:id="@+id/game_context_open_dlc"
+        android:title="@string/game_context_open_dlc" />
+    <item
+        android:id="@+id/game_context_open_updates"
+        android:title="@string/game_context_open_updates" />
 
 </menu>

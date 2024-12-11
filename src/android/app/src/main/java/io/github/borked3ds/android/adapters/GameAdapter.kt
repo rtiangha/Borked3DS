@@ -319,6 +319,19 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             return root
         }
 
+        fun getDLCDir(isDLC: Boolean = false): DocumentFile? {
+            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
+            val sysDir = if (isDLC) "0004008c" else "0004000e"
+            return root.findFile("sdmc")
+            ?.findFile("Nintendo 3DS")
+            ?.findFile("00000000000000000000000000000000")
+            ?.findFile("00000000000000000000000000000000")
+            ?.findFile("title")
+            ?.findFile(sysDir)
+            ?.findFile(String.format("%016x", game.titleId).lowercase().substring(8))
+            ?.findFile("content")
+        }
+
         fun showContextMenu(view: View, game: Game) {
             val popup = PopupMenu(view.context, view)
             val gameDir = game.path.substringBeforeLast("/")
@@ -327,6 +340,8 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
             popup.menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
             popup.menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
+            popup.menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCDir(isDLC = true) != null
+            popup.menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCDir(isDLC = false) != null
 
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -359,6 +374,28 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         if (saveDir != null) {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 data = saveDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
+                    R.id.game_context_open_dlc -> {
+                        val dlcDir = getDLCDir(isDLC = true)
+                        if (dlcDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = dlcDir.uri
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        }
+                        true
+                    }
+                    R.id.game_context_open_updates -> {
+                        val dlcDir = getDLCDir(isDLC = false)
+                        if (dlcDir != null) {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = dlcDir.uri
                                 flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                             }
                             context.startActivity(intent)
