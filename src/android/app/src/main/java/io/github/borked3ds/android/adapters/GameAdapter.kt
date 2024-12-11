@@ -43,6 +43,7 @@ import io.github.borked3ds.android.adapters.GameAdapter.GameViewHolder
 import io.github.borked3ds.android.databinding.CardGameBinding
 import io.github.borked3ds.android.features.cheats.ui.CheatsFragmentDirections
 import io.github.borked3ds.android.fragments.IndeterminateProgressDialogFragment
+import io.github.borked3ds.android.model.FileUtil
 import io.github.borked3ds.android.model.Game
 import io.github.borked3ds.android.utils.GameIconUtils
 import io.github.borked3ds.android.utils.DirectoryInitialization.userDirectory
@@ -319,7 +320,7 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             return root
         }
 
-        fun getDLCDir(isDLC: Boolean = false): DocumentFile? {
+        fun getDLCAndUpdatesDir(isDLC: Boolean = false): DocumentFile? {
             val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
             val sysDir = if (isDLC) "0004008c" else "0004000e"
             return root.findFile("sdmc")
@@ -340,8 +341,10 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
             popup.menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
             popup.menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
-            popup.menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCDir(isDLC = true) != null
-            popup.menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCDir(isDLC = false) != null
+            popup.menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
+            popup.menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
+            popup.menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
+            popup.menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
 
             popup.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -359,10 +362,36 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                     R.id.game_context_uninstall -> {
                         IndeterminateProgressDialogFragment.newInstance(
                             activity,
-                            R.string.uninstalling_game,
+                            R.string.uninstalling,
                             false
                         ) {
                             LimeApplication.documentsTree.deleteDocument(gameDir)
+                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                            bottomSheetDialog.dismiss()
+                            Any()
+                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                        true
+                    }
+                    R.id.game_context_uninstall_dlc -> {
+                        IndeterminateProgressDialogFragment.newInstance(
+                            activity,
+                            R.string.uninstalling,
+                            false
+                        ) {
+                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = true)?.uri.toString())
+                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                            bottomSheetDialog.dismiss()
+                            Any()
+                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                        true
+                    }
+                    R.id.game_context_uninstall_updates -> {
+                        IndeterminateProgressDialogFragment.newInstance(
+                            activity,
+                            R.string.uninstalling,
+                            false
+                        ) {
+                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = false)?.uri.toString())
                             ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
                             bottomSheetDialog.dismiss()
                             Any()
@@ -381,7 +410,7 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         true
                     }
                     R.id.game_context_open_dlc -> {
-                        val dlcDir = getDLCDir(isDLC = true)
+                        val dlcDir = getDLCAndUpdatesDir(isDLC = true)
                         if (dlcDir != null) {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 data = dlcDir.uri
@@ -392,7 +421,7 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         true
                     }
                     R.id.game_context_open_updates -> {
-                        val dlcDir = getDLCDir(isDLC = false)
+                        val dlcDir = getDLCAndUpdatesDir(isDLC = false)
                         if (dlcDir != null) {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 data = dlcDir.uri

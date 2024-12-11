@@ -21,5 +21,12 @@
     <item
         android:id="@+id/game_context_open_updates"
         android:title="@string/game_context_open_updates" />
+    <item
+        android:id="@+id/game_context_uninstall_dlc"
+        android:title="@string/game_context_uninstall_dlc" />
+    <item
+        android:id="@+id/game_context_uninstall_updates"
+        android:title="@string/game_context_uninstall_updates" />
+
 
 </menu>
