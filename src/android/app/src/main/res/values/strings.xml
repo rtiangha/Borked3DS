@@ -693,7 +693,7 @@
     <string name="game_context_open_app">Open Application Folder</string>
     <string name="game_context_open_mods">Open Mods Folder</string>
     <string name="game_context_open_textures">Open Textures Folder</string>
-    <string name="game_context_open_dlc">Open DLc Folder</string>
+    <string name="game_context_open_dlc">Open DLC Folder</string>
     <string name="game_context_open_updates">Open Updates Folder</string>
     <string name="game_context_open_extra">Open Extra Folder</string>
     <string name="game_context_uninstall_dlc">Uninstall DLC</string>
