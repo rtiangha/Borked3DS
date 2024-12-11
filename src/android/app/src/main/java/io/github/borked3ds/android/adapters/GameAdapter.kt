@@ -291,6 +291,7 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 ?.findFile("00000001")
         }
 
+        // Better keep these separate
         fun getModsDir(): DocumentFile? {
             val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
             val loadDir = root.findFile("load") ?: root.createDirectory("load")
@@ -298,7 +299,6 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             val titleId = String.format("%016X", game.titleId)
             return modsDir?.findFile(titleId) ?: modsDir?.createDirectory(titleId)
         }
-
         fun getTexturesDir(): DocumentFile? {
             val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
             val loadDir = root.findFile("load") ?: root.createDirectory("load")
@@ -345,18 +345,16 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             val titleId = String.format("%016X", game.titleId).substring(8, 14).padStart(8, '0')
             return extDataDir?.findFile(titleId.uppercase()) ?: extDataDir?.findFile(titleId.lowercase())
         }
-        fun showContextMenu(view: View, game: Game) {
-            val popup = PopupMenu(view.context, view)
-            val gameDir = game.path.substringBeforeLast("/")
-            popup.menuInflater.inflate(R.menu.game_context_menu, popup.menu)
 
-            popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
+        val gameDir = game.path.substringBeforeLast("/")
+        fun showOpenContextMenu(view: View, game: Game) {
+            val popup = PopupMenu(view.context, view)
+            popup.menuInflater.inflate(R.menu.game_context_menu_open, popup.menu)
+
             popup.menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
             popup.menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
             popup.menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
             popup.menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
-            popup.menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
-            popup.menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
             popup.menu.findItem(R.id.game_context_open_textures).isEnabled = getTexturesDir() != null
             val extDataDir = getExtraDir()
             if (extDataDir == null) {
@@ -376,45 +374,7 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                         }
                         true
                     }
-                    R.id.game_context_uninstall -> {
-                        IndeterminateProgressDialogFragment.newInstance(
-                            activity,
-                            R.string.uninstalling,
-                            false
-                        ) {
-                            LimeApplication.documentsTree.deleteDocument(gameDir)
-                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                            bottomSheetDialog.dismiss()
-                            Any()
-                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                        true
-                    }
-                    R.id.game_context_uninstall_dlc -> {
-                        IndeterminateProgressDialogFragment.newInstance(
-                            activity,
-                            R.string.uninstalling,
-                            false
-                        ) {
-                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = true)?.uri.toString())
-                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                            bottomSheetDialog.dismiss()
-                            Any()
-                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                        true
-                    }
-                    R.id.game_context_uninstall_updates -> {
-                        IndeterminateProgressDialogFragment.newInstance(
-                            activity,
-                            R.string.uninstalling,
-                            false
-                        ) {
-                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = false)?.uri.toString())
-                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                            bottomSheetDialog.dismiss()
-                            Any()
-                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                        true
-                    }
+
                     R.id.game_context_open_save_dir -> {
                         val saveDir = getSaveDir()
                         if (saveDir != null) {
@@ -488,8 +448,67 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             popup.show()
         }
 
-        bottomSheetView.findViewById<MaterialButton>(R.id.menu_button).setOnClickListener {
-            showContextMenu(it, game)
+        fun showUninstallContextMenu(view: View, game: Game) {
+            val popup = PopupMenu(view.context, view)
+            popup.menuInflater.inflate(R.menu.game_context_menu_uninstall, popup.menu)
+
+            popup.menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
+            popup.menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
+            popup.menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
+            popup.setOnMenuItemClickListener { menuItem ->
+                when (menuItem.itemId) {
+                    R.id.game_context_uninstall -> {
+                        IndeterminateProgressDialogFragment.newInstance(
+                            activity,
+                            R.string.uninstalling,
+                            false
+                        ) {
+                            LimeApplication.documentsTree.deleteDocument(gameDir)
+                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                            bottomSheetDialog.dismiss()
+                            Any()
+                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                        true
+                    }
+                    R.id.game_context_uninstall_dlc -> {
+                        IndeterminateProgressDialogFragment.newInstance(
+                            activity,
+                            R.string.uninstalling,
+                            false
+                        ) {
+                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = true)?.uri.toString())
+                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                            bottomSheetDialog.dismiss()
+                            Any()
+                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                        true
+                    }
+                    R.id.game_context_uninstall_updates -> {
+                        IndeterminateProgressDialogFragment.newInstance(
+                            activity,
+                            R.string.uninstalling,
+                            false
+                        ) {
+                            FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = false)?.uri.toString())
+                            ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                            bottomSheetDialog.dismiss()
+                            Any()
+                        }.show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                        true
+                    }
+                    else -> false
+                }
+            }
+
+            popup.show()
+        }
+
+        bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_open).setOnClickListener {
+            showOpenContextMenu(it, game)
+        }
+
+        bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_uninstall).setOnClickListener {
+            showUninstallContextMenu(it, game)
         }
 
         val bottomSheetBehavior = bottomSheetDialog.getBehavior()
