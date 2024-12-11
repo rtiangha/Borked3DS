@@ -5,6 +5,7 @@
 
 package io.github.borked3ds.android.adapters
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ShortcutInfo
@@ -222,12 +223,110 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
         }
     }
 
-    private fun showAboutGameDialog(
-        context: Context,
-        game: Game,
-        holder: GameViewHolder,
-        view: View
-    ) {
+    private fun getGameDirectories(game: Game) = object {
+        val gameDir = game.path.substringBeforeLast("/")
+        val saveDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/${String.format("%016x", game.titleId).lowercase().substring(0, 8)}/${String.format("%016x", game.titleId).lowercase().substring(8)}/data/00000001"
+        val modsDir = "load/mods/${String.format("%016X", game.titleId)}"
+        val texturesDir = "load/textures/${String.format("%016X", game.titleId)}"
+        val appDir = game.path.substringBeforeLast("/").split("/").filter { it.isNotEmpty() }.joinToString("/")
+        val dlcDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/0004008c/${String.format("%016x", game.titleId).lowercase().substring(8)}/content"
+        val updatesDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/0004000e/${String.format("%016x", game.titleId).lowercase().substring(8)}/content"
+        val extraDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/extdata/00000000/${String.format("%016X", game.titleId).substring(8, 14).padStart(8, '0')}"
+    }
+
+    private fun showOpenContextMenu(view: View, game: Game) {
+        val dirs = getGameDirectories(game)
+
+        val popup = PopupMenu(view.context, view).apply {
+            menuInflater.inflate(R.menu.game_context_menu_open, menu)
+            listOf(
+                R.id.game_context_open_app to dirs.appDir,
+                R.id.game_context_open_save_dir to dirs.saveDir,
+                R.id.game_context_open_dlc to dirs.dlcDir,
+                R.id.game_context_open_updates to dirs.updatesDir
+            ).forEach { (id, dir) ->
+                menu.findItem(id)?.isEnabled =
+                    LimeApplication.documentsTree.folderUriHelper(dir)?.let {
+                        DocumentFile.fromTreeUri(view.context, it)?.exists()
+                    } ?: false
+            }
+            menu.findItem(R.id.game_context_open_extra)?.let { item ->
+                if (LimeApplication.documentsTree.folderUriHelper(dirs.extraDir)?.let {
+                        DocumentFile.fromTreeUri(view.context, it)?.exists()
+                    } != true) {
+                    menu.removeItem(item.itemId)
+                }
+            }
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            val intent = Intent(Intent.ACTION_VIEW)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .setType("*/*")
+
+            val uri = when (menuItem.itemId) {
+                R.id.game_context_open_app -> LimeApplication.documentsTree.folderUriHelper(dirs.appDir)
+                R.id.game_context_open_save_dir -> LimeApplication.documentsTree.folderUriHelper(dirs.saveDir)
+                R.id.game_context_open_dlc -> LimeApplication.documentsTree.folderUriHelper(dirs.dlcDir)
+                R.id.game_context_open_textures -> LimeApplication.documentsTree.folderUriHelper(dirs.texturesDir, true)
+                R.id.game_context_open_mods -> LimeApplication.documentsTree.folderUriHelper(dirs.modsDir, true)
+                R.id.game_context_open_extra -> LimeApplication.documentsTree.folderUriHelper(dirs.extraDir)
+                else -> null
+            }
+
+            uri?.let {
+                intent.data = it
+                view.context.startActivity(intent)
+                true
+            } ?: false
+        }
+
+        popup.show()
+    }
+
+    private fun showUninstallContextMenu(view: View, game: Game, bottomSheetDialog: BottomSheetDialog) {
+        val dirs = getGameDirectories(game)
+        val popup = PopupMenu(view.context, view).apply {
+            menuInflater.inflate(R.menu.game_context_menu_uninstall, menu)
+            listOf(
+                R.id.game_context_uninstall to dirs.gameDir,
+                R.id.game_context_uninstall_dlc to dirs.dlcDir,
+                R.id.game_context_uninstall_updates to dirs.updatesDir
+            ).forEach { (id, dir) ->
+                menu.findItem(id)?.isEnabled =
+                    LimeApplication.documentsTree.folderUriHelper(dir)?.let {
+                        DocumentFile.fromTreeUri(view.context, it)?.exists()
+                    } ?: false
+            }
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            val uninstallAction: () -> Unit = {
+                when (menuItem.itemId) {
+                    R.id.game_context_uninstall -> LimeApplication.documentsTree.deleteDocument(dirs.gameDir)
+                    R.id.game_context_uninstall_dlc -> FileUtil.deleteDocument(LimeApplication.documentsTree.folderUriHelper(dirs.dlcDir)
+                        .toString())
+                    R.id.game_context_uninstall_updates -> FileUtil.deleteDocument(LimeApplication.documentsTree.folderUriHelper(dirs.updatesDir)
+                        .toString())
+                }
+                ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                bottomSheetDialog.dismiss()
+            }
+
+            if (menuItem.itemId in listOf(R.id.game_context_uninstall, R.id.game_context_uninstall_dlc, R.id.game_context_uninstall_updates)) {
+                IndeterminateProgressDialogFragment.newInstance(activity, R.string.uninstalling, false, uninstallAction)
+                    .show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                true
+            } else {
+                false
+            }
+        }
+
+        popup.show()
+    }
+
+    private fun showAboutGameDialog(context: Context, game: Game, holder: GameViewHolder, view: View) {
         val bottomSheetView = inflater.inflate(R.layout.dialog_about_game, null)
 
         val game_id = String.format("%016X", game.titleId)
@@ -277,149 +376,12 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             bottomSheetDialog.dismiss()
         }
 
-        fun getSaveDir(): DocumentFile? {
-            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
-
-            return root.findFile("sdmc")
-                ?.findFile("Nintendo 3DS")
-                ?.findFile("00000000000000000000000000000000")
-                ?.findFile("00000000000000000000000000000000")
-                ?.findFile("title")
-                ?.findFile(String.format("%016x", game.titleId).lowercase().substring(0, 8))
-                ?.findFile(String.format("%016x", game.titleId).lowercase().substring(8))
-                ?.findFile("data")
-                ?.findFile("00000001")
-        }
-
-        // Better keep these separate
-        fun getModsDir(): DocumentFile? {
-            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
-            val loadDir = root.findFile("load") ?: root.createDirectory("load")
-            val modsDir = loadDir?.findFile("mods") ?: loadDir?.createDirectory("mods")
-            val titleId = String.format("%016X", game.titleId)
-            return modsDir?.findFile(titleId) ?: modsDir?.createDirectory(titleId)
-        }
-        fun getTexturesDir(): DocumentFile? {
-            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
-            val loadDir = root.findFile("load") ?: root.createDirectory("load")
-            val texturesDir = loadDir?.findFile("textures") ?: loadDir?.createDirectory("textures")
-            val titleId = String.format("%016X", game.titleId)
-            return texturesDir?.findFile(titleId) ?: texturesDir?.createDirectory(titleId)
-        }
-
-        fun getAppDir(): DocumentFile? {
-            var root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
-
-            val formattedPath = game.path
-                .substringBeforeLast("/")
-                .split("/")
-                .filter { it.isNotEmpty() }
-
-            for (component in formattedPath) {
-                root = root.findFile(component) ?: return null
-            }
-            return root
-        }
-
-        fun getDLCAndUpdatesDir(isDLC: Boolean = false): DocumentFile? {
-            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
-            val sysDir = if (isDLC) "0004008c" else "0004000e"
-            return root.findFile("sdmc")
-            ?.findFile("Nintendo 3DS")
-            ?.findFile("00000000000000000000000000000000")
-            ?.findFile("00000000000000000000000000000000")
-            ?.findFile("title")
-            ?.findFile(sysDir)
-            ?.findFile(String.format("%016x", game.titleId).lowercase().substring(8))
-            ?.findFile("content")
-        }
-
-        fun getExtraDir(): DocumentFile? {
-            val root = DocumentFile.fromTreeUri(LimeApplication.appContext, Uri.parse(userDirectory)) ?: return null
-            val extDataDir = root.findFile("sdmc")
-                ?.findFile("Nintendo 3DS")
-                ?.findFile("00000000000000000000000000000000")
-                ?.findFile("00000000000000000000000000000000")
-                ?.findFile("extdata")
-                ?.findFile("00000000")
-            val titleId = String.format("%016X", game.titleId).substring(8, 14).padStart(8, '0')
-            return extDataDir?.findFile(titleId.uppercase()) ?: extDataDir?.findFile(titleId.lowercase())
-        }
-
-        val gameDir = game.path.substringBeforeLast("/")
-        fun showOpenContextMenu(view: View, game: Game) {
-            val popup = PopupMenu(view.context, view).apply {
-            menuInflater.inflate(R.menu.game_context_menu_open, menu)
-            menu.findItem(R.id.game_context_open_app).isEnabled = game.isInstalled
-            menu.findItem(R.id.game_context_open_save_dir).isEnabled = getSaveDir() != null
-            menu.findItem(R.id.game_context_open_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
-            menu.findItem(R.id.game_context_open_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
-            menu.findItem(R.id.game_context_open_textures).isEnabled = getTexturesDir() != null
-            if (getExtraDir() == null) {
-                menu.removeItem(R.id.game_context_open_extra)
-            }
-            }
-
-            popup.setOnMenuItemClickListener { menuItem ->
-            val intent = Intent(Intent.ACTION_VIEW)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .setType("*/*")
-
-            when (menuItem.itemId) {
-                R.id.game_context_open_app -> getAppDir()?.let { intent.data = it.uri }
-                R.id.game_context_open_save_dir -> getSaveDir()?.let { intent.data = it.uri }
-                R.id.game_context_open_dlc -> getDLCAndUpdatesDir(isDLC = true)?.let { intent.data = it.uri }
-                R.id.game_context_open_updates -> getDLCAndUpdatesDir(isDLC = false)?.let { intent.data = it.uri }
-                R.id.game_context_open_textures -> getTexturesDir()?.let { intent.data = it.uri }
-                R.id.game_context_open_mods -> getModsDir()?.let { intent.data = it.uri }
-                R.id.game_context_open_extra -> getExtraDir()?.let { intent.data = it.uri }
-                else -> return@setOnMenuItemClickListener false
-            }
-            view.context.startActivity(intent)
-            true
-            }
-
-            popup.show()
-        }
-
-        fun showUninstallContextMenu(view: View, game: Game) {
-            val popup = PopupMenu(view.context, view).apply {
-                menuInflater.inflate(R.menu.game_context_menu_uninstall, menu)
-                menu.findItem(R.id.game_context_uninstall).isEnabled = game.isInstalled
-                menu.findItem(R.id.game_context_uninstall_dlc).isEnabled = getDLCAndUpdatesDir(isDLC = true) != null
-                menu.findItem(R.id.game_context_uninstall_updates).isEnabled = getDLCAndUpdatesDir(isDLC = false) != null
-            }
-
-            popup.setOnMenuItemClickListener { menuItem ->
-                val uninstallAction: () -> Unit = {
-                    when (menuItem.itemId) {
-                        R.id.game_context_uninstall -> LimeApplication.documentsTree.deleteDocument(gameDir)
-                        R.id.game_context_uninstall_dlc -> FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = true)?.uri.toString())
-                        R.id.game_context_uninstall_updates -> FileUtil.deleteDocument(getDLCAndUpdatesDir(isDLC = false)?.uri.toString())
-                    }
-                    ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
-                    bottomSheetDialog.dismiss()
-                }
-
-                if (menuItem.itemId in listOf(R.id.game_context_uninstall, R.id.game_context_uninstall_dlc, R.id.game_context_uninstall_updates)) {
-                    IndeterminateProgressDialogFragment.newInstance(activity, R.string.uninstalling, false, uninstallAction)
-                        .show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
-                    true
-                } else {
-                    false
-                }
-            }
-
-            popup.show()
-        }
-
         bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_open).setOnClickListener {
             showOpenContextMenu(it, game)
         }
 
         bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_uninstall).setOnClickListener {
-            showUninstallContextMenu(it, game)
+            showUninstallContextMenu(it, game, bottomSheetDialog)
         }
 
         val bottomSheetBehavior = bottomSheetDialog.getBehavior()
