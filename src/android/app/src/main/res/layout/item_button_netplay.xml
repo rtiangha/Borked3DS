@@ -20,7 +20,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/multiplayer_more_options"
         android:padding="12dp"
-        android:src="@drawable/ic_more_vert" />
+        android:src="@drawable/ic_open" />
 
     <Button
         android:id="@+id/item_button_netplay"
