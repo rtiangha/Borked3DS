@@ -87,9 +87,9 @@ class EmulationActivity : AppCompatActivity() {
         NativeLibrary.enableAdrenoTurboMode(BooleanSetting.ADRENO_GPU_BOOST.boolean)
 
         binding = ActivityEmulationBinding.inflate(layoutInflater)
-        screenAdjustmentUtil = ScreenAdjustmentUtil(windowManager, settingsViewModel.settings)
+        screenAdjustmentUtil = ScreenAdjustmentUtil(this, windowManager, settingsViewModel.settings)
         hotkeyFunctions = HotkeyFunctions(settingsViewModel.settings)
-        hotkeyUtility = HotkeyUtility(screenAdjustmentUtil, hotkeyFunctions)
+        hotkeyUtility = HotkeyUtility(this, screenAdjustmentUtil, hotkeyFunctions)
         setContentView(binding.root)
 
         val navHostFragment =

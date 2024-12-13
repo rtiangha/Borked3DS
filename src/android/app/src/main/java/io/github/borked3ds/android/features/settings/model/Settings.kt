@@ -206,7 +206,7 @@ class Settings {
             HOTKEY_CYCLE_LAYOUT,
             HOTKEY_CLOSE_GAME,
             HOTKEY_PAUSE_OR_RESUME,
-            HOTKEY_TURBO_SPEED
+            HOTKEY_TURBO_SPEED,
             HOTKEY_QUICKSAVE,
             HOTKEY_QUICKlOAD
         )
@@ -215,9 +215,9 @@ class Settings {
             R.string.emulation_cycle_landscape_layouts,
             R.string.emulation_close_game,
             R.string.emulation_toggle_pause,
-            R.string.emulation_toggle_turbo_speed
+            R.string.emulation_toggle_turbo_speed,
             R.string.emulation_quicksave,
-            R.string.emulation_quickload,
+            R.string.emulation_quickload
         )
 
         const val PREF_FIRST_APP_LAUNCH = "FirstApplicationLaunch"
