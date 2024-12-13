@@ -21,4 +21,11 @@
     <item
         android:id="@+id/game_context_open_mods"
         android:title="@string/game_context_open_mods" />
+    <item
+        android:id="@+id/game_context_open_shaders"
+        android:title="@string/game_context_open_shaders" />
+    <item
+        android:id="@+id/game_context_open_logs"
+        android:title="@string/game_context_open_logs" />
+
 </menu>
