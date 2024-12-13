@@ -696,6 +696,8 @@
     <string name="game_context_open_dlc">Open DLC Folder</string>
     <string name="game_context_open_updates">Open Updates Folder</string>
     <string name="game_context_open_extra">Open Extra Folder</string>
+    <string name="game_context_open_logs">Open Log Folder</string>
+    <string name="game_context_open_shaders">Open Shader Cache Folder</string>
     <string name="game_context_uninstall_dlc">Uninstall DLC</string>
     <string name="game_context_uninstall_updates">Uninstall Updates</string>
 
