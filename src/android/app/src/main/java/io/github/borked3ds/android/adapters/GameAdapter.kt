@@ -45,8 +45,8 @@ import io.github.borked3ds.android.adapters.GameAdapter.GameViewHolder
 import io.github.borked3ds.android.databinding.CardGameBinding
 import io.github.borked3ds.android.features.cheats.ui.CheatsFragmentDirections
 import io.github.borked3ds.android.fragments.IndeterminateProgressDialogFragment
-import io.github.borked3ds.android.model.FileUtil
 import io.github.borked3ds.android.model.Game
+import io.github.borked3ds.android.utils.FileUtil
 import io.github.borked3ds.android.utils.GameIconUtils
 import io.github.borked3ds.android.utils.DirectoryInitialization.userDirectory
 import io.github.borked3ds.android.viewmodel.GamesViewModel
@@ -246,12 +246,12 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 R.id.game_context_open_updates to dirs.updatesDir
             ).forEach { (id, dir) ->
                 menu.findItem(id)?.isEnabled =
-                    LimeApplication.documentsTree.folderUriHelper(dir)?.let {
+                    Borked3DSApplication.documentsTree.folderUriHelper(dir)?.let {
                         DocumentFile.fromTreeUri(view.context, it)?.exists()
                     } ?: false
             }
             menu.findItem(R.id.game_context_open_extra)?.let { item ->
-                if (LimeApplication.documentsTree.folderUriHelper(dirs.extraDir)?.let {
+                if (Borked3DSApplication.documentsTree.folderUriHelper(dirs.extraDir)?.let {
                         DocumentFile.fromTreeUri(view.context, it)?.exists()
                     } != true) {
                     menu.removeItem(item.itemId)
@@ -266,12 +266,12 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 .setType("*/*")
 
             val uri = when (menuItem.itemId) {
-                R.id.game_context_open_app -> LimeApplication.documentsTree.folderUriHelper(dirs.appDir)
-                R.id.game_context_open_save_dir -> LimeApplication.documentsTree.folderUriHelper(dirs.saveDir)
-                R.id.game_context_open_dlc -> LimeApplication.documentsTree.folderUriHelper(dirs.dlcDir)
-                R.id.game_context_open_textures -> LimeApplication.documentsTree.folderUriHelper(dirs.texturesDir, true)
-                R.id.game_context_open_mods -> LimeApplication.documentsTree.folderUriHelper(dirs.modsDir, true)
-                R.id.game_context_open_extra -> LimeApplication.documentsTree.folderUriHelper(dirs.extraDir)
+                R.id.game_context_open_app -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.appDir)
+                R.id.game_context_open_save_dir -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.saveDir)
+                R.id.game_context_open_dlc -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.dlcDir)
+                R.id.game_context_open_textures -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.texturesDir, true)
+                R.id.game_context_open_mods -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.modsDir, true)
+                R.id.game_context_open_extra -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.extraDir)
                 else -> null
             }
 
@@ -295,7 +295,7 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 R.id.game_context_uninstall_updates to dirs.updatesDir
             ).forEach { (id, dir) ->
                 menu.findItem(id)?.isEnabled =
-                    LimeApplication.documentsTree.folderUriHelper(dir)?.let {
+                    Borked3DSApplication.documentsTree.folderUriHelper(dir)?.let {
                         DocumentFile.fromTreeUri(view.context, it)?.exists()
                     } ?: false
             }
@@ -304,10 +304,10 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
         popup.setOnMenuItemClickListener { menuItem ->
             val uninstallAction: () -> Unit = {
                 when (menuItem.itemId) {
-                    R.id.game_context_uninstall -> LimeApplication.documentsTree.deleteDocument(dirs.gameDir)
-                    R.id.game_context_uninstall_dlc -> FileUtil.deleteDocument(LimeApplication.documentsTree.folderUriHelper(dirs.dlcDir)
+                    R.id.game_context_uninstall -> Borked3DSApplication.documentsTree.deleteDocument(dirs.gameDir)
+                    R.id.game_context_uninstall_dlc -> FileUtil.deleteDocument(Borked3DSApplication.documentsTree.folderUriHelper(dirs.dlcDir)
                         .toString())
-                    R.id.game_context_uninstall_updates -> FileUtil.deleteDocument(LimeApplication.documentsTree.folderUriHelper(dirs.updatesDir)
+                    R.id.game_context_uninstall_updates -> FileUtil.deleteDocument(Borked3DSApplication.documentsTree.folderUriHelper(dirs.updatesDir)
                         .toString())
                 }
                 ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
