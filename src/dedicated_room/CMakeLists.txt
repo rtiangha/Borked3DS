@@ -6,6 +6,8 @@ add_executable(borked3ds-room
     borked3ds-room.rc
 )
 
+set_target_properties(borked3ds-room PROPERTIES OUTPUT_NAME "citra-room")
+
 if (MSVC AND ENABLE_LTO)
   target_compile_options(borked3ds-room PRIVATE
     /wd5049 # 'string': Embedding a full path may result in machine-dependent output (breaks LTO on MSVC)

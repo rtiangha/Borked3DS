@@ -194,7 +194,7 @@ add_executable(borked3ds-qt
     util/util.h
 )
 
-set_target_properties(borked3ds-qt PROPERTIES OUTPUT_NAME "borked3ds")
+set_target_properties(borked3ds-qt PROPERTIES OUTPUT_NAME "citra-qt")
 
 file(GLOB COMPAT_LIST
      ${PROJECT_BINARY_DIR}/dist/compatibility_list/compatibility_list.qrc
