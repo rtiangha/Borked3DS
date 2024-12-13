@@ -232,6 +232,8 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
         val dlcDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/0004008c/${String.format("%016x", game.titleId).lowercase().substring(8)}/content"
         val updatesDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/0004000e/${String.format("%016x", game.titleId).lowercase().substring(8)}/content"
         val extraDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/extdata/00000000/${String.format("%016X", game.titleId).substring(8, 14).padStart(8, '0')}"
+        val shadersDir = "shaders"
+        val logsDir = "log"
     }
 
     private fun showOpenContextMenu(view: View, game: Game) {
@@ -243,7 +245,9 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 R.id.game_context_open_app to dirs.appDir,
                 R.id.game_context_open_save_dir to dirs.saveDir,
                 R.id.game_context_open_dlc to dirs.dlcDir,
-                R.id.game_context_open_updates to dirs.updatesDir
+                R.id.game_context_open_updates to dirs.updatesDir,
+                R.id.game_context_open_updates to dirs.shadersDir,
+                R.id.game_context_open_updates to dirs.logsDir
             ).forEach { (id, dir) ->
                 menu.findItem(id)?.isEnabled =
                     Borked3DSApplication.documentsTree.folderUriHelper(dir)?.let {
@@ -272,6 +276,8 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 R.id.game_context_open_textures -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.texturesDir, true)
                 R.id.game_context_open_mods -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.modsDir, true)
                 R.id.game_context_open_extra -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.extraDir)
+                R.id.game_context_open_shaders -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.shadersDir)
+                R.id.game_context_open_logs -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.logsDir)
                 else -> null
             }
 
