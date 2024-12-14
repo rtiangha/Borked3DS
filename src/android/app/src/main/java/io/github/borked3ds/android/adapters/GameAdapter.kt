@@ -50,23 +50,48 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class GameAdapter(private val activity: AppCompatActivity, private val inflater: LayoutInflater) :
-    ListAdapter<Game, GameViewHolder>(AsyncDifferConfig.Builder(DiffCallback()).build()),
+sealed class GameListItem {
+    data class GameItem(val game: Game) : GameListItem()
+    data object Separator : GameListItem()
+}
+
+class GameAdapter(
+    private val activity: AppCompatActivity,
+    private val layoutInflater: LayoutInflater
+) : ListAdapter<GameListItem, RecyclerView.ViewHolder>(AsyncDifferConfig.Builder(DiffCallback()).build()),
     View.OnClickListener, View.OnLongClickListener {
+
+    private val gameView = 0
+    private val favoriteGameView = 1
     private var lastClickTime = 0L
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GameViewHolder {
-        // Create a new view.
-        val binding = CardGameBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        binding.cardGame.setOnClickListener(this)
-        binding.cardGame.setOnLongClickListener(this)
-
-        // Use that view to create a ViewHolder.
-        return GameViewHolder(binding)
+    override fun getItemViewType(position: Int): Int {
+        return when (currentList[position]) {
+            is GameListItem.GameItem -> gameView
+            is GameListItem.Separator -> favoriteGameView
+        }
     }
 
-    override fun onBindViewHolder(holder: GameViewHolder, position: Int) {
-        holder.bind(currentList[position])
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            gameView -> {
+                val binding = CardGameBinding.inflate(layoutInflater, parent, false)
+                binding.cardGame.setOnClickListener(this)
+                binding.cardGame.setOnLongClickListener(this)
+                GameViewHolder(binding)
+            }
+            favoriteGameView -> {
+                val view = layoutInflater.inflate(R.layout.list_item_separator, parent, false)
+                SeparatorViewHolder(view)
+            }
+            else -> throw IllegalArgumentException("Invalid view type")
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (holder) {
+            is GameViewHolder -> holder.bind((currentList[position] as GameListItem.GameItem).game)
+        }
     }
 
     override fun getItemCount(): Int = currentList.size
@@ -175,7 +200,15 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
                 View.VISIBLE
             }
 
+            // Add favorite icon
+            val preferences = PreferenceManager.getDefaultSharedPreferences(binding.root.context)
+            val isFavorite = preferences.getBoolean("favorite_${game.titleId}", false)
+
+            binding.favoriteIcon.setImageResource(R.drawable.ic_star)
+
+
             binding.textGameTitle.text = game.title
+            binding.favoriteIcon.visibility = if (isFavorite) View.VISIBLE else View.GONE
             binding.textCompany.text = game.company
             binding.textGameRegion.text = game.regions
             binding.textGameId.text = String.format("ID: %016X", game.titleId)
@@ -467,6 +500,30 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             bottomSheetDialog.dismiss()
         }
 
+        bottomSheetView.findViewById<MaterialButton>(R.id.favorite_game).apply {
+            val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+            val isFavorite = preferences.getBoolean("favorite_${game.titleId}", false)
+
+            setIconResource(if (isFavorite) R.drawable.ic_star else R.drawable.ic_star_frame)
+
+            setOnClickListener {
+                val newFavoriteState = !isFavorite
+                preferences.edit()
+                    .putBoolean("favorite_${game.titleId}", newFavoriteState)
+                    .apply()
+                setIconResource(if (newFavoriteState) R.drawable.ic_star else R.drawable.ic_star_frame)
+
+                val position = currentList.indexOf(GameListItem.GameItem(game))
+                if (position != -1) {
+                    notifyItemChanged(position)
+                }
+
+                val sortedGames = currentList.filterIsInstance<GameListItem.GameItem>().map { it.game }
+                submitGameList(sortedGames)
+                bottomSheetDialog.dismiss()
+            }
+        }
+
         bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_open).setOnClickListener {
             showOpenContextMenu(it, game)
         }
@@ -488,13 +545,54 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             .noneMatch { extension == it.lowercase() }
     }
 
-    private class DiffCallback : DiffUtil.ItemCallback<Game>() {
-        override fun areItemsTheSame(oldItem: Game, newItem: Game): Boolean {
-            return oldItem.titleId == newItem.titleId
+    private class DiffCallback : DiffUtil.ItemCallback<GameListItem>() {
+        override fun areItemsTheSame(oldItem: GameListItem, newItem: GameListItem): Boolean {
+            if (oldItem::class != newItem::class) return false
+            return when (oldItem) {
+                is GameListItem.GameItem -> {
+                    val newGame = (newItem as GameListItem.GameItem)
+                    oldItem.game.titleId == newGame.game.titleId
+                }
+                GameListItem.Separator -> true
+            }
         }
 
-        override fun areContentsTheSame(oldItem: Game, newItem: Game): Boolean {
+        override fun areContentsTheSame(oldItem: GameListItem, newItem: GameListItem): Boolean {
             return oldItem == newItem
         }
     }
+
+    private val gameComparator = compareBy<Game> { game ->
+        val preferences = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
+        !preferences.getBoolean("favorite_${game.titleId}", false) // Favorites first
+    }.thenBy { it.title.lowercase() } // Then alphabetically
+
+    fun submitGameList(games: List<Game>) {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
+        val sortedGames = games.sortedWith(gameComparator)
+
+        val items = mutableListOf<GameListItem>()
+        var hasFavorites = false
+        var hasNonFavorites = false
+
+        sortedGames.forEach { game ->
+            val isFavorite = preferences.getBoolean("favorite_${game.titleId}", false)
+            if (isFavorite) hasFavorites = true
+            if (!isFavorite) hasNonFavorites = true
+            items.add(GameListItem.GameItem(game))
+        }
+
+        if (hasFavorites && hasNonFavorites) {
+            val separatorIndex = items.indexOfFirst {
+                it is GameListItem.GameItem &&
+                !preferences.getBoolean("favorite_${it.game.titleId}", false)
+            }
+            items.add(separatorIndex, GameListItem.Separator)
+        }
+
+        submitList(items)
+    }
+
+    inner class SeparatorViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+
 }

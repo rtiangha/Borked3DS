@@ -112,7 +112,7 @@ class SearchFragment : Fragment() {
             launch {
                 repeatOnLifecycle(Lifecycle.State.CREATED) {
                     gamesViewModel.searchedGames.collect {
-                        (binding.gridGamesSearch.adapter as GameAdapter).submitList(it)
+                        (binding.gridGamesSearch.adapter as GameAdapter).submitGameList(it)
                         if (it.isEmpty()) {
                             binding.noResultsView.visibility = View.VISIBLE
                         } else {
