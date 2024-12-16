@@ -15,6 +15,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
+import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -180,7 +181,7 @@ class GamesFragment : Fragment() {
     private fun setAdapter(games: List<Game>) {
         val preferences = PreferenceManager.getDefaultSharedPreferences(LimeApplication.appContext)
         val currentSearchText = binding.searchText.text.toString()
-        val currentChipId = binding.chipGroup.checkedChipId
+        val currentFilter = binding.filterButton.id
 
         val baseList = if (preferences.getBoolean(Settings.PREF_SHOW_HOME_APPS, false)) {
             games
@@ -188,7 +189,7 @@ class GamesFragment : Fragment() {
             games.filter { !it.isSystemTitle }
         }
 
-        if (currentSearchText.isNotEmpty() || currentChipId != View.NO_ID) {
+        if (currentSearchText.isNotEmpty() || currentFilter != View.NO_ID) {
             filterAndSearch(baseList)
         } else {
             (binding.gridGames.adapter as GameAdapter).submitList(baseList)
@@ -241,24 +242,16 @@ class GamesFragment : Fragment() {
 
             if (ViewCompat.getLayoutDirection(view) == ViewCompat.LAYOUT_DIRECTION_LTR) {
                 binding.frameSearch.updatePadding(left = spacingNavigationRail, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
-                binding.chipGroup.updatePadding(
-                    left = chipSpacing + spacingNavigationRail,
-                    right = chipSpacing
-                )
+                binding.filterButton.updatePadding(left = chipSpacing, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
             } else {
                 binding.frameSearch.updatePadding(right = spacingNavigationRail, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
-                binding.chipGroup.updatePadding(
-                    left = chipSpacing,
-                    right = chipSpacing + spacingNavigationRail
-                )
+                binding.filterButton.updatePadding(right = chipSpacing, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
             }
 
             windowInsets
         }
 
     private fun setupSearch() {
-        binding.chipGroup.setOnCheckedStateChangeListener { _, _ -> filterAndSearch() }
-
         binding.searchText.doOnTextChanged { text: CharSequence?, _: Int, _: Int, _: Int ->
             if (text.toString().isNotEmpty()) {
                 binding.clearButton.visibility = View.VISIBLE
@@ -270,23 +263,50 @@ class GamesFragment : Fragment() {
 
         binding.clearButton.setOnClickListener { binding.searchText.setText("") }
         binding.searchBackground.setOnClickListener { focusSearch() }
+
+        // Setup filter button
+        binding.filterButton.setOnClickListener { showFilterMenu(it) }
     }
 
+    private fun showFilterMenu(anchor: View) {
+        val popup = PopupMenu(requireContext(), anchor)
+        popup.menuInflater.inflate(R.menu.menu_game_filters, popup.menu)
+
+        // Set checked state based on current filter
+        when (currentFilter) {
+            R.id.filter_recently_played -> popup.menu.findItem(R.id.filter_recently_played).isChecked = true
+            R.id.filter_recently_added -> popup.menu.findItem(R.id.filter_recently_added).isChecked = true
+            R.id.filter_installed -> popup.menu.findItem(R.id.filter_installed).isChecked = true
+        }
+
+        popup.setOnMenuItemClickListener { item ->
+            currentFilter = if (item.isChecked) View.NO_ID else item.itemId
+            item.isChecked = !item.isChecked
+            filterAndSearch()
+            true
+        }
+
+        popup.show()
+    }
+
+    // Track current filter
+    private var currentFilter = View.NO_ID
+
     private fun filterAndSearch(baseList: List<Game> = gamesViewModel.games.value) {
-        val filteredList: List<Game> = when (binding.chipGroup.checkedChipId) {
-            R.id.chip_recently_played -> {
+        val filteredList: List<Game> = when (currentFilter) {
+            R.id.filter_recently_played -> {
                 baseList.filter {
                     val lastPlayedTime = preferences.getLong(it.keyLastPlayedTime, 0L)
                     lastPlayedTime > (System.currentTimeMillis() - ChronoField.MILLI_OF_DAY.range().maximum)
                 }
             }
-            R.id.chip_recently_added -> {
+            R.id.filter_recently_added -> {
                 baseList.filter {
                     val addedTime = preferences.getLong(it.keyAddedToLibraryTime, 0L)
                     addedTime > (System.currentTimeMillis() - ChronoField.MILLI_OF_DAY.range().maximum)
                 }
             }
-            R.id.chip_installed -> baseList.filter { it.isInstalled }
+            R.id.filter_installed -> baseList.filter { it.isInstalled }
             else -> baseList
         }
 
