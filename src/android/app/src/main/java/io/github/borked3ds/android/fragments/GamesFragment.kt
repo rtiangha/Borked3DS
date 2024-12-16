@@ -6,7 +6,11 @@
 package io.github.borked3ds.android.fragments
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.os.Bundle
+import android.view.inputmethod.InputMethodManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -24,6 +29,8 @@ import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.transition.MaterialFadeThrough
+import info.debatty.java.stringsimilarity.Jaccard
+import info.debatty.java.stringsimilarity.JaroWinkler
 import io.github.borked3ds.android.Borked3DSApplication
 import io.github.borked3ds.android.R
 import io.github.borked3ds.android.adapters.GameAdapter
@@ -32,6 +39,8 @@ import io.github.borked3ds.android.features.settings.model.Settings
 import io.github.borked3ds.android.model.Game
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import io.github.borked3ds.android.viewmodel.HomeViewModel
+import java.time.temporal.ChronoField
+import java.util.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -39,8 +48,14 @@ class GamesFragment : Fragment() {
     private var _binding: FragmentGamesBinding? = null
     private val binding get() = _binding!!
 
+    companion object {
+        private const val SEARCH_TEXT = "SearchText"
+    }
+
     private val gamesViewModel: GamesViewModel by activityViewModels()
     private val homeViewModel: HomeViewModel by activityViewModels()
+
+    private lateinit var preferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +76,8 @@ class GamesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         homeViewModel.setNavigationVisibility(visible = true, animated = true)
         homeViewModel.setStatusBarShadeVisibility(visible = true)
+
+        preferences = PreferenceManager.getDefaultSharedPreferences(LimeApplication.appContext)
 
         val inflater = LayoutInflater.from(requireContext())
 
@@ -92,13 +109,16 @@ class GamesFragment : Fragment() {
                 )
             )
 
-            // Make sure the loading indicator appears even if the layout is told to refresh before being fully drawn
-            post {
-                if (_binding == null) {
-                    return@post
-                }
-                binding.swipeRefresh.isRefreshing = gamesViewModel.isReloading.value
-            }
+            setProgressViewOffset(
+                false,
+                0,
+                resources.getDimensionPixelSize(R.dimen.spacing_refresh_end)
+            )
+
+        }
+
+        if (savedInstanceState != null) {
+            binding.searchText.setText(savedInstanceState.getString(SEARCH_TEXT))
         }
 
         viewLifecycleOwner.lifecycleScope.apply {
@@ -142,6 +162,7 @@ class GamesFragment : Fragment() {
         }
 
         setInsets()
+        setupSearch()
     }
 
     override fun onDestroyView() {
@@ -149,14 +170,29 @@ class GamesFragment : Fragment() {
         _binding = null
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (_binding != null) {
+            outState.putString(SEARCH_TEXT, binding.searchText.text.toString())
+        }
+    }
+
     private fun setAdapter(games: List<Game>) {
-        val preferences =
-            PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
-        if (preferences.getBoolean(Settings.PREF_SHOW_HOME_APPS, false)) {
-            (binding.gridGames.adapter as GameAdapter).submitGameList(games)
+        val preferences = PreferenceManager.getDefaultSharedPreferences(LimeApplication.appContext)
+        val currentSearchText = binding.searchText.text.toString()
+        val currentChipId = binding.chipGroup.checkedChipId
+
+        val baseList = if (preferences.getBoolean(Settings.PREF_SHOW_HOME_APPS, false)) {
+            games
         } else {
-            val filteredList = games.filter { !it.isSystemTitle }
-            (binding.gridGames.adapter as GameAdapter).submitGameList(filteredList)
+            games.filter { !it.isSystemTitle }
+        }
+
+        if (currentSearchText.isNotEmpty() || currentChipId != View.NO_ID) {
+            filterAndSearch(baseList)
+        } else {
+            (binding.gridGames.adapter as GameAdapter).submitList(baseList)
+            gamesViewModel.setFilteredGames(baseList)
         }
     }
 
@@ -176,9 +212,11 @@ class GamesFragment : Fragment() {
             val spacingNavigation = resources.getDimensionPixelSize(R.dimen.spacing_navigation)
             val spacingNavigationRail =
                 resources.getDimensionPixelSize(R.dimen.spacing_navigation_rail)
+            val chipSpacing = resources.getDimensionPixelSize(R.dimen.spacing_chip)
+            val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
 
             binding.gridGames.updatePadding(
-                top = barInsets.top + extraListSpacing,
                 bottom = barInsets.bottom + spacingNavigation + extraListSpacing
             )
 
@@ -201,6 +239,85 @@ class GamesFragment : Fragment() {
 
             binding.noticeText.updatePadding(bottom = spacingNavigation)
 
+            if (ViewCompat.getLayoutDirection(view) == ViewCompat.LAYOUT_DIRECTION_LTR) {
+                binding.frameSearch.updatePadding(left = spacingNavigationRail, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
+                binding.chipGroup.updatePadding(
+                    left = chipSpacing + spacingNavigationRail,
+                    right = chipSpacing
+                )
+            } else {
+                binding.frameSearch.updatePadding(right = spacingNavigationRail, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
+                binding.chipGroup.updatePadding(
+                    left = chipSpacing,
+                    right = chipSpacing + spacingNavigationRail
+                )
+            }
+
             windowInsets
         }
+
+    private fun setupSearch() {
+        binding.chipGroup.setOnCheckedStateChangeListener { _, _ -> filterAndSearch() }
+
+        binding.searchText.doOnTextChanged { text: CharSequence?, _: Int, _: Int, _: Int ->
+            if (text.toString().isNotEmpty()) {
+                binding.clearButton.visibility = View.VISIBLE
+            } else {
+                binding.clearButton.visibility = View.INVISIBLE
+            }
+            filterAndSearch()
+        }
+
+        binding.clearButton.setOnClickListener { binding.searchText.setText("") }
+        binding.searchBackground.setOnClickListener { focusSearch() }
+    }
+
+    private fun filterAndSearch(baseList: List<Game> = gamesViewModel.games.value) {
+        val filteredList: List<Game> = when (binding.chipGroup.checkedChipId) {
+            R.id.chip_recently_played -> {
+                baseList.filter {
+                    val lastPlayedTime = preferences.getLong(it.keyLastPlayedTime, 0L)
+                    lastPlayedTime > (System.currentTimeMillis() - ChronoField.MILLI_OF_DAY.range().maximum)
+                }
+            }
+            R.id.chip_recently_added -> {
+                baseList.filter {
+                    val addedTime = preferences.getLong(it.keyAddedToLibraryTime, 0L)
+                    addedTime > (System.currentTimeMillis() - ChronoField.MILLI_OF_DAY.range().maximum)
+                }
+            }
+            R.id.chip_installed -> baseList.filter { it.isInstalled }
+            else -> baseList
+        }
+
+        val searchTerm = binding.searchText.text.toString().lowercase(Locale.getDefault())
+        if (searchTerm.isEmpty()) {
+            (binding.gridGames.adapter as GameAdapter).submitList(filteredList)
+            gamesViewModel.setFilteredGames(filteredList)
+            return
+        }
+
+        val searchAlgorithm = if (searchTerm.length > 1) Jaccard(2) else JaroWinkler()
+        val sortedList = filteredList.mapNotNull { game ->
+            val title = game.title.lowercase(Locale.getDefault())
+            val score = searchAlgorithm.similarity(searchTerm, title)
+            if (score > 0.03) {
+                ScoredGame(score, game)
+            } else {
+                null
+            }
+        }.sortedByDescending { it.score }.map { it.item }
+
+        (binding.gridGames.adapter as GameAdapter).submitList(sortedList)
+        gamesViewModel.setFilteredGames(sortedList)
+    }
+
+    private inner class ScoredGame(val score: Double, val item: Game)
+
+    private fun focusSearch() {
+        binding.searchText.requestFocus()
+        val imm = requireActivity()
+            .getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
+        imm?.showSoftInput(binding.searchText, InputMethodManager.SHOW_IMPLICIT)
+    }
 }
