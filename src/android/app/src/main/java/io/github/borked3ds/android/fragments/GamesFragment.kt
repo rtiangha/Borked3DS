@@ -293,6 +293,13 @@ class GamesFragment : Fragment() {
                 binding.filterButton.updatePadding(right = chipSpacing, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
             }
 
+            val mlpFab = binding.addDirectory.layoutParams as MarginLayoutParams
+            val fabPadding = resources.getDimensionPixelSize(R.dimen.spacing_large)
+            mlpFab.leftMargin = leftInsets + fabPadding
+            mlpFab.bottomMargin = barInsets.bottom + fabPadding
+            mlpFab.rightMargin = rightInsets + fabPadding
+            binding.addDirectory.layoutParams = mlpFab
+
             windowInsets
         }
 
