@@ -28,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.transition.MaterialFadeThrough
 import info.debatty.java.stringsimilarity.Jaccard
@@ -51,6 +52,7 @@ class GamesFragment : Fragment() {
 
     companion object {
         private const val SEARCH_TEXT = "SearchText"
+        private const val PREF_VIEW_TYPE = "GamesViewType"
     }
 
     private val gamesViewModel: GamesViewModel by activityViewModels()
@@ -83,11 +85,27 @@ class GamesFragment : Fragment() {
         val inflater = LayoutInflater.from(requireContext())
 
         binding.gridGames.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                resources.getInteger(R.integer.game_grid_columns)
-            )
-            adapter = GameAdapter(requireActivity() as AppCompatActivity, inflater)
+            val gameAdapter = GameAdapter(requireActivity() as AppCompatActivity, inflater)
+            val savedViewType = preferences.getInt(PREF_VIEW_TYPE, GameAdapter.VIEW_TYPE_LIST)
+            gameAdapter.setViewType(savedViewType)
+            adapter = gameAdapter
+
+            fun updateLayoutManager() {
+                val columnResId = if (gameAdapter.getViewType() == GameAdapter.VIEW_TYPE_GRID) {
+                    R.integer.game_grid_columns_big
+                } else {
+                    R.integer.game_grid_columns
+                }
+                layoutManager = GridLayoutManager(requireContext(), resources.getInteger(columnResId))
+            }
+
+            updateLayoutManager()
+            // Check for layout changes
+            gameAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+                override fun onChanged() {
+                    updateLayoutManager()
+                }
+            })
         }
 
         binding.swipeRefresh.apply {
@@ -266,6 +284,9 @@ class GamesFragment : Fragment() {
 
         // Setup filter button
         binding.filterButton.setOnClickListener { showFilterMenu(it) }
+
+        // Setup view button
+        binding.viewButton.setOnClickListener { showViewMenu(it) }
     }
 
     private fun showFilterMenu(anchor: View) {
@@ -284,6 +305,37 @@ class GamesFragment : Fragment() {
             item.isChecked = !item.isChecked
             filterAndSearch()
             true
+        }
+
+        popup.show()
+    }
+
+    private fun showViewMenu(anchor: View) {
+        val popup = PopupMenu(requireContext(), anchor)
+        popup.menuInflater.inflate(R.menu.menu_game_views, popup.menu)
+
+        val currentViewType = (binding.gridGames.adapter as GameAdapter).getViewType()
+        when (currentViewType) {
+            GameAdapter.VIEW_TYPE_LIST -> popup.menu.findItem(R.id.view_list).isChecked = true
+            GameAdapter.VIEW_TYPE_GRID -> popup.menu.findItem(R.id.view_grid).isChecked = true
+        }
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.view_list -> {
+                    (binding.gridGames.adapter as GameAdapter).setViewType(GameAdapter.VIEW_TYPE_LIST)
+                    preferences.edit().putInt(PREF_VIEW_TYPE, GameAdapter.VIEW_TYPE_LIST).apply()
+                    item.isChecked = true
+                    true
+                }
+                R.id.view_grid -> {
+                    (binding.gridGames.adapter as GameAdapter).setViewType(GameAdapter.VIEW_TYPE_GRID)
+                    preferences.edit().putInt(PREF_VIEW_TYPE, GameAdapter.VIEW_TYPE_GRID).apply()
+                    item.isChecked = true
+                    true
+                }
+                else -> false
+            }
         }
 
         popup.show()

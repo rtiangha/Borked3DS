@@ -14,7 +14,7 @@
         android:layout_marginTop="9dp"
         android:layout_marginEnd="6dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/filter_button"
+        app:layout_constraintEnd_toStartOf="@+id/view_button"
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.card.MaterialCardView
@@ -66,6 +66,26 @@
         </com.google.android.material.card.MaterialCardView>
 
     </FrameLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/view_button"
+        style="?attr/materialCardViewFilledStyle"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_marginTop="9dp"
+        android:layout_marginEnd="15dp"
+        app:cardCornerRadius="21dp"
+        app:layout_constraintEnd_toStartOf="@id/filter_button"
+        app:layout_constraintBottom_toBottomOf="@id/frame_search">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_eye"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
+    </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/filter_button"

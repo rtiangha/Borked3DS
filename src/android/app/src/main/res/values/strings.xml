@@ -117,6 +117,9 @@
     <string name="search_recently_played">Recently Played</string>
     <string name="search_recently_added">Recently Added</string>
     <string name="search_installed">Installed</string>
+    <string name="view_list">Default</string>
+    <string name="view_grid">Grid</string>
+
 
     <!-- Input related strings -->
     <string name="controller_buttons">Face Buttons</string>
