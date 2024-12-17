@@ -26,6 +26,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -183,7 +184,7 @@ class GamesFragment : Fragment() {
         }
 
         setInsets()
-        setupSearch()
+        setupTopView()
     }
 
     override fun onDestroyView() {
@@ -271,7 +272,7 @@ class GamesFragment : Fragment() {
             windowInsets
         }
 
-    private fun setupSearch() {
+    private fun setupTopView() {
         binding.searchText.doOnTextChanged { text: CharSequence?, _: Int, _: Int, _: Int ->
             if (text.toString().isNotEmpty()) {
                 binding.clearButton.visibility = View.VISIBLE
@@ -289,6 +290,14 @@ class GamesFragment : Fragment() {
 
         // Setup view button
         binding.viewButton.setOnClickListener { showViewMenu(it) }
+
+        // Setup settings button
+        binding.settingsButton.setOnClickListener { navigateToSettings() }
+    }
+
+    private fun navigateToSettings() {
+        val navController = findNavController()
+        navController.navigate(R.id.action_gamesFragment_to_homeSettingsFragment)
     }
 
     private fun showFilterMenu(anchor: View) {
