@@ -111,7 +111,7 @@
     <string name="setup_theme_settings_description">Configure your theme preferences for Borked3DS.</string>
     <string name="setup_set_theme">Set Theme</string>
 
-    <!-- Search Strings -->
+    <!-- GameFragment Strings -->
     <string name="search_and_filter_games">Search and Filter Games</string>
     <string name="home_search_games">Search Games</string>
     <string name="search_recently_played">Recently Played</string>
@@ -119,6 +119,7 @@
     <string name="search_installed">Installed</string>
     <string name="view_list">Default</string>
     <string name="view_grid">Grid</string>
+    <string name="folder">Folder</string>
 
 
     <!-- Input related strings -->
