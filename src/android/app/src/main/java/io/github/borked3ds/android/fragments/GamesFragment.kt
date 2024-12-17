@@ -53,6 +53,7 @@ class GamesFragment : Fragment() {
     companion object {
         private const val SEARCH_TEXT = "SearchText"
         private const val PREF_VIEW_TYPE = "GamesViewType"
+        private const val PREF_SORT_TYPE = "GamesSortType"
     }
 
     private val gamesViewModel: GamesViewModel by activityViewModels()
@@ -88,6 +89,7 @@ class GamesFragment : Fragment() {
             val gameAdapter = GameAdapter(requireActivity() as AppCompatActivity, inflater)
             val savedViewType = preferences.getInt(PREF_VIEW_TYPE, GameAdapter.VIEW_TYPE_LIST)
             gameAdapter.setViewType(savedViewType)
+            currentFilter = preferences.getInt(PREF_SORT_TYPE, View.NO_ID)
             adapter = gameAdapter
 
             fun updateLayoutManager() {
@@ -302,6 +304,7 @@ class GamesFragment : Fragment() {
 
         popup.setOnMenuItemClickListener { item ->
             currentFilter = if (item.isChecked) View.NO_ID else item.itemId
+            preferences.edit().putInt(PREF_SORT_TYPE, currentFilter).apply()
             item.isChecked = !item.isChecked
             filterAndSearch()
             true
