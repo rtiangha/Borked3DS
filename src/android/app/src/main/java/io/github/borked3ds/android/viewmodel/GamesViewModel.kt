@@ -25,9 +25,6 @@ class GamesViewModel : ViewModel() {
     val games get() = _games.asStateFlow()
     private val _games = MutableStateFlow(emptyList<Game>())
 
-    val searchedGames get() = _searchedGames.asStateFlow()
-    private val _searchedGames = MutableStateFlow(emptyList<Game>())
-
     val isReloading get() = _isReloading.asStateFlow()
     private val _isReloading = MutableStateFlow(false)
 
@@ -37,11 +34,7 @@ class GamesViewModel : ViewModel() {
     val shouldScrollToTop get() = _shouldScrollToTop.asStateFlow()
     private val _shouldScrollToTop = MutableStateFlow(false)
 
-    val searchFocused get() = _searchFocused.asStateFlow()
-    private val _searchFocused = MutableStateFlow(false)
-
     private val _filteredGames = MutableStateFlow<List<Game>>(emptyList())
-    val filteredGames get() = _filteredGames.asStateFlow()
 
     init {
         // Retrieve list of cached games
@@ -92,20 +85,12 @@ class GamesViewModel : ViewModel() {
         _games.value = filteredList
     }
 
-    fun setSearchedGames(games: List<Game>) {
-        _searchedGames.value = games
-    }
-
     fun setShouldSwapData(shouldSwap: Boolean) {
         _shouldSwapData.value = shouldSwap
     }
 
     fun setShouldScrollToTop(shouldScroll: Boolean) {
         _shouldScrollToTop.value = shouldScroll
-    }
-
-    fun setSearchFocused(searchFocused: Boolean) {
-        _searchFocused.value = searchFocused
     }
 
     fun setFilteredGames(games: List<Game>) {
