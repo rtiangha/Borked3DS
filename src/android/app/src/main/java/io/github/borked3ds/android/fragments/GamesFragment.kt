@@ -250,21 +250,20 @@ class GamesFragment : Fragment() {
             val rightInsets = barInsets.right + cutoutInsets.right
             val mlpSwipe = binding.swipeRefresh.layoutParams as MarginLayoutParams
             if (view.layoutDirection == View.LAYOUT_DIRECTION_LTR) {
-                mlpSwipe.leftMargin = leftInsets + spacingNavigationRail
+                mlpSwipe.leftMargin = leftInsets
                 mlpSwipe.rightMargin = rightInsets
             } else {
                 mlpSwipe.leftMargin = leftInsets
-                mlpSwipe.rightMargin = rightInsets + spacingNavigationRail
+                mlpSwipe.rightMargin = rightInsets
             }
             binding.swipeRefresh.layoutParams = mlpSwipe
 
             binding.noticeText.updatePadding(bottom = spacingNavigation)
-
             if (ViewCompat.getLayoutDirection(view) == ViewCompat.LAYOUT_DIRECTION_LTR) {
-                binding.frameSearch.updatePadding(left = spacingNavigationRail, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
+                binding.frameSearch.updatePadding(left = 0, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
                 binding.filterButton.updatePadding(left = chipSpacing, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
             } else {
-                binding.frameSearch.updatePadding(right = spacingNavigationRail, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
+                binding.frameSearch.updatePadding(right = 0, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
                 binding.filterButton.updatePadding(right = chipSpacing, top = cutoutInsets.top + if (isLandscape) barInsets.top else 0)
             }
 
