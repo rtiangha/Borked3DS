@@ -20,9 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class HomeViewModel : ViewModel() {
-    val navigationVisible get() = _navigationVisible.asStateFlow()
-    private val _navigationVisible = MutableStateFlow(Pair(false, false))
-
     val statusBarShadeVisible get() = _statusBarShadeVisible.asStateFlow()
     private val _statusBarShadeVisible = MutableStateFlow(true)
 
@@ -62,13 +59,6 @@ class HomeViewModel : ViewModel() {
     var copyInProgress = false
 
     var navigatedToSetup = false
-
-    fun setNavigationVisibility(visible: Boolean, animated: Boolean) {
-        if (_navigationVisible.value.first == visible) {
-            return
-        }
-        _navigationVisible.value = Pair(visible, animated)
-    }
 
     fun setStatusBarShadeVisibility(visible: Boolean) {
         if (_statusBarShadeVisible.value == visible) {

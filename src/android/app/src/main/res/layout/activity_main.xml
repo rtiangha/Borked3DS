@@ -20,18 +20,6 @@
         app:navGraph="@navigation/home_navigation"
         tools:layout="@layout/fragment_games" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/navigation_view"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="invisible"
-        app:labelVisibilityMode="selected"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:menu="@menu/menu_navigation"
-        tools:visibility="visible" />
-
     <View
         android:id="@+id/status_bar_shade"
         android:layout_width="0dp"

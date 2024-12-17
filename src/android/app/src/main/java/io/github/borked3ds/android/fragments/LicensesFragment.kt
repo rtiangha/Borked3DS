@@ -47,7 +47,6 @@ class LicensesFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        homeViewModel.setNavigationVisibility(visible = false, animated = true)
         homeViewModel.setStatusBarShadeVisibility(visible = false)
 
         binding.toolbarLicenses.setNavigationOnClickListener {

@@ -79,7 +79,6 @@ class GamesFragment : Fragment() {
     // This is using the correct scope, lint is just acting up
     @SuppressLint("UnsafeRepeatOnLifecycleDetector")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        homeViewModel.setNavigationVisibility(visible = true, animated = true)
         homeViewModel.setStatusBarShadeVisibility(visible = true)
 
         preferences = PreferenceManager.getDefaultSharedPreferences(LimeApplication.appContext)
