@@ -124,9 +124,9 @@ jobs:
       - name: Install New Packages
         run: sudo apt-get -y install zip unzip python3 ccache apksigner && sudo apt-get clean
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@v3.31.2
+        uses: lukka/get-cmake@latest
         with:
-          cmakeVersion: latest
+          cmakeVersion: 3.30.6
           ninjaVersion: latest
       - name: Install JDK 23
         uses: actions/setup-java@v4.5.0
