@@ -31,6 +31,8 @@
     <string name="custom_driver_not_supported">Custom drivers not supported</string>
     <string name="custom_driver_not_supported_description">Custom driver loading isn\'t currently supported for this device.\nCheck this option again in the future to see if support was added!</string>
     <string name="share_log_not_found">No log file found</string>
+    <string name="select_games_folder">Select Games Folder</string>
+    <string name="select_games_folder_description">Allows Borked3DS to populate the games list</string>
     <string name="search_location">Search Locations</string>
     <string name="search_location_description">Locations to search for 3DS roms</string>
     <string name="delete_search_location">Delete this Search Location</string>
