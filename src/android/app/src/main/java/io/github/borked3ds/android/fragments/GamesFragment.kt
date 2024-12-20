@@ -103,7 +103,7 @@ class GamesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         homeViewModel.setStatusBarShadeVisibility(visible = true)
 
-        preferences = PreferenceManager.getDefaultSharedPreferences(LimeApplication.appContext)
+        preferences = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
 
         val inflater = LayoutInflater.from(requireContext())
 
@@ -225,7 +225,7 @@ class GamesFragment : Fragment() {
     }
 
     private fun setAdapter(games: List<Game>) {
-        val preferences = PreferenceManager.getDefaultSharedPreferences(LimeApplication.appContext)
+        val preferences = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
         val currentSearchText = binding.searchText.text.toString()
         val currentFilter = binding.filterButton.id
 
