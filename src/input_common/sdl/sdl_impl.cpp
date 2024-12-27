@@ -103,7 +103,7 @@ namespace SDL {
 static std::string GetGUID(SDL_Joystick* joystick) {
     SDL_GUID guid = SDL_GetJoystickGUID(joystick);
     char guid_str[33];
-    SDL_JoystickGetGUIDString(guid, guid_str, sizeof(guid_str));
+    SDL_GUIDToString(guid, guid_str, sizeof(guid_str));
     return guid_str;
 }
 
@@ -391,15 +391,15 @@ Common::ParamPackage SDLState::GetSDLControllerButtonBindByGUID(
     if (mapped_button == SDL_GAMEPAD_BUTTON_INVALID) {
         if (button == Settings::NativeButton::Values::ZL) {
             button_bind =
-                SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
+                SDL_GetGamepadBindings(controller, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
         } else if (button == Settings::NativeButton::Values::ZR) {
             button_bind =
-                SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
+                SDL_GetGamepadBindings(controller, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
         } else {
             return {{}};
         }
     } else {
-        button_bind = SDL_GameControllerGetBindForButton(controller, mapped_button);
+        button_bind = SDL_GetGamepadBindings(controller, mapped_button);
     }
 
     switch (button_bind.bindType) {
@@ -475,11 +475,11 @@ Common::ParamPackage SDLState::GetSDLControllerAnalogBindByGUID(
     }
 
     if (analog == Settings::NativeAnalog::Values::CirclePad) {
-        button_bind_x = SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_LEFTX);
-        button_bind_y = SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_LEFTY);
+        button_bind_x = SDL_GetGamepadBinding(controller, SDL_GAMEPAD_AXIS_LEFTX);
+        button_bind_y = SDL_GetGamepadBinding(controller, SDL_GAMEPAD_AXIS_LEFTY);
     } else if (analog == Settings::NativeAnalog::Values::CStick) {
         button_bind_x = SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_RIGHTX);
-        button_bind_y = SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_RIGHTY);
+        button_bind_y = SDL_GetGamepadBinding(controller, SDL_GAMEPAD_AXIS_RIGHTY);
     } else {
         LOG_WARNING(Input, "analog value out of range {}", analog);
         return {{}};
@@ -865,7 +865,7 @@ SDLState::SDLState() {
     }
     // Because the events for joystick connection happens before we have our event watcher added, we
     // can just open all the joysticks right here
-    for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+    for (int i = 0; i < SDL_GetJoysticks(); ++i) {
         InitJoystick(i);
     }
 }
