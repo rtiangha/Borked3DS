@@ -380,7 +380,7 @@ Common::ParamPackage SDLState::GetSDLControllerButtonBindByGUID(
     params.Set("guid", guid);
     params.Set("port", port);
     SDL_Gamepad* controller = GetSDLJoystickByGUID(guid, port)->GetSDLGameController();
-    SDL_GameControllerButtonBind button_bind;
+    SDL_GamepadBinding button_bind;
 
     if (!controller) {
         LOG_WARNING(Input, "failed to open controller {}", guid);
@@ -466,8 +466,8 @@ Common::ParamPackage SDLState::GetSDLControllerAnalogBindByGUID(
     params.Set("guid", guid);
     params.Set("port", port);
     SDL_Gamepad* controller = GetSDLJoystickByGUID(guid, port)->GetSDLGameController();
-    SDL_GameControllerButtonBind button_bind_x;
-    SDL_GameControllerButtonBind button_bind_y;
+    SDL_GamepadBinding button_bind_x;
+    SDL_GamepadBinding button_bind_y;
 
     if (!controller) {
         LOG_WARNING(Input, "failed to open controller {}", guid);
