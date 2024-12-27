@@ -16,7 +16,7 @@
 union SDL_Event;
 using SDL_Joystick = struct SDL_Joystick;
 using SDL_JoystickID = u32;
-using SDL_Gamepad = struct SDL_GameController;
+using SDL_Gamepad = struct SDL_Gamepad;
 
 namespace InputCommon::SDL {
 

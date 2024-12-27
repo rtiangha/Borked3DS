@@ -475,11 +475,11 @@ Common::ParamPackage SDLState::GetSDLControllerAnalogBindByGUID(
     }
 
     if (analog == Settings::NativeAnalog::Values::CirclePad) {
-        button_bind_x = SDL_GetGamepadBinding(controller, SDL_GAMEPAD_AXIS_LEFTX);
-        button_bind_y = SDL_GetGamepadBinding(controller, SDL_GAMEPAD_AXIS_LEFTY);
+        button_bind_x = SDL_GetGamepadBindings(controller, SDL_GAMEPAD_AXIS_LEFTX);
+        button_bind_y = SDL_GetGamepadBindings(controller, SDL_GAMEPAD_AXIS_LEFTY);
     } else if (analog == Settings::NativeAnalog::Values::CStick) {
-        button_bind_x = SDL_GameControllerGetBindForAxis(controller, SDL_GAMEPAD_AXIS_RIGHTX);
-        button_bind_y = SDL_GetGamepadBinding(controller, SDL_GAMEPAD_AXIS_RIGHTY);
+        button_bind_x = SDL_GetGamepadBindings(controller, SDL_GAMEPAD_AXIS_RIGHTX);
+        button_bind_y = SDL_GetGamepadBindings(controller, SDL_GAMEPAD_AXIS_RIGHTY);
     } else {
         LOG_WARNING(Input, "analog value out of range {}", analog);
         return {{}};
