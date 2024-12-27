@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        target: ["msvc", "clang", "gcc"]
+        target: ["clang"]
     defaults:
       run:
         shell: ${{ (matrix.target == 'clang' || matrix.target == 'gcc') && 'msys2' || 'bash' }} {0}
@@ -34,12 +34,6 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-
-      - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        if: ${{ matrix.target == 'msvc' }}
-      - name: Install extra tools (MSVC)
-        run: choco install ccache ninja wget unzip
-        if: ${{ matrix.target == 'msvc' }}
       - name: Set up MSYS2 (clang)
         uses: msys2/setup-msys2@v2
         if: ${{ matrix.target == 'clang' }}
@@ -50,16 +44,6 @@ jobs:
           pacboy: >-
             toolchain:p ccache:p cmake:p ninja:p 
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
-      - name: Set up MINGW (gcc)
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: mingw64
-          update: true
-          install: git make p7zip unzip
-          pacboy: >-
-            toolchain:p ccache:p cmake:p ninja:p
-            qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
-        if: ${{ matrix.target == 'gcc' }}
       - name: Install NSIS
         run: |
           Invoke-WebRequest https://deac-riga.dl.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10-setup.exe?viasf=1 -OutFile C:\WINDOWS\Temp\nsis-3.10-setup.exe
@@ -67,15 +51,9 @@ jobs:
         shell: pwsh
       - name: Disable line ending translation
         run: git config --global core.autocrlf input
-      - name: Build (MSVC)
-        run: ./.ci/windows-msvc.sh
-        if: ${{ matrix.target == 'msvc' }}
       - name: Build (CLANG)
         run: ./.ci/windows-clang.sh
         if: ${{ matrix.target == 'clang' }}
-      - name: Build (GCC)
-        run: ./.ci/windows-gcc.sh
-        if: ${{ matrix.target == 'gcc' }}
       - name: Generate installer
         if: ${{ github.ref_type == 'tag' }}
         run: |
