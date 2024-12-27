@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <string>
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "borked3ds/emu_window/emu_window_sdl2.h"
 #include "common/logging/log.h"
 #include "common/scm_rev.h"
@@ -118,7 +118,7 @@ EmuWindow_SDL2::~EmuWindow_SDL2() {
 }
 
 void EmuWindow_SDL2::InitializeSDL2() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) < 0) {
         LOG_CRITICAL(Frontend, "Failed to initialize SDL2: {}! Exiting...", SDL_GetError());
         exit(1);
     }
@@ -133,32 +133,32 @@ u32 EmuWindow_SDL2::GetEventWindowId(const SDL_Event& event) const {
     switch (event.type) {
     case SDL_WINDOWEVENT:
         return event.window.windowID;
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
         return event.key.windowID;
-    case SDL_MOUSEMOTION:
+    case SDL_EVENT_MOUSE_MOTION:
         return event.motion.windowID;
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
         return event.button.windowID;
-    case SDL_MOUSEWHEEL:
+    case SDL_EVENT_MOUSE_WHEEL:
         return event.wheel.windowID;
-    case SDL_FINGERDOWN:
-    case SDL_FINGERMOTION:
-    case SDL_FINGERUP:
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_MOTION:
+    case SDL_EVENT_FINGER_UP:
         return event.tfinger.windowID;
-    case SDL_TEXTEDITING:
+    case SDL_EVENT_TEXT_EDITING:
         return event.edit.windowID;
-    case SDL_TEXTEDITING_EXT:
+    case SDL_EVENT_TEXT_EDITING_EXT:
         return event.editExt.windowID;
-    case SDL_TEXTINPUT:
+    case SDL_EVENT_TEXT_INPUT:
         return event.text.windowID;
-    case SDL_DROPBEGIN:
-    case SDL_DROPFILE:
-    case SDL_DROPTEXT:
-    case SDL_DROPCOMPLETE:
+    case SDL_EVENT_DROP_BEGIN:
+    case SDL_EVENT_DROP_FILE:
+    case SDL_EVENT_DROP_TEXT:
+    case SDL_EVENT_DROP_COMPLETE:
         return event.drop.windowID;
-    case SDL_USEREVENT:
+    case SDL_EVENT_USER:
         return event.user.windowID;
     default:
         // Event is not for any particular window, so we can just pretend it's for this one.
@@ -180,45 +180,45 @@ void EmuWindow_SDL2::PollEvents() {
         switch (event.type) {
         case SDL_WINDOWEVENT:
             switch (event.window.event) {
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-            case SDL_WINDOWEVENT_RESIZED:
-            case SDL_WINDOWEVENT_MAXIMIZED:
-            case SDL_WINDOWEVENT_RESTORED:
-            case SDL_WINDOWEVENT_MINIMIZED:
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            case SDL_EVENT_WINDOW_RESIZED:
+            case SDL_EVENT_WINDOW_MAXIMIZED:
+            case SDL_EVENT_WINDOW_RESTORED:
+            case SDL_EVENT_WINDOW_MINIMIZED:
                 OnResize();
                 break;
-            case SDL_WINDOWEVENT_CLOSE:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 RequestClose();
                 break;
             }
             break;
-        case SDL_KEYDOWN:
-        case SDL_KEYUP:
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
             OnKeyEvent(static_cast<int>(event.key.keysym.scancode), event.key.state);
             break;
-        case SDL_MOUSEMOTION:
+        case SDL_EVENT_MOUSE_MOTION:
             // ignore if it came from touch
             if (event.button.which != SDL_TOUCH_MOUSEID)
                 OnMouseMotion(event.motion.x, event.motion.y);
             break;
-        case SDL_MOUSEBUTTONDOWN:
-        case SDL_MOUSEBUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
             // ignore if it came from touch
             if (event.button.which != SDL_TOUCH_MOUSEID) {
                 OnMouseButton(event.button.button, event.button.state, event.button.x,
                               event.button.y);
             }
             break;
-        case SDL_FINGERDOWN:
+        case SDL_EVENT_FINGER_DOWN:
             OnFingerDown(event.tfinger.x, event.tfinger.y);
             break;
-        case SDL_FINGERMOTION:
+        case SDL_EVENT_FINGER_MOTION:
             OnFingerMotion(event.tfinger.x, event.tfinger.y);
             break;
-        case SDL_FINGERUP:
+        case SDL_EVENT_FINGER_UP:
             OnFingerUp();
             break;
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
             RequestClose();
             break;
         default:

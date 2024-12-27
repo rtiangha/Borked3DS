@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <string>
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <glad/glad.h>
 #include "borked3ds/emu_window/emu_window_sdl2_gl.h"
 #include "common/scm_rev.h"
@@ -27,7 +27,7 @@ public:
     }
 
     ~SDLGLContext() override {
-        SDL_GL_DeleteContext(context);
+        SDL_GL_DestroyContext(context);
         SDL_DestroyWindow(window);
     }
 
@@ -59,7 +59,7 @@ static SDL_Window* CreateGLWindow(const std::string& window_title, bool gles) {
                             SDL_WINDOWPOS_UNDEFINED, // y position
                             Core::kScreenTopWidth,
                             Core::kScreenTopHeight + Core::kScreenBottomHeight,
-                            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+                            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 }
 
 EmuWindow_SDL2_GL::EmuWindow_SDL2_GL(Core::System& system_, bool fullscreen, bool is_secondary)
@@ -134,7 +134,7 @@ EmuWindow_SDL2_GL::EmuWindow_SDL2_GL(Core::System& system_, bool fullscreen, boo
 EmuWindow_SDL2_GL::~EmuWindow_SDL2_GL() {
     core_context.reset();
     SDL_DestroyWindow(render_window);
-    SDL_GL_DeleteContext(window_context);
+    SDL_GL_DestroyContext(window_context);
 }
 
 std::unique_ptr<Frontend::GraphicsContext> EmuWindow_SDL2_GL::CreateSharedContext() const {

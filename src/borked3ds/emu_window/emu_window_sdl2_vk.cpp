@@ -6,8 +6,8 @@
 #include <cstdlib>
 #include <memory>
 #include <string>
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_syswm.h>
 #include <fmt/format.h>
 #include "borked3ds/emu_window/emu_window_sdl2_vk.h"
 #include "common/logging/log.h"
@@ -25,10 +25,10 @@ EmuWindow_SDL2_VK::EmuWindow_SDL2_VK(Core::System& system, bool fullscreen, bool
                          SDL_WINDOWPOS_UNDEFINED, // x position
                          SDL_WINDOWPOS_UNDEFINED, // y position
                          Core::kScreenTopWidth, Core::kScreenTopHeight + Core::kScreenBottomHeight,
-                         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+                         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     SDL_SysWMinfo wm;
     SDL_VERSION(&wm.version);
-    if (SDL_GetWindowWMInfo(render_window, &wm) == SDL_FALSE) {
+    if (SDL_GetWindowWMInfo(render_window, &wm) == false) {
         LOG_CRITICAL(Frontend, "Failed to get information from the window manager");
         std::exit(EXIT_FAILURE);
     }
@@ -39,33 +39,33 @@ EmuWindow_SDL2_VK::EmuWindow_SDL2_VK(Core::System& system, bool fullscreen, bool
     }
 
     switch (wm.subsystem) {
-#ifdef SDL_VIDEO_DRIVER_WINDOWS
+#ifdef SDL_VIDEO_DRIVER_WINDOWS /* SDL_VIDEO_DRIVER_WINDOWS has been removed in SDL3 */
     case SDL_SYSWM_TYPE::SDL_SYSWM_WINDOWS:
         window_info.type = Frontend::WindowSystemType::Windows;
         window_info.render_surface = reinterpret_cast<void*>(wm.info.win.window);
         break;
 #endif
-#ifdef SDL_VIDEO_DRIVER_X11
+#ifdef SDL_VIDEO_DRIVER_X11 /* SDL_VIDEO_DRIVER_X11 has been removed in SDL3 */
     case SDL_SYSWM_TYPE::SDL_SYSWM_X11:
         window_info.type = Frontend::WindowSystemType::X11;
         window_info.display_connection = wm.info.x11.display;
         window_info.render_surface = reinterpret_cast<void*>(wm.info.x11.window);
         break;
 #endif
-#ifdef SDL_VIDEO_DRIVER_WAYLAND
+#ifdef SDL_VIDEO_DRIVER_WAYLAND /* SDL_VIDEO_DRIVER_WAYLAND has been removed in SDL3 */
     case SDL_SYSWM_TYPE::SDL_SYSWM_WAYLAND:
         window_info.type = Frontend::WindowSystemType::Wayland;
         window_info.display_connection = wm.info.wl.display;
         window_info.render_surface = wm.info.wl.surface;
         break;
 #endif
-#ifdef SDL_VIDEO_DRIVER_COCOA
+#ifdef SDL_VIDEO_DRIVER_COCOA /* SDL_VIDEO_DRIVER_COCOA has been removed in SDL3 */
     case SDL_SYSWM_TYPE::SDL_SYSWM_COCOA:
         window_info.type = Frontend::WindowSystemType::MacOS;
         window_info.render_surface = SDL_Metal_GetLayer(SDL_Metal_CreateView(render_window));
         break;
 #endif
-#ifdef SDL_VIDEO_DRIVER_ANDROID
+#ifdef SDL_VIDEO_DRIVER_ANDROID /* SDL_VIDEO_DRIVER_ANDROID has been removed in SDL3 */
     case SDL_SYSWM_TYPE::SDL_SYSWM_ANDROID:
         window_info.type = Frontend::WindowSystemType::Android;
         window_info.render_surface = reinterpret_cast<void*>(wm.info.android.window);

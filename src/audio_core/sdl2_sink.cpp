@@ -5,7 +5,7 @@
 
 #include <string>
 #include <vector>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "audio_core/audio_types.h"
 #include "audio_core/sdl2_sink.h"
 #include "common/assert.h"
@@ -32,7 +32,7 @@ SDL2Sink::SDL2Sink(std::string device_name) : impl(std::make_unique<Impl>()) {
 
     SDL_AudioSpec desired_audiospec;
     SDL_zero(desired_audiospec);
-    desired_audiospec.format = AUDIO_S16;
+    desired_audiospec.format = SDL_AUDIO_S16LE;
     desired_audiospec.channels = 2;
     desired_audiospec.freq = native_sample_rate;
     desired_audiospec.samples = 512;

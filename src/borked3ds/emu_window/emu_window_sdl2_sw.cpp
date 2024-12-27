@@ -7,8 +7,8 @@
 #include <cstdlib>
 #include <string>
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
-#include <SDL_rect.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_rect.h>
 #include "borked3ds/emu_window/emu_window_sdl2_sw.h"
 #include "common/scm_rev.h"
 #include "common/settings.h"
@@ -84,7 +84,7 @@ void EmuWindow_SDL2_SW::Present() {
                               static_cast<int>(dst_rect.GetHeight())};
             SDL_Surface* screen = LoadFramebuffer(screen_id);
             SDL_BlitSurface(screen, nullptr, window_surface, &sdl_rect);
-            SDL_FreeSurface(screen);
+            SDL_DestroySurface(screen);
         };
 
         draw_screen(ScreenId::TopLeft);

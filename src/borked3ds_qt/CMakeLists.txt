@@ -300,7 +300,7 @@ elseif(WIN32)
 endif()
 
 if(ENABLE_SDL2)
-    target_link_libraries(borked3ds-qt PRIVATE SDL2::SDL2)
+    target_link_libraries(borked3ds-qt PRIVATE SDL3::SDL3)
     target_compile_definitions(borked3ds-qt PRIVATE HAVE_SDL2)
 endif()
 
