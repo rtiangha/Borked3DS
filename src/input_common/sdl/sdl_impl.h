@@ -14,9 +14,9 @@
 #include "input_common/sdl/sdl.h"
 
 union SDL_Event;
-using SDL_Joystick = struct _SDL_Joystick;
-using SDL_JoystickID = s32;
-using SDL_Gamepad = struct _SDL_GameController;
+using SDL_Joystick = struct SDL_Joystick;
+using SDL_JoystickID = u32;
+using SDL_Gamepad = struct SDL_GameController;
 
 namespace InputCommon::SDL {
 
