@@ -676,12 +676,12 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout, bool f
     if (!Settings::values.swap_screen.GetValue()) {
         DrawTopScreen(layout, top_screen);
         glUniform1i(uniform_layer, 0);
-        ApplySecondLayerOpacity(layout.is_portrait);
+        ApplySecondLayerOpacity();
         DrawBottomScreen(layout, bottom_screen);
     } else {
         DrawBottomScreen(layout, bottom_screen);
         glUniform1i(uniform_layer, 0);
-        ApplySecondLayerOpacity(layout.is_portrait);
+        ApplySecondLayerOpacity();
         DrawTopScreen(layout, top_screen);
     }
 
@@ -693,15 +693,11 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout, bool f
             DrawBottomScreen(layout, additional_screen);
         }
     }
-    ResetSecondLayerOpacity(layout.is_portrait);
+    ResetSecondLayerOpacity();
 }
 
-void RendererOpenGL::ApplySecondLayerOpacity(bool isPortrait) {
-    // TODO: Allow for second layer opacity in portrait mode android
-
-    if (!isPortrait &&
-        (Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout) &&
-        Settings::values.custom_second_layer_opacity.GetValue() < 100) {
+void RendererOpenGL::ApplySecondLayerOpacity() {
+    if (Settings::values.custom_second_layer_opacity.GetValue() < 100) {
         state.blend.src_rgb_func = GL_CONSTANT_ALPHA;
         state.blend.src_a_func = GL_CONSTANT_ALPHA;
         state.blend.dst_a_func = GL_ONE_MINUS_CONSTANT_ALPHA;
@@ -710,10 +706,8 @@ void RendererOpenGL::ApplySecondLayerOpacity(bool isPortrait) {
     }
 }
 
-void RendererOpenGL::ResetSecondLayerOpacity(bool isPortrait) {
-    if (!isPortrait &&
-        (Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout) &&
-        Settings::values.custom_second_layer_opacity.GetValue() < 100) {
+void RendererOpenGL::ResetSecondLayerOpacity() {
+    if (Settings::values.custom_second_layer_opacity.GetValue() < 100) {
         state.blend.src_rgb_func = GL_ONE;
         state.blend.dst_rgb_func = GL_ZERO;
         state.blend.src_a_func = GL_ONE;
