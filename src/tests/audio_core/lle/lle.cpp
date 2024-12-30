@@ -3,8 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <string>
 #include <catch2/catch_test_macros.hpp>
-#include <fmt/core.h>
 
 #include "audio_core/hle/decoder.h"
 #include "audio_core/lle/lle.h"
@@ -41,7 +41,7 @@ TEST_CASE("DSP LLE Sanity", "[audio_core][lle]") {
         lle.LoadComponent(firm_file_buf);
 
         lle.SetInterruptHandler([](Service::DSP::InterruptType type, AudioCore::DspPipe pipe) {
-            fmt::print("SetInterruptHandler type={} pipe={}\n", type, pipe);
+            std::print("SetInterruptHandler type={} pipe={}\n", type, pipe);
         });
     }
     SECTION("Initialise Audio Pipe") {

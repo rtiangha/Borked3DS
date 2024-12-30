@@ -3,6 +3,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <print>
 #include <QActionGroup>
 #include <QApplication>
 #include <QDir>
@@ -711,7 +712,7 @@ void GameList::AddGamePopup(QMenu& context_menu, const QString& path, const QStr
             fmt::format("{}Nintendo 3DS/00000000000000000000000000000000/"
                         "00000000000000000000000000000000/title/0004008c/{:08x}/content/",
                         FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir), trimmed_id);
-        fmt::print("DLC path {}\n", dlc_path);
+        std::print("DLC path {}\n", dlc_path);
         if (FileUtil::CreateFullPath(dlc_path)) {
             emit OpenFolderRequested(trimmed_id, GameListOpenTarget::DLC_DATA);
         }

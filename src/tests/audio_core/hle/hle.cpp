@@ -3,8 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <print>
 #include <catch2/catch_test_macros.hpp>
-#include <fmt/core.h>
 
 #include "audio_core/hle/decoder.h"
 #include "audio_core/hle/hle.h"
@@ -46,13 +46,13 @@ TEST_CASE("DSP LLE vs HLE", "[audio_core][hle]") {
         firm_file.ReadArray(firm_file_buf.data(), firm_file_buf.size());
         lle.LoadComponent(firm_file_buf);
         lle.SetInterruptHandler([](Service::DSP::InterruptType type, AudioCore::DspPipe pipe) {
-            fmt::print("LLE SetInterruptHandler type={} pipe={}\n", type, pipe);
+            std::print("LLE SetInterruptHandler type={} pipe={}\n", type, pipe);
         });
     }
     // Initialise HLE
     {
         hle.SetInterruptHandler([](Service::DSP::InterruptType type, AudioCore::DspPipe pipe) {
-            fmt::print("HLE SetInterruptHandler type={} pipe={}\n", type, pipe);
+            std::print("HLE SetInterruptHandler type={} pipe={}\n", type, pipe);
         });
     }
 
