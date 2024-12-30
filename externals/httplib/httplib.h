@@ -160,10 +160,6 @@ using ssize_t = long;
 #define WSA_FLAG_NO_HANDLE_INHERIT 0x80
 #endif
 
-#ifndef strcasecmp
-#define strcasecmp _stricmp
-#endif // strcasecmp
-
 using socket_t = SOCKET;
 #ifdef CPPHTTPLIB_USE_POLL
 #define poll(fds, nfds, timeout) WSAPoll(fds, nfds, timeout)
@@ -244,12 +240,6 @@ using socket_t = int;
 #undef X509_CERT_PAIR
 #undef X509_EXTENSIONS
 #undef PKCS7_SIGNER_INFO
-
-// libressl will warn without this, which becomes an error.
-#undef OCSP_REQUEST
-#undef OCSP_RESPONSE
-#undef PKCS7_ISSUER_AND_SERIAL
-#undef __WINCRYPT_H__
 
 #ifdef _MSC_VER
 #pragma comment(lib, "crypt32.lib")
@@ -663,7 +653,7 @@ public:
   TaskQueue() = default;
   virtual ~TaskQueue() = default;
 
-  virtual void enqueue(std::function<void()> fn) = 0;
+  virtual bool enqueue(std::function<void()> fn) = 0;
   virtual void shutdown() = 0;
 
   virtual void on_idle() {}
@@ -671,7 +661,8 @@ public:
 
 class ThreadPool : public TaskQueue {
 public:
-  explicit ThreadPool(size_t n) : shutdown_(false) {
+  explicit ThreadPool(size_t n, size_t mqr = 0)
+      : shutdown_(false), max_queued_requests_(mqr) {
     while (n) {
       threads_.emplace_back(worker(*this));
       n--;
@@ -681,13 +672,17 @@ public:
   ThreadPool(const ThreadPool &) = delete;
   ~ThreadPool() override = default;
 
-  void enqueue(std::function<void()> fn) override {
+  bool enqueue(std::function<void()> fn) override {
     {
       std::unique_lock<std::mutex> lock(mutex_);
+      if (max_queued_requests_ > 0 && jobs_.size() >= max_queued_requests_) {
+        return false;
+      }
       jobs_.push_back(std::move(fn));
     }
 
     cond_.notify_one();
+    return true;
   }
 
   void shutdown() override {
@@ -737,6 +732,7 @@ private:
   std::list<std::function<void()>> jobs_;
 
   bool shutdown_;
+  size_t max_queued_requests_ = 0;
 
   std::condition_variable cond_;
   std::mutex mutex_;
@@ -3931,8 +3927,8 @@ inline bool read_content_chunked(Stream &strm, T &x,
 }
 
 inline bool is_chunked_transfer_encoding(const Headers &headers) {
-  return !strcasecmp(get_header_value(headers, "Transfer-Encoding", 0, ""),
-                     "chunked");
+  return compare_case_ignore(
+      get_header_value(headers, "Transfer-Encoding", 0, ""), "chunked");
 }
 
 template <typename T, typename U>
@@ -6329,7 +6325,11 @@ inline bool Server::listen_internal() {
 #endif
       }
 
-      task_queue->enqueue([this, sock]() { process_and_close_socket(sock); });
+      if (!task_queue->enqueue(
+              [this, sock]() { process_and_close_socket(sock); })) {
+        detail::shutdown_socket(sock);
+        detail::close_socket(sock);
+      }
     }
 
     task_queue->shutdown();
