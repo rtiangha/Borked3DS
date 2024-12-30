@@ -3,8 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
-#include <string>
 #include <catch2/catch_test_macros.hpp>
+#include <print>
 
 #include "audio_core/hle/decoder.h"
 #include "audio_core/lle/lle.h"
