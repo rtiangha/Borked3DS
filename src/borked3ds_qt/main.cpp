@@ -6,6 +6,7 @@
 #include <clocale>
 #include <iostream>
 #include <memory>
+#include <print>
 #include <thread>
 #include <QFileDialog>
 #include <QFutureWatcher>
@@ -1869,26 +1870,25 @@ bool GMainWindow::CreateShortcutLink(const std::filesystem::path& shortcut_path,
         LOG_ERROR(Frontend, "Failed to create shortcut");
         return false;
     }
-    // TODO: Migrate fmt::print to std::print in futures STD C++ 23.
-    fmt::print(shortcut_stream, "[Desktop Entry]\n");
-    fmt::print(shortcut_stream, "Type=Application\n");
-    fmt::print(shortcut_stream, "Version=1.0\n");
-    fmt::print(shortcut_stream, "Name={}\n", name);
+    std::print(shortcut_stream, "[Desktop Entry]\n");
+    std::print(shortcut_stream, "Type=Application\n");
+    std::print(shortcut_stream, "Version=1.0\n");
+    std::print(shortcut_stream, "Name={}\n", name);
     if (!comment.empty()) {
-        fmt::print(shortcut_stream, "Comment={}\n", comment);
+        std::print(shortcut_stream, "Comment={}\n", comment);
     }
     if (std::filesystem::is_regular_file(icon_path)) {
-        fmt::print(shortcut_stream, "Icon={}\n", icon_path.string());
+        std::print(shortcut_stream, "Icon={}\n", icon_path.string());
     }
     if (!skip_tryexec) {
-        fmt::print(shortcut_stream, "TryExec={}\n", command);
+        std::print(shortcut_stream, "TryExec={}\n", command);
     }
-    fmt::print(shortcut_stream, "Exec={} {}\n", command, arguments);
+    std::print(shortcut_stream, "Exec={} {}\n", command, arguments);
     if (!categories.empty()) {
-        fmt::print(shortcut_stream, "Categories={}\n", categories);
+        std::print(shortcut_stream, "Categories={}\n", categories);
     }
     if (!keywords.empty()) {
-        fmt::print(shortcut_stream, "Keywords={}\n", keywords);
+        std::print(shortcut_stream, "Keywords={}\n", keywords);
     }
     return true;
 #elif defined(_WIN32) // Windows
