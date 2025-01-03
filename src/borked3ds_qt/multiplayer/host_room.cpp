@@ -150,11 +150,11 @@ void HostRoomWindow::Host() {
             ban_list = UISettings::values.ban_list;
         }
         if (auto room = Network::GetRoom().lock()) {
-            bool created = room->Create(
-                ui->room_name->text().toStdString(),
-                ui->room_description->toPlainText().toStdString(), ip_address, port, password,
-                ui->max_player->value(), NetSettings::values.borked3ds_username,
-                game_name.toStdString(), game_id, CreateVerifyBackend(is_public), ban_list);
+            bool created = room->Create(ui->room_name->text().toStdString(),
+                                        ui->room_description->toPlainText().toStdString(), "", port,
+                                        password, ui->max_player->value(),
+                                        ui->username->text().toStdString(), game_name.toStdString(),
+                                        game_id, CreateVerifyBackend(is_public), ban_list, true);
             if (!created) {
                 NetworkMessage::ErrorManager::ShowError(
                     NetworkMessage::ErrorManager::COULD_NOT_CREATE_ROOM);
