@@ -161,7 +161,7 @@ NetPlayStatus NetPlayCreateRoom(const std::string& ipaddress, int port, const st
     }
 
     if (!room->Create(room_name, "", ipaddress, port, password, std::min(max_players, 16), username,
-                      "", 0, nullptr, {}, true)) {
+                      "", 0, nullptr, {})) {
         return NetPlayStatus::CREATE_ROOM_ERROR;
     }
 
