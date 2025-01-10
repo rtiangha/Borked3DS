@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstring>
 #include <span>
+#include <type_traits>
 #include "common/cityhash.h"
 #include "common/common_types.h"
 

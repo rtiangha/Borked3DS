@@ -273,7 +273,7 @@ message(STATUS "Target architecture: ${ARCHITECTURE}")
 add_definitions(-DBOOST_ASIO_DISABLE_CONCEPTS)
 # boost can have issues compiling with C++17 and up on newer versions of Clang.
 add_definitions(-DBOOST_NO_CXX98_FUNCTION_BASE)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Apply consistent visibility settings.
