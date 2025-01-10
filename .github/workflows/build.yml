@@ -280,7 +280,7 @@ jobs:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
   macos:
-    runs-on: ${{ (matrix.target == 'x86_64' && 'macos-13') || 'macos-14' }}
+    runs-on: ${{ (matrix.target == 'x86_64' && 'macos-13') || 'macos-15' }}
     strategy:
       matrix:
         target: ["x86_64", "arm64"]
