@@ -7,6 +7,7 @@ package io.github.borked3ds.android.display
 
 import android.app.Activity
 import android.content.Context
+import android.view.Surface
 import android.view.WindowManager
 import io.github.borked3ds.android.NativeLibrary
 import io.github.borked3ds.android.R
@@ -21,11 +22,19 @@ class ScreenAdjustmentUtil(
     private val windowManager: WindowManager,
     private val settings: Settings,
 ) {
+    fun WindowManager.getDisplayRotation(context: Context): Int {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            context.display?.rotation ?: Surface.ROTATION_0
+        } else {
+            @Suppress("DEPRECATION")
+            defaultDisplay.rotation
+        }
+    }
     fun swapScreen() {
         val isEnabled = !EmulationMenuSettings.swapScreens
         EmulationMenuSettings.swapScreens = isEnabled
 
-        NativeLibrary.swapScreens(isEnabled, windowManager.defaultDisplay.rotation)
+        NativeLibrary.swapScreens(isEnabled, windowManager.getDisplayRotation(context))
         BooleanSetting.SWAP_SCREEN.boolean = isEnabled
         settings.saveSetting(BooleanSetting.SWAP_SCREEN, SettingsFile.FILE_NAME_CONFIG)
     }
