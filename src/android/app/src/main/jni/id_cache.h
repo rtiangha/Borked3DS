@@ -43,6 +43,7 @@ jmethodID GetExitEmulationActivity();
 jmethodID GetRequestCameraPermission();
 
 jmethodID GetRequestMicPermission();
+jmethodID GetAddNetPlayMessage();
 
 jmethodID GetAddNetPlayMessage();
 

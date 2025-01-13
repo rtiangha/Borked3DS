@@ -141,15 +141,6 @@ static Core::System::ResultStatus RunBorked3DS(const std::string& filepath) {
 
     LOG_INFO(Frontend, "Borked3DS starting...");
 
-    // Only initialize network if we're not already in a room
-    if (!NetPlayIsJoined()) {
-        Network::Shutdown();
-        if (!Network::Init()) {
-            LOG_CRITICAL(Frontend, "Network initialization failed");
-            return Core::System::ResultStatus::ErrorSystemFiles;
-        }
-    }
-
     if (filepath.empty()) {
         LOG_CRITICAL(Frontend, "Failed to load ROM: No ROM specified");
         return Core::System::ResultStatus::ErrorLoader;
@@ -1047,5 +1038,4 @@ void JNICALL Java_io_github_borked3ds_android_NativeLibrary_setTurboSpeedSlider(
     [[maybe_unused]] JNIEnv* env, [[maybe_unused]] jobject obj, jint value) {
     Settings::values.turbo_speed = value;
 }
-
 } // extern "C"

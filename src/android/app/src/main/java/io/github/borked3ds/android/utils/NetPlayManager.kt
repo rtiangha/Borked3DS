@@ -9,7 +9,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.format.Formatter
@@ -18,8 +17,6 @@ import androidx.preference.PreferenceManager
 import io.github.borked3ds.android.Borked3DSApplication
 import io.github.borked3ds.android.R
 import io.github.borked3ds.android.dialogs.ChatMessage
-import io.github.borked3ds.android.dialogs.NetPlayDialog
-import java.net.Inet4Address
 
 object NetPlayManager {
     external fun netPlayCreateRoom(
@@ -53,21 +50,7 @@ object NetPlayManager {
         messageListener = listener
     }
 
-    fun receiveMessage(type: Int, message: String) {
-        messageListener?.invoke(type, message)
-    }
-
-    fun showCreateRoomDialog(activity: Activity) {
-        val dialog = NetPlayDialog(activity)
-        dialog.showNetPlayInputDialog(true)
-    }
-
-    fun showJoinRoomDialog(activity: Activity) {
-        val dialog = NetPlayDialog(activity)
-        dialog.showNetPlayInputDialog(false)
-    }
-
-    fun getUsername(activity: Activity): String {
+    fun getUsername(activity: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
         val name = "Borked3DS${(Math.random() * 100).toInt()}"
         return prefs.getString("NetPlayUsername", name) ?: name
@@ -122,8 +105,6 @@ object NetPlayManager {
     fun setChatOpen(isOpen: Boolean) {
         isChatOpen = isOpen
     }
-
-    fun isChatOpen(): Boolean = isChatOpen
 
     fun addNetPlayMessage(type: Int, msg: String) {
         val context = Borked3DSApplication.appContext
@@ -217,35 +198,25 @@ object NetPlayManager {
     }
 
     fun getIpAddressByWifi(activity: Activity): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // For Android 12 (API 31) and above
-            val connectivityManager = activity.getSystemService(ConnectivityManager::class.java)
-            val network = connectivityManager.activeNetwork
-            val capabilities = connectivityManager.getNetworkCapabilities(network)
-        
-            if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
-                val linkProperties = connectivityManager.getLinkProperties(network)
-                linkProperties?.linkAddresses?.firstOrNull { it.address is Inet4Address }?.let {
-                    return it.address.hostAddress ?: "192.168.0.1"
-                }
-            }
-        } else {
-            // For Android 11 (API 30) and below
-            try {
-                val connectivityManager = activity.getSystemService(ConnectivityManager::class.java)
-                val network = connectivityManager.activeNetwork
-                if (network != null) {
-                    val linkProperties = connectivityManager.getLinkProperties(network)
-                    linkProperties?.linkAddresses?.firstOrNull { it.address is Inet4Address }?.let {
-                        return it.address.hostAddress ?: "192.168.0.1"
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+        var ipAddress = 0
+        val wifiManager = activity.getSystemService(WifiManager::class.java)
+        val wifiInfo = wifiManager.connectionInfo
+        if (wifiInfo != null) {
+            ipAddress = wifiInfo.ipAddress
+        }
+
+        if (ipAddress == 0) {
+            val dhcpInfo = wifiManager.dhcpInfo
+            if (dhcpInfo != null) {
+                ipAddress = dhcpInfo.ipAddress
             }
         }
-    
-        return "192.168.0.1"
+
+        return if (ipAddress == 0) {
+            "192.168.0.1"
+        } else {
+            Formatter.formatIpAddress(ipAddress)
+        }
     }
 
     object NetPlayStatus {

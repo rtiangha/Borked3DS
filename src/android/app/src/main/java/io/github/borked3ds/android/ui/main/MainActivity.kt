@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
     private val gamesViewModel: GamesViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
 
+
     override var themeId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
         ThemeUtil.ThemeChangeListener(this)
         ThemeUtil.setTheme(this)
         super.onCreate(savedInstanceState)
+
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -202,13 +204,6 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
     fun displayMultiplayerDialog() {
         val dialog = NetPlayDialog(this)
         dialog.show()
-    }
-
-    fun addNetPlayMessage(msg: String) {
-        if (msg.isEmpty()) {
-            return
-        }
-        Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
     }
 
     override fun setTheme(resId: Int) {

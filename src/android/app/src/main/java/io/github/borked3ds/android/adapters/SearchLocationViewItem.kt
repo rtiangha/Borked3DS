@@ -16,7 +16,7 @@ open class SearchLocationViewItem(
     var onDelete: ((position: Int) -> Unit)? = null
 ) : SelectableCustomListItem<SearchLocationItemBinding>() {
     private var holder: CustomViewHolder<SearchLocationItemBinding>? = null
-    private val adapterPosition get() = holder?.bindingAdapterPosition ?: RecyclerView.NO_POSITION 
+    private val adapterPosition get() = holder?.bindingAdapterPosition ?: RecyclerView.NO_POSITION
 
     override fun getBindingFactory() = SearchLocationBindingFactory
 

@@ -31,13 +31,7 @@ void NetPlayGenerateConsoleId() {
     cfg->UpdateConfigNANDSavegame();
 }
 
-bool NetworkInit() {
-    bool result = Network::Init();
-
-    if (!result) {
-        return false;
-    }
-
+void NetworkInitilize() {
     if (auto member = Network::GetRoomMember().lock()) {
         // register the network structs to use in slots and signals
         member->BindOnStateChanged([](const Network::RoomMember::State& state) {
@@ -135,7 +129,13 @@ bool NetworkInit() {
             AddNetPlayMessage(static_cast<int>(status), msg);
         });
     }
+}
 
+bool NetworkInit() {
+    bool result = Network::Init();
+    if (!result) {
+        return false;
+    }
     return true;
 }
 
@@ -169,6 +169,7 @@ NetPlayStatus NetPlayCreateRoom(const std::string& ipaddress, int port, const st
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     std::string console = Service::CFG::GetConsoleIdHash(Core::System::GetInstance());
+    NetworkInitilize();
     member->Join(username, console, ipaddress.c_str(), port, 0, Network::NoPreferredMac, password);
 
     // Failsafe timer to avoid joining before creation
@@ -176,7 +177,6 @@ NetPlayStatus NetPlayCreateRoom(const std::string& ipaddress, int port, const st
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (member->GetState() == Network::RoomMember::State::Joined ||
             member->GetState() == Network::RoomMember::State::Moderator) {
-            Network::SetInRoom(true);
             return NetPlayStatus::NO_ERROR;
         }
     }
@@ -205,7 +205,6 @@ NetPlayStatus NetPlayJoinRoom(const std::string& ipaddress, int port, const std:
 
     if (member->GetState() == Network::RoomMember::State::Joined ||
         member->GetState() == Network::RoomMember::State::Moderator) {
-        Network::SetInRoom(true);
         return NetPlayStatus::NO_ERROR;
     }
 
@@ -279,7 +278,6 @@ void NetPlayLeaveRoom() {
         // if you are in a room, leave it
         if (auto member = Network::GetRoomMember().lock()) {
             member->Leave();
-            Network::SetInRoom(false);
         }
 
         // if you are hosting a room, also stop hosting
