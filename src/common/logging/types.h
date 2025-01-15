@@ -100,6 +100,7 @@ enum class Class : u8 {
     Loader,          ///< ROM loader
     Input,           ///< Input emulation
     Network,         ///< Network emulation
+    Network_Play,    ///< NetPlay functionality
     Movie,           ///< Movie (Input Recording) Playback
     WebService,      ///< Interface to Borked3DS Web Services
     RPC_Server,      ///< RPC server

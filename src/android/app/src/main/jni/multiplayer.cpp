@@ -149,10 +149,11 @@ NetPlayStatus NetPlayCreateRoom(const std::string& ipaddress, int port, const st
                                 const std::string& password, const std::string& room_name,
                                 int max_players) {
 
-    __android_log_print(ANDROID_LOG_INFO, "NetPlay",
-                        "NetPlayCreateRoom called with ipaddress: %s, port: %d, username: %s, "
-                        "room_name: %s, max_players: %d",
-                        ipaddress.c_str(), port, username.c_str(), room_name.c_str(), max_players);
+    LOG_INFO(Network_Play,
+             "NetPlayCreateRoom called with ipaddress: {}, port: {}, username: {}, password: {}, "
+             "room_name: {}, max_players: {}.",
+             ipaddress, std::to_string(port), username, password, room_name,
+             std::to_string(max_players));
 
     auto member = Network::GetRoomMember().lock();
     if (!member) {
