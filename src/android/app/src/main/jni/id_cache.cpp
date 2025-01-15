@@ -35,6 +35,7 @@ static jmethodID s_exit_emulation_activity;
 static jmethodID s_request_camera_permission;
 static jmethodID s_request_mic_permission;
 static jmethodID s_add_netplay_message;
+static jmethodID s_clear_chat;
 
 static jclass s_cheat_class;
 static jfieldID s_cheat_pointer;
@@ -113,6 +114,10 @@ jmethodID GetRequestMicPermission() {
 
 jmethodID GetAddNetPlayMessage() {
     return s_add_netplay_message;
+}
+
+jmethodID ClearChat() {
+    return s_clear_chat;
 }
 
 jclass GetCheatClass() {
@@ -194,6 +199,8 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         env->GetStaticMethodID(s_native_library_class, "requestMicPermission", "()Z");
     s_add_netplay_message = env->GetStaticMethodID(s_native_library_class, "addNetPlayMessage",
                                                    "(ILjava/lang/String;)V");
+    s_clear_chat = env->GetStaticMethodID(s_native_library_class, "clearChat", "()V");
+
     env->DeleteLocalRef(native_library_class);
 
     // Initialize Cheat

@@ -47,6 +47,7 @@ import io.github.borked3ds.android.utils.ControllerMappingHelper
 import io.github.borked3ds.android.utils.EmulationLifecycleUtil
 import io.github.borked3ds.android.utils.EmulationMenuSettings
 import io.github.borked3ds.android.utils.FileBrowserHelper
+import io.github.borked3ds.android.utils.NetPlayManager
 import io.github.borked3ds.android.utils.ThemeUtil
 import io.github.borked3ds.android.viewmodel.EmulationViewModel
 
@@ -154,13 +155,6 @@ class EmulationActivity : AppCompatActivity() {
         isEmulationRunning = savedInstanceState.getBoolean("isEmulationRunning", false)
     }
 
-    fun addNetPlayMessage(msg: String) {
-        if (msg.isEmpty()) {
-            return
-        }
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-    }
-
     override fun onDestroy() {
         NativeLibrary.enableAdrenoTurboMode(false)
         hotkeyFunctions.resetTurboSpeed()
@@ -225,6 +219,10 @@ class EmulationActivity : AppCompatActivity() {
     fun displayMultiplayerDialog() {
         val dialog = NetPlayDialog(this)
         dialog.show()
+    }
+
+    fun addNetPlayMessages(type: Int, msg: String) {
+        NetPlayManager.addNetPlayMessage(type, msg)
     }
 
     private fun enableFullscreenImmersive() {

@@ -52,7 +52,6 @@ import io.github.borked3ds.android.utils.DirectoryInitialization
 import io.github.borked3ds.android.utils.FileBrowserHelper
 import io.github.borked3ds.android.utils.InsetsHelper
 import io.github.borked3ds.android.utils.Log
-import io.github.borked3ds.android.utils.NetPlayManager
 import io.github.borked3ds.android.utils.PermissionsHandler
 import io.github.borked3ds.android.utils.ThemeUtil
 import io.github.borked3ds.android.viewmodel.GamesViewModel
@@ -65,6 +64,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
     private val homeViewModel: HomeViewModel by viewModels()
     private val gamesViewModel: GamesViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+
 
     override var themeId: Int = 0
 
@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
         ThemeUtil.ThemeChangeListener(this)
         ThemeUtil.setTheme(this)
         super.onCreate(savedInstanceState)
+
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -195,20 +196,12 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
     }
 
     override fun onDestroy() {
-        NetPlayManager.shutdownNetwork()
         super.onDestroy()
     }
 
     fun displayMultiplayerDialog() {
         val dialog = NetPlayDialog(this)
         dialog.show()
-    }
-
-    fun addNetPlayMessage(msg: String) {
-        if (msg.isEmpty()) {
-            return
-        }
-        Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
     }
 
     override fun setTheme(resId: Int) {

@@ -45,28 +45,20 @@ enum class NetPlayStatus : s32 {
 };
 
 bool NetworkInit();
-
 NetPlayStatus NetPlayCreateRoom(const std::string& ipaddress, int port, const std::string& username,
                                 const std::string& password, const std::string& room_name,
                                 int max_players);
-
 NetPlayStatus NetPlayJoinRoom(const std::string& ipaddress, int port, const std::string& username,
                               const std::string& password);
-
 std::vector<std::string> NetPlayRoomInfo();
-
 bool NetPlayIsJoined();
-
 bool NetPlayIsHostedRoom();
-
 bool NetPlayIsModerator();
-
 void NetPlaySendMessage(const std::string& msg);
-
 void NetPlayKickUser(const std::string& username);
-
+void NetPlayBanUser(const std::string& username);
 void NetPlayLeaveRoom();
-
 std::string NetPlayGetConsoleId();
-
 void NetworkShutdown();
+std::vector<std::string> NetPlayGetBanList();
+void NetPlayUnbanUser(const std::string& username);

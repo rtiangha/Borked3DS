@@ -1085,5 +1085,11 @@
     <string name="type_message">Type message……</string>
     <string name="send">Send</string>
     <string name="send_message">Send Message</string>
-
+    <string name="multiplayer_moderation">Moderation</string>
+    <string name="multiplayer_moderation_title">Ban List</string>
+    <string name="multiplayer_no_bans">No banned users</string>
+    <string name="multiplayer_unban_title">Unban User</string>
+    <string name="multiplayer_unban">Unban</string>
+    <string name="multiplayer_unban_message">Are you sure you want to unban %1$s?</string>
+    <string name="multiplayer_ban">Ban User</string>
 </resources>

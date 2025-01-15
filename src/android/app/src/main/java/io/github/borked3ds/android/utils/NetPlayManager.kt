@@ -15,7 +15,6 @@ import androidx.preference.PreferenceManager
 import io.github.borked3ds.android.Borked3DSApplication
 import io.github.borked3ds.android.R
 import io.github.borked3ds.android.dialogs.ChatMessage
-import io.github.borked3ds.android.dialogs.NetPlayDialog
 
 object NetPlayManager {
     external fun netPlayCreateRoom(
@@ -42,28 +41,22 @@ object NetPlayManager {
     external fun netPlayLeaveRoom()
     external fun netPlayGetConsoleId(): String
     external fun netPlayIsModerator(): Boolean
+    external fun netPlayGetBanList(): Array<String>
+    external fun netPlayBanUser(username: String)
+    external fun netPlayUnbanUser(username: String)
 
     private var messageListener: ((Int, String) -> Unit)? = null
+    private var adapterRefreshListener: ((Int, String) -> Unit)? = null
 
     fun setOnMessageReceivedListener(listener: (Int, String) -> Unit) {
         messageListener = listener
     }
 
-    fun receiveMessage(type: Int, message: String) {
-        messageListener?.invoke(type, message)
+    fun setOnAdapterRefreshListener(listener: (Int, String) -> Unit) {
+        adapterRefreshListener = listener
     }
 
-    fun showCreateRoomDialog(activity: Activity) {
-        val dialog = NetPlayDialog(activity)
-        dialog.showNetPlayInputDialog(true)
-    }
-
-    fun showJoinRoomDialog(activity: Activity) {
-        val dialog = NetPlayDialog(activity)
-        dialog.showNetPlayInputDialog(false)
-    }
-
-    fun getUsername(activity: Activity): String {
+    fun getUsername(activity: Context): String {
         val prefs = PreferenceManager.getDefaultSharedPreferences(activity)
         val name = "Borked3DS${(Math.random() * 100).toInt()}"
         return prefs.getString("NetPlayUsername", name) ?: name
@@ -112,8 +105,6 @@ object NetPlayManager {
         isChatOpen = isOpen
     }
 
-    fun isChatOpen(): Boolean = isChatOpen
-
     fun addNetPlayMessage(type: Int, msg: String) {
         val context = Borked3DSApplication.appContext
         val message = formatNetPlayStatus(context, type, msg)
@@ -148,20 +139,15 @@ object NetPlayManager {
             }
         }
 
-        if (!isChatOpen) {
-            Handler(Looper.getMainLooper()).post {
+
+        Handler(Looper.getMainLooper()).post {
+            if (!isChatOpen) {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         }
 
         messageListener?.invoke(type, msg)
-    }
-
-    fun shutdownNetwork() {
-        if (netPlayIsJoined()) {
-            clearChat()
-            netPlayLeaveRoom()
-        }
+        adapterRefreshListener?.invoke(type, msg)
     }
 
     private fun formatNetPlayStatus(context: Context, type: Int, msg: String): String {
@@ -225,6 +211,11 @@ object NetPlayManager {
         } else {
             Formatter.formatIpAddress(ipAddress)
         }
+    }
+
+    fun getBanList(): List<String> {
+        Log.info("Netplay Ban ${netPlayGetBanList()}.toList()")
+        return netPlayGetBanList().toList()
     }
 
     object NetPlayStatus {
