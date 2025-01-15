@@ -4,4 +4,8 @@
         android:id="@+id/action_kick"
         android:enabled="false"
         android:title="@string/multiplayer_kick_member" />
+    <item
+        android:id="@+id/action_ban"
+        android:enabled="false"
+        android:title="@string/multiplayer_ban" />
 </menu>

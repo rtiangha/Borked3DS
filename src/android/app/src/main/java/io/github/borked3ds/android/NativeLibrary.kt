@@ -572,6 +572,23 @@ object NativeLibrary {
 
     @Keep
     @JvmStatic
+    fun addNetPlayMessage(type: Int, message: String) {
+        val emulationActivity = sEmulationActivity.get()
+        if (emulationActivity != null) {
+            emulationActivity.addNetPlayMessages(type, message)
+        } else {
+            NetPlayManager.addNetPlayMessage(type, message)
+        }
+    }
+
+    @Keep
+    @JvmStatic
+    fun clearChat() {
+        NetPlayManager.clearChat()
+    }
+
+    @Keep
+    @JvmStatic
     fun createFile(directory: String, filename: String): Boolean =
         if (FileUtil.isNativePath(directory)) {
             Borked3DSApplication.documentsTree.createFile(directory, filename)
@@ -670,12 +687,6 @@ object NativeLibrary {
         } else {
             FileUtil.deleteDocument(path)
         }
-
-    @Keep
-    @JvmStatic
-    fun addNetPlayMessage(type: Int, message: String) {
-        NetPlayManager.addNetPlayMessage(type, message)
-    }
 
     enum class CoreError {
         ErrorSystemFiles,

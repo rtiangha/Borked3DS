@@ -372,14 +372,8 @@ void Room::RoomImpl::HandleJoinRequest(const ENetEvent* event) {
         std::lock_guard lock(verify_UID_mutex);
         uid = verify_UID;
     }
-
     if (verify_backend != nullptr)
         member.user_data = verify_backend->LoadUserData(uid, token);
-
-    if (nickname == room_information.host_username) {
-        member.user_data.moderator = true;
-        LOG_INFO(Network, "User {} is a moderator", std::string(room_information.host_username));
-    }
 
     std::string ip;
     {
@@ -606,9 +600,11 @@ bool Room::RoomImpl::HasModPermission(const ENetPeer* client) const {
     if (sending_member == members.end()) {
         return false;
     }
+
     if (sending_member->user_data.moderator) { // Community moderator
         return true;
     }
+
     if (!room_information.host_username.empty() &&
         sending_member->user_data.username == room_information.host_username) { // Room host
         return true;

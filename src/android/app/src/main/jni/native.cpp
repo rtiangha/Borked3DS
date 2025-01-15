@@ -141,15 +141,6 @@ static Core::System::ResultStatus RunBorked3DS(const std::string& filepath) {
 
     LOG_INFO(Frontend, "Borked3DS starting...");
 
-    // Only initialize network if we're not already in a room
-    if (!NetPlayIsJoined()) {
-        Network::Shutdown();
-        if (!Network::Init()) {
-            LOG_CRITICAL(Frontend, "Network initialization failed");
-            return Core::System::ResultStatus::ErrorSystemFiles;
-        }
-    }
-
     if (filepath.empty()) {
         LOG_CRITICAL(Frontend, "Failed to load ROM: No ROM specified");
         return Core::System::ResultStatus::ErrorLoader;
@@ -1048,4 +1039,19 @@ void JNICALL Java_io_github_borked3ds_android_NativeLibrary_setTurboSpeedSlider(
     Settings::values.turbo_speed = value;
 }
 
+JNIEXPORT jobjectArray JNICALL
+Java_io_github_lime3ds_android_utils_NetPlayManager_netPlayGetBanList(
+    JNIEnv* env, [[maybe_unused]] jobject obj) {
+    return ToJStringArray(env, NetPlayGetBanList());
+}
+
+JNIEXPORT void JNICALL Java_io_github_lime3ds_android_utils_NetPlayManager_netPlayBanUser(
+    JNIEnv* env, [[maybe_unused]] jobject obj, jstring username) {
+    NetPlayBanUser(GetJString(env, username));
+}
+
+JNIEXPORT void JNICALL Java_io_github_lime3ds_android_utils_NetPlayManager_netPlayUnbanUser(
+    JNIEnv* env, [[maybe_unused]] jobject obj, jstring username) {
+    NetPlayUnbanUser(GetJString(env, username));
+}
 } // extern "C"
