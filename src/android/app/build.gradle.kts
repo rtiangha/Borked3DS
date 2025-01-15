@@ -12,7 +12,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("de.undercouch.download") version "5.6.0"
     id("kotlin-parcelize")
-    kotlin("plugin.serialization") version "2.1.0"
+    kotlin("plugin.serialization") version "2.1.10-RC"
     id("androidx.navigation.safeargs.kotlin")
 }
 
@@ -31,7 +31,7 @@ android {
     namespace = "io.github.borked3ds.android"
 
     compileSdkVersion = "android-35"
-    ndkVersion = "27.2.12479018"
+    ndkVersion = "28.0.12916984-rc2"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_23

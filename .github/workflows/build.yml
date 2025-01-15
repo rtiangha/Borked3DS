@@ -122,6 +122,17 @@ jobs:
           java-version: '23'
           cache: 'gradle'
           check-latest: true
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28-beta3
+          link-to-sdk: true
+      - name: Setup Kotlin
+        uses: fwilhe2/setup-kotlin@main
+        with:
+          version: 2.1.10-RC
       - name: Build
         run: JAVA_HOME=$JAVA_HOME_23_X64 ./.ci/android.sh
         env:
