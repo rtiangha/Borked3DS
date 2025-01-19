@@ -5,7 +5,9 @@
 
 package io.github.borked3ds.android.adapters
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.BitmapDrawable
@@ -13,10 +15,12 @@ import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.SystemClock
 import android.text.TextUtils
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,12 +39,16 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.borked3ds.android.Borked3DSApplication
 import io.github.borked3ds.android.HomeNavigationDirections
+import io.github.borked3ds.android.NativeLibrary
 import io.github.borked3ds.android.R
 import io.github.borked3ds.android.adapters.GameAdapter.GameViewHolder
 import io.github.borked3ds.android.databinding.CardGameBinding
 import io.github.borked3ds.android.features.cheats.ui.CheatsFragmentDirections
+import io.github.borked3ds.android.fragments.IndeterminateProgressDialogFragment
 import io.github.borked3ds.android.model.Game
+import io.github.borked3ds.android.utils.FileUtil
 import io.github.borked3ds.android.utils.GameIconUtils
+import io.github.borked3ds.android.utils.DirectoryInitialization.userDirectory
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -215,12 +223,122 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
         }
     }
 
-    private fun showAboutGameDialog(
-        context: Context,
-        game: Game,
-        holder: GameViewHolder,
-        view: View
-    ) {
+    private data class GameDirectories(
+        val gameDir: String,
+        val saveDir: String,
+        val modsDir: String,
+        val texturesDir: String,
+        val appDir: String,
+        val dlcDir: String,
+        val updatesDir: String,
+        val extraDir: String
+    )
+    private fun getGameDirectories(game: Game): GameDirectories {
+        return GameDirectories(
+            gameDir = game.path.substringBeforeLast("/"),
+            saveDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/${String.format("%016x", game.titleId).lowercase().substring(0, 8)}/${String.format("%016x", game.titleId).lowercase().substring(8)}/data/00000001",
+            modsDir = "load/mods/${String.format("%016X", game.titleId)}",
+            texturesDir = "load/textures/${String.format("%016X", game.titleId)}",
+            appDir = game.path.substringBeforeLast("/").split("/").filter { it.isNotEmpty() }.joinToString("/"),
+            dlcDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/0004008c/${String.format("%016x", game.titleId).lowercase().substring(8)}/content",
+            updatesDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/title/0004000e/${String.format("%016x", game.titleId).lowercase().substring(8)}/content",
+            extraDir = "sdmc/Nintendo 3DS/00000000000000000000000000000000/00000000000000000000000000000000/extdata/00000000/${String.format("%016X", game.titleId).substring(8, 14).padStart(8, '0')}"
+        )
+    }
+
+    private fun showOpenContextMenu(view: View, game: Game) {
+        val dirs = getGameDirectories(game)
+
+        val popup = PopupMenu(view.context, view).apply {
+            menuInflater.inflate(R.menu.game_context_menu_open, menu)
+            listOf(
+                R.id.game_context_open_app to dirs.appDir,
+                R.id.game_context_open_save_dir to dirs.saveDir,
+                R.id.game_context_open_dlc to dirs.dlcDir,
+                R.id.game_context_open_updates to dirs.updatesDir
+            ).forEach { (id, dir) ->
+                menu.findItem(id)?.isEnabled =
+                    Borked3DSApplication.documentsTree.folderUriHelper(dir)?.let {
+                        DocumentFile.fromTreeUri(view.context, it)?.exists()
+                    } ?: false
+            }
+            menu.findItem(R.id.game_context_open_extra)?.let { item ->
+                if (Borked3DSApplication.documentsTree.folderUriHelper(dirs.extraDir)?.let {
+                        DocumentFile.fromTreeUri(view.context, it)?.exists()
+                    } != true) {
+                    menu.removeItem(item.itemId)
+                }
+            }
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            val intent = Intent(Intent.ACTION_VIEW)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .setType("*/*")
+
+            val uri = when (menuItem.itemId) {
+                R.id.game_context_open_app -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.appDir)
+                R.id.game_context_open_save_dir -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.saveDir)
+                R.id.game_context_open_dlc -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.dlcDir)
+                R.id.game_context_open_textures -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.texturesDir, true)
+                R.id.game_context_open_mods -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.modsDir, true)
+                R.id.game_context_open_extra -> Borked3DSApplication.documentsTree.folderUriHelper(dirs.extraDir)
+                else -> null
+            }
+
+            uri?.let {
+                intent.data = it
+                view.context.startActivity(intent)
+                true
+            } ?: false
+        }
+
+        popup.show()
+    }
+
+    private fun showUninstallContextMenu(view: View, game: Game, bottomSheetDialog: BottomSheetDialog) {
+        val dirs = getGameDirectories(game)
+        val popup = PopupMenu(view.context, view).apply {
+            menuInflater.inflate(R.menu.game_context_menu_uninstall, menu)
+            listOf(
+                R.id.game_context_uninstall to dirs.gameDir,
+                R.id.game_context_uninstall_dlc to dirs.dlcDir,
+                R.id.game_context_uninstall_updates to dirs.updatesDir
+            ).forEach { (id, dir) ->
+                menu.findItem(id)?.isEnabled =
+                    Borked3DSApplication.documentsTree.folderUriHelper(dir)?.let {
+                        DocumentFile.fromTreeUri(view.context, it)?.exists()
+                    } ?: false
+            }
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            val uninstallAction: () -> Unit = {
+                when (menuItem.itemId) {
+                    R.id.game_context_uninstall -> Borked3DSApplication.documentsTree.deleteDocument(dirs.gameDir)
+                    R.id.game_context_uninstall_dlc -> FileUtil.deleteDocument(Borked3DSApplication.documentsTree.folderUriHelper(dirs.dlcDir)
+                        .toString())
+                    R.id.game_context_uninstall_updates -> FileUtil.deleteDocument(Borked3DSApplication.documentsTree.folderUriHelper(dirs.updatesDir)
+                        .toString())
+                }
+                ViewModelProvider(activity)[GamesViewModel::class.java].reloadGames(true)
+                bottomSheetDialog.dismiss()
+            }
+
+            if (menuItem.itemId in listOf(R.id.game_context_uninstall, R.id.game_context_uninstall_dlc, R.id.game_context_uninstall_updates)) {
+                IndeterminateProgressDialogFragment.newInstance(activity, R.string.uninstalling, false, uninstallAction)
+                    .show(activity.supportFragmentManager, IndeterminateProgressDialogFragment.TAG)
+                true
+            } else {
+                false
+            }
+        }
+
+        popup.show()
+    }
+
+    private fun showAboutGameDialog(context: Context, game: Game, holder: GameViewHolder, view: View) {
         val bottomSheetView = inflater.inflate(R.layout.dialog_about_game, null)
 
         val game_id = String.format("%016X", game.titleId)
@@ -268,6 +386,14 @@ class GameAdapter(private val activity: AppCompatActivity, private val inflater:
             val action = CheatsFragmentDirections.actionGlobalCheatsFragment(holder.game.titleId)
             view.findNavController().navigate(action)
             bottomSheetDialog.dismiss()
+        }
+
+        bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_open).setOnClickListener {
+            showOpenContextMenu(it, game)
+        }
+
+        bottomSheetView.findViewById<MaterialButton>(R.id.menu_button_uninstall).setOnClickListener {
+            showUninstallContextMenu(it, game, bottomSheetDialog)
         }
 
         val bottomSheetBehavior = bottomSheetDialog.getBehavior()
