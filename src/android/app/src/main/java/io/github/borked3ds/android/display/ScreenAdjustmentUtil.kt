@@ -30,6 +30,7 @@ class ScreenAdjustmentUtil(
             defaultDisplay.rotation
         }
     }
+
     fun swapScreen() {
         val isEnabled = !EmulationMenuSettings.swapScreens
         EmulationMenuSettings.swapScreens = isEnabled
