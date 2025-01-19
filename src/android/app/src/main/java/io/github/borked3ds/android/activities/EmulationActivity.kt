@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.BundleCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -165,7 +166,15 @@ class EmulationActivity : AppCompatActivity() {
         hotkeyFunctions.resetTurboSpeed()
         EmulationLifecycleUtil.clear()
         val sessionTime = System.currentTimeMillis() - emulationStartTime
-        val game = requireNotNull(intent.getParcelableExtra<Game>("game"))
+
+        val game = try {
+            intent.extras?.let { extras ->
+                BundleCompat.getParcelable(extras, "game", Game::class.java)
+            } ?: throw IllegalStateException("Missing game data in intent extras")
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to retrieve game data: ${e.message}", e)
+        }
+
         PlayTimeTracker.addPlayTime(game, sessionTime)
 
         isEmulationRunning = false
