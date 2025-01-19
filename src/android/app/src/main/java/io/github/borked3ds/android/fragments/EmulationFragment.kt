@@ -162,8 +162,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             return
         }
 
-        // So this fragment doesn't restart on configuration changes; i.e. rotation.
-        retainInstance = true
         emulationState = EmulationState(game.path)
         emulationActivity = requireActivity() as EmulationActivity
         screenAdjustmentUtil = ScreenAdjustmentUtil(
@@ -1492,6 +1490,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             RUNNING,
             PAUSED
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        perfStatsUpdater?.let {
+            // Cleanup perfStatsUpdater
+            Choreographer.getInstance().removeFrameCallback(this)
+        }
+        _binding = null
     }
 
     companion object {
