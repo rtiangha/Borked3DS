@@ -43,11 +43,13 @@ import io.github.borked3ds.android.features.settings.model.SettingsViewModel
 import io.github.borked3ds.android.features.settings.model.view.InputBindingSetting
 import io.github.borked3ds.android.fragments.EmulationFragment
 import io.github.borked3ds.android.fragments.MessageDialogFragment
+import io.github.borked3ds.android.model.Game
 import io.github.borked3ds.android.utils.ControllerMappingHelper
 import io.github.borked3ds.android.utils.EmulationLifecycleUtil
 import io.github.borked3ds.android.utils.EmulationMenuSettings
 import io.github.borked3ds.android.utils.FileBrowserHelper
 import io.github.borked3ds.android.utils.NetPlayManager
+import io.github.borked3ds.android.utils.PlayTimeTracker
 import io.github.borked3ds.android.utils.ThemeUtil
 import io.github.borked3ds.android.viewmodel.EmulationViewModel
 
@@ -62,6 +64,7 @@ class EmulationActivity : AppCompatActivity() {
     private lateinit var screenAdjustmentUtil: ScreenAdjustmentUtil
     private lateinit var hotkeyFunctions: HotkeyFunctions
     private lateinit var hotkeyUtility: HotkeyUtility
+    private var emulationStartTime: Long = 0
 
     private val emulationFragment: EmulationFragment
         get() {
@@ -123,6 +126,8 @@ class EmulationActivity : AppCompatActivity() {
         isEmulationRunning = true
         instance = this
 
+        emulationStartTime = System.currentTimeMillis()
+
         applyOrientationSettings() // Check for orientation settings at startup
     }
 
@@ -159,6 +164,10 @@ class EmulationActivity : AppCompatActivity() {
         NativeLibrary.enableAdrenoTurboMode(false)
         hotkeyFunctions.resetTurboSpeed()
         EmulationLifecycleUtil.clear()
+        val sessionTime = System.currentTimeMillis() - emulationStartTime
+        val game = requireNotNull(intent.getParcelableExtra<Game>("game"))
+        PlayTimeTracker.addPlayTime(game, sessionTime)
+
         isEmulationRunning = false
         instance = null
         super.onDestroy()

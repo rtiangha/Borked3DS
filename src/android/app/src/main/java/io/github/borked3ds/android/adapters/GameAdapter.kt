@@ -45,6 +45,7 @@ import io.github.borked3ds.android.fragments.IndeterminateProgressDialogFragment
 import io.github.borked3ds.android.model.Game
 import io.github.borked3ds.android.utils.FileUtil
 import io.github.borked3ds.android.utils.GameIconUtils
+import io.github.borked3ds.android.utils.PlayTimeTracker
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -472,6 +473,8 @@ class GameAdapter(
             "$id_label: $game_id"
         bottomSheetView.findViewById<TextView>(R.id.about_game_filename).text =
             "$file_label: $game_filename"
+        bottomSheetView.findViewById<TextView>(R.id.about_game_playtime).text =
+            "Playtime: " + PlayTimeTracker.getPlayTime(game.titleId)
         GameIconUtils.loadGameIcon(activity, game, bottomSheetView.findViewById(R.id.game_icon))
 
         bottomSheetView.findViewById<MaterialButton>(R.id.about_game_play).setOnClickListener {
