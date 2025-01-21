@@ -183,6 +183,7 @@ if(NOT USE_SYSTEM_SOUNDTOUCH)
 endif()
 
 # Teakra
+set(BUILD_TESTING OFF CACHE BOOL "")
 if ("x86_64" IN_LIST ARCHITECTURE)
     add_subdirectory(teakra EXCLUDE_FROM_ALL)
 else() # use older teakra for arm builds for now
