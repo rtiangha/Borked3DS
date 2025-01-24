@@ -11,6 +11,13 @@
 #include "video_core/pica/pica_core.h"
 #include "video_core/rasterizer_accelerated.h"
 
+// SIMD includes
+#if defined(__aarch64__) && defined(__ARM_NEON)
+#include <arm_neon.h>
+#elif defined(__x86_64__)
+#include <immintrin.h>
+#endif
+
 namespace VideoCore {
 
 using Pica::f24;
@@ -79,7 +86,7 @@ RasterizerAccelerated::RasterizerAccelerated(Memory::MemorySystem& memory_, Pica
  * these issues, making this basic implementation actually more accurate to the hardware.
  */
 static bool AreQuaternionsOpposite(Common::Vec4<f24> qa, Common::Vec4<f24> qb) {
-#ifdef ARCHITECTURE_ARM64
+#if defined(__aarch64__)
     const float32_t a[4] = {qa.x.ToFloat32(), qa.y.ToFloat32(), qa.z.ToFloat32(), qa.w.ToFloat32()};
     const float32_t b[4] = {qb.x.ToFloat32(), qb.y.ToFloat32(), qb.z.ToFloat32(), qb.w.ToFloat32()};
     const float32x4_t aa = vld1q_f32(a);
@@ -87,6 +94,29 @@ static bool AreQuaternionsOpposite(Common::Vec4<f24> qa, Common::Vec4<f24> qb) {
     const float32x4_t mm = vmulq_f32(aa, bb);
     const float32x2_t s2 = vadd_f32(vget_high_f32(mm), vget_low_f32(mm));
     return (vget_lane_f32(vpadd_f32(s2, s2), 0) < 0.f);
+#elif defined(__x86_64__)
+    // Convert quaternion components to float arrays
+    float a[4] = {qa.x.ToFloat32(), qa.y.ToFloat32(), qa.z.ToFloat32(), qa.w.ToFloat32()};
+    float b[4] = {qb.x.ToFloat32(), qb.y.ToFloat32(), qb.z.ToFloat32(), qb.w.ToFloat32()};
+
+    // Load float arrays into SSE registers
+    __m128 aa = _mm_loadu_ps(a);
+    __m128 bb = _mm_loadu_ps(b);
+
+    // Perform element-wise multiplication
+    __m128 mm = _mm_mul_ps(aa, bb);
+
+    // Sum the elements of the result
+    __m128 shuf = _mm_movehdup_ps(mm);  // (x,y,z,w) -> (y,y,w,w)
+    __m128 sums = _mm_add_ps(mm, shuf); // (x+y, y+y, z+w, w+w)
+    shuf = _mm_movehl_ps(shuf, sums);   // (x+y, y+y, z+w, w+w) -> (z+w, w+w, 0, 0)
+    sums = _mm_add_ss(sums, shuf);      // (x+y+z+w, 0, 0, 0)
+
+    // Extract the result
+    float result = _mm_cvtss_f32(sums);
+
+    // Check if the sum is less than 0
+    return result < 0.f;
 #else
     Common::Vec4f a{qa.x.ToFloat32(), qa.y.ToFloat32(), qa.z.ToFloat32(), qa.w.ToFloat32()};
     Common::Vec4f b{qb.x.ToFloat32(), qb.y.ToFloat32(), qb.z.ToFloat32(), qb.w.ToFloat32()};
