@@ -72,9 +72,14 @@ template <typename T>
 class Vec4;
 
 namespace detail {
+#if defined(HAVE_SSE2) || defined(HAVE_NEON)
+constexpr bool has_simd_support = true;
+#else
+constexpr bool has_simd_support = false;
+#endif
+
 template <typename T>
-struct is_vectorizable
-    : std::bool_constant<std::is_same_v<T, float> && (defined(HAVE_SSE2) || defined(HAVE_NEON))> {};
+struct is_vectorizable : std::bool_constant<std::is_same_v<T, float> && has_simd_support> {};
 } // namespace detail
 
 template <typename T>
@@ -97,7 +102,7 @@ public:
         return &x;
     }
 
-    [[nodiscard]]  const T* AsArray() const {
+    [[nodiscard]] const T* AsArray() const {
         return &x;
     }
 
@@ -146,7 +151,8 @@ public:
         x = vget_lane_f32(sum, 0);
         y = vget_lane_f32(sum, 1);
 #endif
-    } else {
+    }
+    else {
         x += other.x;
         y += other.y;
     }
