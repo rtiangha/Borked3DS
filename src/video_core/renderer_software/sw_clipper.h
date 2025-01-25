@@ -60,7 +60,7 @@ struct Viewport {
  * Flips the quaternions if they are opposite to prevent
  * interpolating them over the wrong direction.
  */
-void FlipQuaternionIfOpposite(Common::Vec4<f24>& a, const Common::Vec4<f24>& b);
+void FlipQuaternionIfOpposite(Pica::OutputVertex& a, const Pica::OutputVertex& b);
 
 /**
  * Calculate signed area of the triangle spanned by the three argument vertices.

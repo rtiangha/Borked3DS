@@ -94,7 +94,8 @@ public:
         : pos(f24::Zero()), coeffs(coeffs), bias(bias) {}
 
     bool IsInside(const Vertex& vertex) const {
-        return Common::Dot(vertex.pos + bias, coeffs) >= f24::FromFloat32(-EPSILON_Z);
+        auto pos = vertex.pos();
+        return Common::Dot(pos + bias, coeffs) >= f24::FromFloat32(-EPSILON_Z);
     }
 
     bool IsOutSide(const Vertex& vertex) const {
@@ -102,8 +103,10 @@ public:
     }
 
     Vertex GetIntersection(const Vertex& v0, const Vertex& v1) const {
-        const f24 dp = Common::Dot(v0.pos + bias, coeffs);
-        const f24 dp_prev = Common::Dot(v1.pos + bias, coeffs);
+        auto pos0 = v0.pos();
+        auto pos1 = v1.pos();
+        const f24 dp = Common::Dot(pos0 + bias, coeffs);
+        const f24 dp_prev = Common::Dot(pos1 + bias, coeffs);
         const f24 factor = dp_prev / (dp_prev - dp);
         return Vertex::Lerp(factor, v0, v1);
     }
