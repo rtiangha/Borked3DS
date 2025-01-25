@@ -942,12 +942,12 @@ public:
 #endif
     };
 
-    T* AsArray() { 
-        return &x; 
+    T* AsArray() {
+        return &x;
     }
-    
-    const T* AsArray() const { 
-        return &x; 
+
+    const T* AsArray() const {
+        return &x;
     }
 
     constexpr Vec4() = default;
