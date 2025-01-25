@@ -137,8 +137,8 @@ void RasterizerSoftware::AddTriangle(const Pica::OutputVertex& v0, const Pica::O
     boost::container::static_vector<Vertex, MAX_VERTICES> buffer_a = {v0, v1, v2};
     boost::container::static_vector<Vertex, MAX_VERTICES> buffer_b;
 
-    FlipQuaternionIfOpposite(buffer_a[1].quat, buffer_a[0].quat);
-    FlipQuaternionIfOpposite(buffer_a[2].quat, buffer_a[0].quat);
+    FlipQuaternionIfOpposite(buffer_a[1], buffer_a[0]);
+    FlipQuaternionIfOpposite(buffer_a[2], buffer_a[0]);
 
     auto* output_list = &buffer_a;
     auto* input_list = &buffer_b;
@@ -230,7 +230,7 @@ void RasterizerSoftware::MakeScreenCoords(Vertex& vtx) {
     viewport.offset_x = f24::FromFloat32(static_cast<f32>(regs.rasterizer.viewport_corner.x));
     viewport.offset_y = f24::FromFloat32(static_cast<f32>(regs.rasterizer.viewport_corner.y));
 
-    f24 inv_w = f24::One() / vtx.pos.w;
+    f24 inv_w = f24::One() / vtx.pos().w();
 
     // Update all vectors using accessors
     auto pos = vtx.pos();
@@ -332,7 +332,7 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
     const int bias2 =
         IsRightSideOrFlatBottomEdge(vtxpos[2].xy(), vtxpos[0].xy(), vtxpos[1].xy()) ? 1 : 0;
 
-    const auto w_inverse = Common::MakeVec(v0.pos.w, v1.pos.w, v2.pos.w);
+    const auto w_inverse = Common::MakeVec(v0.pos().w(), v1.pos().w(), v2.pos().w());
 
     const auto textures = regs.texturing.GetTextures();
     const auto tev_stages = regs.texturing.GetTevStages();
@@ -444,18 +444,27 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                               255)),
                 };
 
-                // Get texture coordinates using accessors
-                const auto v0_tc0 = v0.tc0();
-                const auto v1_tc0 = v1.tc0();
-                const auto v2_tc0 = v2.tc0();
+                // Get all texture coordinates up front to avoid repeated accessor calls
+                auto tc0_v0 = v0.tc0();
+                auto tc0_v1 = v1.tc0();
+                auto tc0_v2 = v2.tc0();
+                auto tc1_v0 = v0.tc1();
+                auto tc1_v1 = v1.tc1();
+                auto tc1_v2 = v2.tc1();
+                auto tc2_v0 = v0.tc2();
+                auto tc2_v1 = v1.tc2();
+                auto tc2_v2 = v2.tc2();
 
                 std::array<Common::Vec2<f24>, 3> uv;
-                uv[0].u() = get_interpolated_attribute(v0.tc0.u(), v1.tc0.u(), v2.tc0.u());
-                uv[0].v() = get_interpolated_attribute(v0.tc0.v(), v1.tc0.v(), v2.tc0.v());
-                uv[1].u() = get_interpolated_attribute(v0.tc1.u(), v1.tc1.u(), v2.tc1.u());
-                uv[1].v() = get_interpolated_attribute(v0.tc1.v(), v1.tc1.v(), v2.tc1.v());
-                uv[2].u() = get_interpolated_attribute(v0.tc2.u(), v1.tc2.u(), v2.tc2.u());
-                uv[2].v() = get_interpolated_attribute(v0.tc2.v(), v1.tc2.v(), v2.tc2.v());
+                // TC0 coordinates
+                uv[0].u() = get_interpolated_attribute(tc0_v0.u(), tc0_v1.u(), tc0_v2.u());
+                uv[0].v() = get_interpolated_attribute(tc0_v0.v(), tc0_v1.v(), tc0_v2.v());
+                // TC1 coordinates
+                uv[1].u() = get_interpolated_attribute(tc1_v0.u(), tc1_v1.u(), tc1_v2.u());
+                uv[1].v() = get_interpolated_attribute(tc1_v0.v(), tc1_v1.v(), tc1_v2.v());
+                // TC2 coordinates
+                uv[2].u() = get_interpolated_attribute(tc2_v0.u(), tc2_v1.u(), tc2_v2.u());
+                uv[2].v() = get_interpolated_attribute(tc2_v0.v(), tc2_v1.v(), tc2_v2.v());
 
                 // Sample bound texture units.
                 const f24 tc0_w = get_interpolated_attribute(v0.tc0_w, v1.tc0_w, v2.tc0_w);
