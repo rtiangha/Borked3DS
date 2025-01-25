@@ -24,28 +24,40 @@ static Common::Vec3f LightColor(const Pica::LightingRegs::LightColor& color) {
 
 RasterizerAccelerated::HardwareVertex::HardwareVertex(const Pica::OutputVertex& v,
                                                       bool flip_quaternion) {
-    position[0] = v.pos.x.ToFloat32();
-    position[1] = v.pos.y.ToFloat32();
-    position[2] = v.pos.z.ToFloat32();
-    position[3] = v.pos.w.ToFloat32();
-    color[0] = v.color.x.ToFloat32();
-    color[1] = v.color.y.ToFloat32();
-    color[2] = v.color.z.ToFloat32();
-    color[3] = v.color.w.ToFloat32();
-    tex_coord0[0] = v.tc0.x.ToFloat32();
-    tex_coord0[1] = v.tc0.y.ToFloat32();
-    tex_coord1[0] = v.tc1.x.ToFloat32();
-    tex_coord1[1] = v.tc1.y.ToFloat32();
-    tex_coord2[0] = v.tc2.x.ToFloat32();
-    tex_coord2[1] = v.tc2.y.ToFloat32();
+    auto pos = v.pos();
+    auto color = v.color();
+    auto tc0 = v.tc0();
+    auto tc1 = v.tc1();
+    auto tc2 = v.tc2();
+    auto quat = v.quat();
+    auto view = v.view();
+
+    position[0] = pos.x.ToFloat32();
+    position[1] = pos.y.ToFloat32();
+    position[2] = pos.z.ToFloat32();
+    position[3] = pos.w.ToFloat32();
+
+    color[0] = color.x.ToFloat32();
+    color[1] = color.y.ToFloat32();
+    color[2] = color.z.ToFloat32();
+    color[3] = color.w.ToFloat32();
+
+    tex_coord0[0] = tc0.x.ToFloat32();
+    tex_coord0[1] = tc0.y.ToFloat32();
+    tex_coord1[0] = tc1.x.ToFloat32();
+    tex_coord1[1] = tc1.y.ToFloat32();
+    tex_coord2[0] = tc2.x.ToFloat32();
+    tex_coord2[1] = tc2.y.ToFloat32();
     tex_coord0_w = v.tc0_w.ToFloat32();
-    normquat[0] = v.quat.x.ToFloat32();
-    normquat[1] = v.quat.y.ToFloat32();
-    normquat[2] = v.quat.z.ToFloat32();
-    normquat[3] = v.quat.w.ToFloat32();
-    view[0] = v.view.x.ToFloat32();
-    view[1] = v.view.y.ToFloat32();
-    view[2] = v.view.z.ToFloat32();
+
+    normquat[0] = quat.x.ToFloat32();
+    normquat[1] = quat.y.ToFloat32();
+    normquat[2] = quat.z.ToFloat32();
+    normquat[3] = quat.w.ToFloat32();
+
+    view[0] = view.x.ToFloat32();
+    view[1] = view.y.ToFloat32();
+    view[2] = view.z.ToFloat32();
 
     if (flip_quaternion) {
         normquat = -normquat;
