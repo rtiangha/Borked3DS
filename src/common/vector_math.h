@@ -942,6 +942,14 @@ public:
 #endif
     };
 
+    T* AsArray() { 
+        return &x; 
+    }
+    
+    const T* AsArray() const { 
+        return &x; 
+    }
+
     constexpr Vec4() = default;
     constexpr Vec4(const T& x_, const T& y_, const T& z_, const T& w_) {
         if constexpr (detail::is_vectorizable<T>::value) {
