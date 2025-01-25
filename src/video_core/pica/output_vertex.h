@@ -5,18 +5,10 @@
 
 #pragma once
 
+#include <cstddef> // for offsetof
 #include "common/common_funcs.h"
 #include "common/vector_math.h"
 #include "video_core/pica_types.h"
-
-// Define alignment macro that works across different compilers
-#if defined(_MSC_VER)
-#define PICA_FORCE_ALIGN(x) __declspec(align(x))
-#elif defined(__GNUC__) || defined(__clang__)
-#define PICA_FORCE_ALIGN(x) __attribute__((aligned(x)))
-#else
-#error "Unknown compiler! Please define alignment macro for this compiler"
-#endif
 
 namespace Pica {
 
@@ -24,8 +16,15 @@ struct RasterizerRegs;
 
 using AttributeBuffer = std::array<Common::Vec4<f24>, 16>;
 
-#pragma pack(push, 1) // Start packed alignment
-struct OutputVertex {
+#if defined(_MSC_VER)
+#define PICA_PACKED __declspec(align(1))
+#elif defined(__GNUC__) || defined(__clang__)
+#define PICA_PACKED __attribute__((packed))
+#else
+#error "Unknown compiler! Please define packed macro for this compiler"
+#endif
+
+struct PICA_PACKED OutputVertex {
     OutputVertex() = default;
     explicit OutputVertex(const RasterizerRegs& regs, const AttributeBuffer& output);
 
@@ -54,20 +53,17 @@ private:
         ar & tc2;
     }
     friend class boost::serialization::access;
-} PICA_FORCE_ALIGN(16); // Assume you have this macro defined for 16-byte alignment
-#pragma pack(pop)
+};
 
 static_assert(std::is_standard_layout_v<OutputVertex>, "Structure is not standard layout");
 static_assert(sizeof(OutputVertex) == 24 * sizeof(f32), "OutputVertex has invalid size");
-// Add these after your existing static_assert lines
 static_assert(offsetof(OutputVertex, pos) == 0, "Invalid pos offset");
 static_assert(offsetof(OutputVertex, quat) == 16, "Invalid quat offset");
 static_assert(offsetof(OutputVertex, color) == 32, "Invalid color offset");
 static_assert(offsetof(OutputVertex, tc0) == 48, "Invalid tc0 offset");
 static_assert(offsetof(OutputVertex, tc1) == 56, "Invalid tc1 offset");
 static_assert(offsetof(OutputVertex, tc0_w) == 64, "Invalid tc0_w offset");
-// Skip padding word
 static_assert(offsetof(OutputVertex, view) == 72, "Invalid view offset");
-// Skip padding word
 static_assert(offsetof(OutputVertex, tc2) == 88, "Invalid tc2 offset");
+
 } // namespace Pica
