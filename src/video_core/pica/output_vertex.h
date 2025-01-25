@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <cstddef> // for offsetof
+#include <cstddef>
 #include "common/common_funcs.h"
 #include "common/vector_math.h"
 #include "video_core/pica_types.h"
@@ -16,29 +16,25 @@ struct RasterizerRegs;
 
 using AttributeBuffer = std::array<Common::Vec4<f24>, 16>;
 
-#if defined(_MSC_VER)
-#define PICA_PACKED __declspec(align(1))
-#elif defined(__GNUC__) || defined(__clang__)
-#define PICA_PACKED __attribute__((packed))
-#else
-#error "Unknown compiler! Please define packed macro for this compiler"
-#endif
-
-struct PICA_PACKED OutputVertex {
+struct alignas(16) OutputVertex {
     OutputVertex() = default;
     explicit OutputVertex(const RasterizerRegs& regs, const AttributeBuffer& output);
 
-    Common::Vec4<f24> pos;   // 16 bytes
-    Common::Vec4<f24> quat;  // 16 bytes
-    Common::Vec4<f24> color; // 16 bytes
-    Common::Vec2<f24> tc0;   // 8 bytes
-    Common::Vec2<f24> tc1;   // 8 bytes
-    f24 tc0_w;               // 4 bytes
-    INSERT_PADDING_WORDS(1); // 4 bytes
-    Common::Vec3<f24> view;  // 12 bytes
-    INSERT_PADDING_WORDS(1); // 4 bytes
-    Common::Vec2<f24> tc2;   // 8 bytes
-                             // Total: 96 bytes (24 * sizeof(f32))
+    union {
+        struct {
+            Common::Vec4<f24> pos;   // 16 bytes
+            Common::Vec4<f24> quat;  // 16 bytes
+            Common::Vec4<f24> color; // 16 bytes
+            Common::Vec2<f24> tc0;   // 8 bytes
+            Common::Vec2<f24> tc1;   // 8 bytes
+            f24 tc0_w;               // 4 bytes
+            u32 pad1;                // 4 bytes padding
+            Common::Vec3<f24> view;  // 12 bytes
+            u32 pad2;                // 4 bytes padding
+            Common::Vec2<f24> tc2;   // 8 bytes
+        };
+        std::array<u32, 24> raw; // Force size to be exactly 96 bytes
+    };
 
 private:
     template <class Archive>
