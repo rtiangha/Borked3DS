@@ -45,14 +45,31 @@ struct Vertex : Pica::OutputVertex {
      * Note: This function cannot be called after perspective divide.
      **/
     void Lerp(f24 factor, const Vertex& vtx) {
-        pos = pos * factor + vtx.pos * (f24::One() - factor);
-        quat = quat * factor + vtx.quat * (f24::One() - factor);
-        color = color * factor + vtx.color * (f24::One() - factor);
-        tc0 = tc0 * factor + vtx.tc0 * (f24::One() - factor);
-        tc1 = tc1 * factor + vtx.tc1 * (f24::One() - factor);
+        // Get vectors from the accessors
+        auto my_pos = pos();
+        auto other_pos = vtx.pos();
+        auto my_quat = quat();
+        auto other_quat = vtx.quat();
+        auto my_color = color();
+        auto other_color = vtx.color();
+        auto my_tc0 = tc0();
+        auto other_tc0 = vtx.tc0();
+        auto my_tc1 = tc1();
+        auto other_tc1 = vtx.tc1();
+        auto my_view = view();
+        auto other_view = vtx.view();
+        auto my_tc2 = tc2();
+        auto other_tc2 = vtx.tc2();
+
+        // Perform interpolation
+        set_pos(my_pos * factor + other_pos * (f24::One() - factor));
+        set_quat(my_quat * factor + other_quat * (f24::One() - factor));
+        set_color(my_color * factor + other_color * (f24::One() - factor));
+        set_tc0(my_tc0 * factor + other_tc0 * (f24::One() - factor));
+        set_tc1(my_tc1 * factor + other_tc1 * (f24::One() - factor));
         tc0_w = tc0_w * factor + vtx.tc0_w * (f24::One() - factor);
-        view = view * factor + vtx.view * (f24::One() - factor);
-        tc2 = tc2 * factor + vtx.tc2 * (f24::One() - factor);
+        set_view(my_view * factor + other_view * (f24::One() - factor));
+        set_tc2(my_tc2 * factor + other_tc2 * (f24::One() - factor));
     }
 
     /**
@@ -211,18 +228,39 @@ void RasterizerSoftware::MakeScreenCoords(Vertex& vtx) {
     viewport.offset_y = f24::FromFloat32(static_cast<f32>(regs.rasterizer.viewport_corner.y));
 
     f24 inv_w = f24::One() / vtx.pos.w;
-    vtx.pos.w = inv_w;
-    vtx.quat *= inv_w;
-    vtx.color *= inv_w;
-    vtx.tc0 *= inv_w;
-    vtx.tc1 *= inv_w;
-    vtx.tc0_w *= inv_w;
-    vtx.view *= inv_w;
-    vtx.tc2 *= inv_w;
 
-    vtx.screenpos[0] = (vtx.pos.x * inv_w + f24::One()) * viewport.halfsize_x + viewport.offset_x;
-    vtx.screenpos[1] = (vtx.pos.y * inv_w + f24::One()) * viewport.halfsize_y + viewport.offset_y;
-    vtx.screenpos[2] = vtx.pos.z * inv_w;
+    // Update all vectors using accessors
+    auto pos = vtx.pos();
+    auto quat = vtx.quat();
+    auto color = vtx.color();
+    auto tc0 = vtx.tc0();
+    auto tc1 = vtx.tc1();
+    auto view = vtx.view();
+    auto tc2 = vtx.tc2();
+
+    // Scale all vectors by inv_w
+    pos *= inv_w;
+    quat *= inv_w;
+    color *= inv_w;
+    tc0 *= inv_w;
+    tc1 *= inv_w;
+    vtx.tc0_w *= inv_w;
+    view *= inv_w;
+    tc2 *= inv_w;
+
+    // Store results back using setters
+    vtx.set_pos(pos);
+    vtx.set_quat(quat);
+    vtx.set_color(color);
+    vtx.set_tc0(tc0);
+    vtx.set_tc1(tc1);
+    vtx.set_view(view);
+    vtx.set_tc2(tc2);
+
+    // Calculate screen coordinates
+    vtx.screenpos[0] = (pos.x + f24::One()) * viewport.halfsize_x + viewport.offset_x;
+    vtx.screenpos[1] = (pos.y + f24::One()) * viewport.halfsize_y + viewport.offset_y;
+    vtx.screenpos[2] = pos.z;
 }
 
 void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, const Vertex& v2,
@@ -370,31 +408,43 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                  * The generalization to three vertices is straightforward in baricentric
                  *coordinates.
                  **/
-                const auto get_interpolated_attribute = [&](f24 attr0, f24 attr1, f24 attr2) {
-                    auto attr_over_w = Common::MakeVec(attr0, attr1, attr2);
+
+                auto get_interpolated_attribute = [&](const auto& v0_attr, const auto& v1_attr,
+                                                      const auto& v2_attr) {
+                    auto attr_over_w = Common::MakeVec(v0_attr, v1_attr, v2_attr);
                     f24 interpolated_attr_over_w =
                         Common::Dot(attr_over_w, baricentric_coordinates);
                     return interpolated_attr_over_w * interpolated_w_inverse;
                 };
 
+                // Update how we call it for each attribute:
+                const auto v0_color = v0.color();
+                const auto v1_color = v1.color();
+                const auto v2_color = v2.color();
+
                 const Common::Vec4<u8> primary_color{
                     static_cast<u8>(
-                        round(get_interpolated_attribute(v0.color.r(), v1.color.r(), v2.color.r())
+                        round(get_interpolated_attribute(v0_color.r(), v1_color.r(), v2_color.r())
                                   .ToFloat32() *
                               255)),
                     static_cast<u8>(
-                        round(get_interpolated_attribute(v0.color.g(), v1.color.g(), v2.color.g())
+                        round(get_interpolated_attribute(v0_color.g(), v1_color.g(), v2_color.g())
                                   .ToFloat32() *
                               255)),
                     static_cast<u8>(
-                        round(get_interpolated_attribute(v0.color.b(), v1.color.b(), v2.color.b())
+                        round(get_interpolated_attribute(v0_color.b(), v1_color.b(), v2_color.b())
                                   .ToFloat32() *
                               255)),
                     static_cast<u8>(
-                        round(get_interpolated_attribute(v0.color.a(), v1.color.a(), v2.color.a())
+                        round(get_interpolated_attribute(v0_color.a(), v1_color.a(), v2_color.a())
                                   .ToFloat32() *
                               255)),
                 };
+
+                // Get texture coordinates using accessors
+                const auto v0_tc0 = v0.tc0();
+                const auto v1_tc0 = v1.tc0();
+                const auto v2_tc0 = v2.tc0();
 
                 std::array<Common::Vec2<f24>, 3> uv;
                 uv[0].u() = get_interpolated_attribute(v0.tc0.u(), v1.tc0.u(), v2.tc0.u());
@@ -414,13 +464,14 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                 if (!regs.lighting.disable) {
                     const auto normquat =
                         Common::Quaternion<f32>{
-                            {get_interpolated_attribute(v0.quat.x, v1.quat.x, v2.quat.x)
+                            {get_interpolated_attribute(v0.quat().x, v1.quat().x, v2.quat().x)
                                  .ToFloat32(),
-                             get_interpolated_attribute(v0.quat.y, v1.quat.y, v2.quat.y)
+                             get_interpolated_attribute(v0.quat().y, v1.quat().y, v2.quat().y)
                                  .ToFloat32(),
-                             get_interpolated_attribute(v0.quat.z, v1.quat.z, v2.quat.z)
+                             get_interpolated_attribute(v0.quat().z, v1.quat().z, v2.quat().z)
                                  .ToFloat32()},
-                            get_interpolated_attribute(v0.quat.w, v1.quat.w, v2.quat.w).ToFloat32(),
+                            get_interpolated_attribute(v0.quat().w, v1.quat().w, v2.quat().w)
+                                .ToFloat32(),
                         }
                             .Normalized();
 
