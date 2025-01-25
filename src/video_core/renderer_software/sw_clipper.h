@@ -7,6 +7,7 @@
 
 #include "common/common_types.h"
 #include "common/vector_math.h"
+#include "video_core/pica/output_vertex.h"
 #include "video_core/pica_types.h"
 
 namespace Pica {
