@@ -59,4 +59,15 @@ private:
 
 static_assert(std::is_standard_layout_v<OutputVertex>, "Structure is not standard layout");
 static_assert(sizeof(OutputVertex) == 24 * sizeof(f32), "OutputVertex has invalid size");
+// Add these after your existing static_assert lines
+static_assert(offsetof(OutputVertex, pos) == 0, "Invalid pos offset");
+static_assert(offsetof(OutputVertex, quat) == 16, "Invalid quat offset");
+static_assert(offsetof(OutputVertex, color) == 32, "Invalid color offset");
+static_assert(offsetof(OutputVertex, tc0) == 48, "Invalid tc0 offset");
+static_assert(offsetof(OutputVertex, tc1) == 56, "Invalid tc1 offset");
+static_assert(offsetof(OutputVertex, tc0_w) == 64, "Invalid tc0_w offset");
+// Skip padding word
+static_assert(offsetof(OutputVertex, view) == 72, "Invalid view offset");
+// Skip padding word
+static_assert(offsetof(OutputVertex, tc2) == 88, "Invalid tc2 offset");
 } // namespace Pica
