@@ -349,11 +349,11 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
-  windows:
+  windows-msvc:
     runs-on: windows-latest
     strategy:
       matrix:
-        target: ["msvc", "clang", "gcc"]
+        target: ["msvc"]
     defaults:
       run:
         shell: ${{ (matrix.target == 'clang' || matrix.target == 'gcc') && 'msys2' || 'bash' }} {0}
@@ -380,6 +380,56 @@ jobs:
       - name: Install extra tools (MSVC)
         run: choco install ccache ninja wget unzip
         if: ${{ matrix.target == 'msvc' }}
+      - name: Install NSIS
+        run: |
+          Invoke-WebRequest https://deac-riga.dl.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10-setup.exe?viasf=1 -OutFile C:\WINDOWS\Temp\nsis-3.10-setup.exe
+          Invoke-Expression "& C:\WINDOWS\Temp\nsis-3.10-setup.exe \S"
+        shell: pwsh
+      - name: Disable line ending translation
+        run: git config --global core.autocrlf input
+      - name: Build (MSVC)
+        run: ./.ci/windows-msvc.sh
+        if: ${{ matrix.target == 'msvc' }}
+      - name: Generate installer
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          cd src\installer
+          "C:\Program Files (x86)\NSIS\makensis.exe" /DPRODUCT_VARIANT=${{ matrix.target }} /DPRODUCT_VERSION=${{ github.ref_name }} broken3ds.nsi
+          mkdir bin
+          move /y *.exe bin\
+        shell: cmd
+      - name: Pack
+        run: ./.ci/pack.sh
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OS }}-${{ env.TARGET }}
+          path: artifacts/
+  windows-clang:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: ["clang"]
+    defaults:
+      run:
+        shell: ${{ (matrix.target == 'clang' || matrix.target == 'gcc') && 'msys2' || 'bash' }} {0}
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      OS: windows
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-
       - name: Set up MSYS2 (clang)
         uses: msys2/setup-msys2@v2
         if: ${{ matrix.target == 'clang' }}
@@ -388,8 +438,58 @@ jobs:
           update: true
           install: git make p7zip unzip
           pacboy: >-
-            toolchain:p ccache:p cmake:p ninja:p 
+            toolchain:p ccache:p cmake:p ninja:p
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
+      - name: Install NSIS
+        run: |
+          Invoke-WebRequest https://deac-riga.dl.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10-setup.exe?viasf=1 -OutFile C:\WINDOWS\Temp\nsis-3.10-setup.exe
+          Invoke-Expression "& C:\WINDOWS\Temp\nsis-3.10-setup.exe \S"
+        shell: pwsh
+      - name: Disable line ending translation
+        run: git config --global core.autocrlf input
+      - name: Build (CLANG)
+        run: ./.ci/windows-clang.sh
+        if: ${{ matrix.target == 'clang' }}
+      - name: Generate installer
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          cd src\installer
+          "C:\Program Files (x86)\NSIS\makensis.exe" /DPRODUCT_VARIANT=${{ matrix.target }} /DPRODUCT_VERSION=${{ github.ref_name }} broken3ds.nsi
+          mkdir bin
+          move /y *.exe bin\
+        shell: cmd
+      - name: Pack
+        run: ./.ci/pack.sh
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OS }}-${{ env.TARGET }}
+          path: artifacts/
+  windows-gcc:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: ["gcc"]
+    defaults:
+      run:
+        shell: ${{ (matrix.target == 'clang' || matrix.target == 'gcc') && 'msys2' || 'bash' }} {0}
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      OS: windows
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-
       - name: Set up MINGW (gcc)
         uses: msys2/setup-msys2@v2
         with:
@@ -407,12 +507,6 @@ jobs:
         shell: pwsh
       - name: Disable line ending translation
         run: git config --global core.autocrlf input
-      - name: Build (MSVC)
-        run: ./.ci/windows-msvc.sh
-        if: ${{ matrix.target == 'msvc' }}
-      - name: Build (CLANG)
-        run: ./.ci/windows-clang.sh
-        if: ${{ matrix.target == 'clang' }}
       - name: Build (GCC)
         run: ./.ci/windows-gcc.sh
         if: ${{ matrix.target == 'gcc' }}
@@ -524,7 +618,7 @@ jobs:
         run: ./.ci/ios.sh
   release:
     runs-on: ubuntu-latest
-    needs: [windows, linux-clang-focal, linux-clang-jammy, linux-clang-noble, linux-gcc-noble, macos-universal, android, source]
+    needs: [windows-msvc, windows-clang, windows-gcc, linux-clang-focal, linux-clang-jammy, linux-clang-noble, linux-gcc-noble, macos-universal, android, source]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/download-artifact@v4
