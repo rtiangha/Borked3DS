@@ -13,28 +13,24 @@
 namespace Pica {
 
 struct RasterizerRegs;
-
 using AttributeBuffer = std::array<Common::Vec4<f24>, 16>;
 
+// Force struct to be packed with alignments that match the expected size
+#pragma pack(push, 1)
 struct alignas(16) OutputVertex {
     OutputVertex() = default;
     explicit OutputVertex(const RasterizerRegs& regs, const AttributeBuffer& output);
 
-    union {
-        struct {
-            Common::Vec4<f24> pos;   // 16 bytes
-            Common::Vec4<f24> quat;  // 16 bytes
-            Common::Vec4<f24> color; // 16 bytes
-            Common::Vec2<f24> tc0;   // 8 bytes
-            Common::Vec2<f24> tc1;   // 8 bytes
-            f24 tc0_w;               // 4 bytes
-            u32 pad1;                // 4 bytes padding
-            Common::Vec3<f24> view;  // 12 bytes
-            u32 pad2;                // 4 bytes padding
-            Common::Vec2<f24> tc2;   // 8 bytes
-        };
-        std::array<u32, 24> raw; // Force size to be exactly 96 bytes
-    };
+    alignas(16) Common::Vec4<f24> pos;   // 0-15
+    alignas(16) Common::Vec4<f24> quat;  // 16-31
+    alignas(16) Common::Vec4<f24> color; // 32-47
+    alignas(8) Common::Vec2<f24> tc0;    // 48-55
+    alignas(8) Common::Vec2<f24> tc1;    // 56-63
+    alignas(4) f24 tc0_w;                // 64-67
+    u32 pad1;                            // 68-71
+    alignas(4) Common::Vec3<f24> view;   // 72-83
+    u32 pad2;                            // 84-87
+    alignas(8) Common::Vec2<f24> tc2;    // 88-95
 
 private:
     template <class Archive>
@@ -50,9 +46,13 @@ private:
     }
     friend class boost::serialization::access;
 };
+#pragma pack(pop)
 
 static_assert(std::is_standard_layout_v<OutputVertex>, "Structure is not standard layout");
-static_assert(sizeof(OutputVertex) == 24 * sizeof(f32), "OutputVertex has invalid size");
+static_assert(sizeof(OutputVertex) == 96, "OutputVertex has invalid size");
+static_assert(alignof(OutputVertex) == 16, "OutputVertex has invalid alignment");
+
+// Verify field offsets
 static_assert(offsetof(OutputVertex, pos) == 0, "Invalid pos offset");
 static_assert(offsetof(OutputVertex, quat) == 16, "Invalid quat offset");
 static_assert(offsetof(OutputVertex, color) == 32, "Invalid color offset");
