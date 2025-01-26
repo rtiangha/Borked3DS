@@ -6,10 +6,10 @@ cmake .. -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-    -DCMAKE_CXX_FLAGS="-O2 -lstdc++" \
-    -DCMAKE_C_FLAGS="-O2 -lstdc++" \
-    -DENABLE_LTO=ON \
-    -DENABLE_TESTS=ON \
+    -DCMAKE_CXX_FLAGS="-march=skylake -Ofast -lstdc++" \
+    -DCMAKE_C_FLAGS="-march=skylake -Ofast -lstdc++" \
+    -DENABLE_LTO=OFF \
+    -DENABLE_TESTS=OFF \
     -DENABLE_QT_TRANSLATION=ON \
     -DUSE_SYSTEM_BOOST=OFF \
     -DUSE_SYSTEM_CATCH2=OFF \
