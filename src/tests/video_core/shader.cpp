@@ -38,6 +38,19 @@ static const Common::Vec4f vec4_nan = Common::Vec4f::AssignToAll(NAN);
 static const Common::Vec4f vec4_one = Common::Vec4f::AssignToAll(1.0f);
 static const Common::Vec4f vec4_zero = Common::Vec4f::AssignToAll(0.0f);
 
+static bool IsNanEqual(const Common::Vec4f& a, const Common::Vec4f& b) {
+    for (int i = 0; i < 4; i++) {
+        if (std::isnan(a[i])) {
+            if (!std::isnan(b[i])) {
+                return false;
+            }
+        } else if (a[i] != b[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 namespace Catch {
 template <>
 struct StringMaker<Common::Vec2f> {
@@ -634,7 +647,7 @@ SHADER_TEST_CASE("MAD", "[video_core][shader]") {
     REQUIRE(shader.Run({vec4_zero, vec4_zero, vec4_zero}) == vec4_zero);
     REQUIRE(shader.Run({vec4_one, vec4_one, vec4_one}) == (vec4_one * 2.0f));
     REQUIRE(shader.Run({vec4_inf, vec4_zero, vec4_zero}) == vec4_zero);
-    REQUIRE(shader.Run({vec4_nan, vec4_zero, vec4_zero}) == vec4_nan);
+    REQUIRE(IsNanEqual(shader.Run({vec4_nan, vec4_zero, vec4_zero}), vec4_nan));
 }
 
 // Nested Loops are bugged on on the Shader-Interpreter at the moment
