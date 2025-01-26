@@ -33,10 +33,10 @@ using OpCode = nihstro::OpCode;
 using SourceRegister = nihstro::SourceRegister;
 using Type = nihstro::InlineAsm::Type;
 
-static constexpr Common::Vec4f vec4_inf = Common::Vec4f::AssignToAll(INFINITY);
-static constexpr Common::Vec4f vec4_nan = Common::Vec4f::AssignToAll(NAN);
-static constexpr Common::Vec4f vec4_one = Common::Vec4f::AssignToAll(1.0f);
-static constexpr Common::Vec4f vec4_zero = Common::Vec4f::AssignToAll(0.0f);
+static const Common::Vec4f vec4_inf = Common::Vec4f::AssignToAll(INFINITY);
+static const Common::Vec4f vec4_nan = Common::Vec4f::AssignToAll(NAN);
+static const Common::Vec4f vec4_one = Common::Vec4f::AssignToAll(1.0f);
+static const Common::Vec4f vec4_zero = Common::Vec4f::AssignToAll(0.0f);
 
 namespace Catch {
 template <>
