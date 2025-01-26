@@ -204,21 +204,23 @@ void RasterizerSoftware::AddTriangle(const Pica::OutputVertex& v0, const Pica::O
 
         MakeScreenCoords(vtx2);
 
+        auto pos0 = vtx0.pos();
+        auto pos1 = vtx1.pos();
+        auto pos2 = vtx2.pos();
+
         LOG_TRACE(
             Render_Software,
             "Triangle {}/{} at position ({:.3}, {:.3}, {:.3}, {:.3f}), "
             "({:.3}, {:.3}, {:.3}, {:.3}), ({:.3}, {:.3}, {:.3}, {:.3}) and "
             "screen position ({:.2}, {:.2}, {:.2}), ({:.2}, {:.2}, {:.2}), ({:.2}, {:.2}, {:.2})",
-            i + 1, output_list->size() - 2, vtx0.pos.x.ToFloat32(), vtx0.pos.y.ToFloat32(),
-            vtx0.pos.z.ToFloat32(), vtx0.pos.w.ToFloat32(), vtx1.pos.x.ToFloat32(),
-            vtx1.pos.y.ToFloat32(), vtx1.pos.z.ToFloat32(), vtx1.pos.w.ToFloat32(),
-            vtx2.pos.x.ToFloat32(), vtx2.pos.y.ToFloat32(), vtx2.pos.z.ToFloat32(),
-            vtx2.pos.w.ToFloat32(), vtx0.screenpos.x.ToFloat32(), vtx0.screenpos.y.ToFloat32(),
-            vtx0.screenpos.z.ToFloat32(), vtx1.screenpos.x.ToFloat32(),
-            vtx1.screenpos.y.ToFloat32(), vtx1.screenpos.z.ToFloat32(),
-            vtx2.screenpos.x.ToFloat32(), vtx2.screenpos.y.ToFloat32(),
-            vtx2.screenpos.z.ToFloat32());
-
+            i + 1, output_list->size() - 2, pos0.x.ToFloat32(), pos0.y.ToFloat32(),
+            pos0.z.ToFloat32(), pos0.w.ToFloat32(), pos1.x.ToFloat32(), pos1.y.ToFloat32(),
+            pos1.z.ToFloat32(), pos1.w.ToFloat32(), pos2.x.ToFloat32(), pos2.y.ToFloat32(),
+            pos2.z.ToFloat32(), pos2.w.ToFloat32(), vtx0.screenpos.x.ToFloat32(),
+            vtx0.screenpos.y.ToFloat32(), vtx0.screenpos.z.ToFloat32(),
+            vtx1.screenpos.x.ToFloat32(), vtx1.screenpos.y.ToFloat32(),
+            vtx1.screenpos.z.ToFloat32(), vtx2.screenpos.x.ToFloat32(),
+            vtx2.screenpos.y.ToFloat32(), vtx2.screenpos.z.ToFloat32());
         ProcessTriangle(vtx0, vtx1, vtx2);
     }
 }
@@ -487,11 +489,16 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                         }
                             .Normalized();
 
+                    auto view0 = v0.view();
+                    auto view1 = v1.view();
+                    auto view2 = v2.view();
+
                     const Common::Vec3f view{
-                        get_interpolated_attribute(v0.view.x, v1.view.x, v2.view.x).ToFloat32(),
-                        get_interpolated_attribute(v0.view.y, v1.view.y, v2.view.y).ToFloat32(),
-                        get_interpolated_attribute(v0.view.z, v1.view.z, v2.view.z).ToFloat32(),
+                        get_interpolated_attribute(view0.x, view1.x, view2.x).ToFloat32(),
+                        get_interpolated_attribute(view0.y, view1.y, view2.y).ToFloat32(),
+                        get_interpolated_attribute(view0.z, view1.z, view2.z).ToFloat32(),
                     };
+
                     std::tie(primary_fragment_color, secondary_fragment_color) =
                         ComputeFragmentsColors(regs.lighting, pica.lighting, normquat, view,
                                                texture_color);
