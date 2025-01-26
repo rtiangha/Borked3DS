@@ -204,23 +204,22 @@ void RasterizerSoftware::AddTriangle(const Pica::OutputVertex& v0, const Pica::O
 
         MakeScreenCoords(vtx2);
 
-        auto pos0 = vtx0.pos();
-        auto pos1 = vtx1.pos();
-        auto pos2 = vtx2.pos();
-
         LOG_TRACE(
             Render_Software,
             "Triangle {}/{} at position ({:.3}, {:.3}, {:.3}, {:.3f}), "
             "({:.3}, {:.3}, {:.3}, {:.3}), ({:.3}, {:.3}, {:.3}, {:.3}) and "
             "screen position ({:.2}, {:.2}, {:.2}), ({:.2}, {:.2}, {:.2}), ({:.2}, {:.2}, {:.2})",
-            i + 1, output_list->size() - 2, pos0.x.ToFloat32(), pos0.y.ToFloat32(),
-            pos0.z.ToFloat32(), pos0.w.ToFloat32(), pos1.x.ToFloat32(), pos1.y.ToFloat32(),
-            pos1.z.ToFloat32(), pos1.w.ToFloat32(), pos2.x.ToFloat32(), pos2.y.ToFloat32(),
-            pos2.z.ToFloat32(), pos2.w.ToFloat32(), vtx0.screenpos.x.ToFloat32(),
-            vtx0.screenpos.y.ToFloat32(), vtx0.screenpos.z.ToFloat32(),
-            vtx1.screenpos.x.ToFloat32(), vtx1.screenpos.y.ToFloat32(),
-            vtx1.screenpos.z.ToFloat32(), vtx2.screenpos.x.ToFloat32(),
-            vtx2.screenpos.y.ToFloat32(), vtx2.screenpos.z.ToFloat32());
+            i + 1, output_list->size() - 2,
+            // Using vertex positions directly
+            vtx0.pos().x.ToFloat32(), vtx0.pos().y.ToFloat32(), vtx0.pos().z.ToFloat32(),
+            vtx0.pos().w.ToFloat32(), vtx1.pos().x.ToFloat32(), vtx1.pos().y.ToFloat32(),
+            vtx1.pos().z.ToFloat32(), vtx1.pos().w.ToFloat32(), vtx2.pos().x.ToFloat32(),
+            vtx2.pos().y.ToFloat32(), vtx2.pos().z.ToFloat32(), vtx2.pos().w.ToFloat32(),
+            vtx0.screenpos.x.ToFloat32(), vtx0.screenpos.y.ToFloat32(),
+            vtx0.screenpos.z.ToFloat32(), vtx1.screenpos.x.ToFloat32(),
+            vtx1.screenpos.y.ToFloat32(), vtx1.screenpos.z.ToFloat32(),
+            vtx2.screenpos.x.ToFloat32(), vtx2.screenpos.y.ToFloat32(),
+            vtx2.screenpos.z.ToFloat32());
         ProcessTriangle(vtx0, vtx1, vtx2);
     }
 }
@@ -656,10 +655,9 @@ Common::Vec4<u8> RasterizerSoftware::PixelColor(u16 x, u16 y,
             DEBUG_ASSERT(channel < 4);
 
             const Common::Vec4<u8> blend_const =
-                Common::MakeVec(output_merger.blend_const.x.Value(), // Changed from r.Value()
-                                output_merger.blend_const.y.Value(), // Changed from g.Value()
-                                output_merger.blend_const.z.Value(), // Changed from b.Value()
-                                output_merger.blend_const.w.Value()) // Changed from a.Value()
+                Common::MakeVec(
+                    output_merger.blend_const.r.Value(), output_merger.blend_const.g.Value(),
+                    output_merger.blend_const.b.Value(), output_merger.blend_const.a.Value())
                     .Cast<u8>();
 
             switch (factor) {
@@ -753,11 +751,10 @@ Common::Vec4<u8> RasterizerSoftware::WriteTevConfig(
     Common::Vec4<u8> combiner_output = {0, 0, 0, 0};
     Common::Vec4<u8> combiner_buffer = {0, 0, 0, 0};
     Common::Vec4<u8> next_combiner_buffer =
-        Common::MakeVec(
-            regs.texturing.tev_combiner_buffer_color.x.Value(), // Changed from r.Value()
-            regs.texturing.tev_combiner_buffer_color.y.Value(), // Changed from g.Value()
-            regs.texturing.tev_combiner_buffer_color.z.Value(), // Changed from b.Value()
-            regs.texturing.tev_combiner_buffer_color.w.Value()) // Changed from a.Value()
+        Common::MakeVec(regs.texturing.tev_combiner_buffer_color.r.Value(),
+                        regs.texturing.tev_combiner_buffer_color.g.Value(),
+                        regs.texturing.tev_combiner_buffer_color.b.Value(),
+                        regs.texturing.tev_combiner_buffer_color.a.Value())
             .Cast<u8>();
 
     for (u32 tev_stage_index = 0; tev_stage_index < tev_stages.size(); ++tev_stage_index) {
@@ -783,10 +780,8 @@ Common::Vec4<u8> RasterizerSoftware::WriteTevConfig(
             case Source::PreviousBuffer:
                 return combiner_buffer;
             case Source::Constant:
-                return Common::MakeVec(tev_stage.const_x.Value(), // Changed from const_r.Value()
-                                       tev_stage.const_y.Value(), // Changed from const_g.Value()
-                                       tev_stage.const_z.Value(), // Changed from const_b.Value()
-                                       tev_stage.const_w.Value()) // Changed from const_a.Value()
+                return Common::MakeVec(tev_stage.const_r.Value(), tev_stage.const_g.Value(),
+                                       tev_stage.const_b.Value(), tev_stage.const_a.Value())
                     .Cast<u8>();
             case Source::Previous:
                 return combiner_output;
@@ -864,9 +859,8 @@ void RasterizerSoftware::WriteFog(float depth, Common::Vec4<u8>& combiner_output
      **/
     if (regs.texturing.fog_mode == TexturingRegs::FogMode::Fog) {
         const Common::Vec3<u8> fog_color =
-            Common::MakeVec(regs.texturing.fog_color.x.Value(), // Changed from r.Value()
-                            regs.texturing.fog_color.y.Value(), // Changed from g.Value()
-                            regs.texturing.fog_color.z.Value()) // Changed from b.Value()
+            Common::MakeVec(regs.texturing.fog_color.r.Value(), regs.texturing.fog_color.g.Value(),
+                            regs.texturing.fog_color.b.Value())
                 .Cast<u8>();
 
         float fog_index;
