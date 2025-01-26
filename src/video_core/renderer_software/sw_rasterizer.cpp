@@ -232,7 +232,7 @@ void RasterizerSoftware::MakeScreenCoords(Vertex& vtx) {
     viewport.offset_x = f24::FromFloat32(static_cast<f32>(regs.rasterizer.viewport_corner.x));
     viewport.offset_y = f24::FromFloat32(static_cast<f32>(regs.rasterizer.viewport_corner.y));
 
-    f24 inv_w = f24::One() / vtx.pos().w();
+    f24 inv_w = f24::One() / vtx.pos().w;
 
     // Update all vectors using accessors
     auto pos = vtx.pos();
@@ -334,7 +334,7 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
     const int bias2 =
         IsRightSideOrFlatBottomEdge(vtxpos[2].xy(), vtxpos[0].xy(), vtxpos[1].xy()) ? 1 : 0;
 
-    const auto w_inverse = Common::MakeVec(v0.pos().w(), v1.pos().w(), v2.pos().w());
+    const auto w_inverse = Common::MakeVec(v0.pos().w, v1.pos().w, v2.pos().w);
 
     const auto textures = regs.texturing.GetTextures();
     const auto tev_stages = regs.texturing.GetTevStages();
@@ -414,39 +414,35 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                  *coordinates.
                  **/
 
-                auto get_interpolated_attribute = [&](const auto& v0_attr, const auto& v1_attr,
-                                                      const auto& v2_attr) {
+                auto get_interpolated_attribute = [&](const f24& v0_attr, const f24& v1_attr,
+                                                      const f24& v2_attr) {
                     auto attr_over_w = Common::MakeVec(v0_attr, v1_attr, v2_attr);
                     f24 interpolated_attr_over_w =
                         Common::Dot(attr_over_w, baricentric_coordinates);
                     return interpolated_attr_over_w * interpolated_w_inverse;
                 };
 
-                // Update how we call it for each attribute:
+                // Color interpolation
                 const auto v0_color = v0.color();
                 const auto v1_color = v1.color();
                 const auto v2_color = v2.color();
 
                 const Common::Vec4<u8> primary_color{
-                    static_cast<u8>(
-                        round(get_interpolated_attribute(v0_color.r(), v1_color.r(), v2_color.r())
-                                  .ToFloat32() *
-                              255)),
-                    static_cast<u8>(
-                        round(get_interpolated_attribute(v0_color.g(), v1_color.g(), v2_color.g())
-                                  .ToFloat32() *
-                              255)),
-                    static_cast<u8>(
-                        round(get_interpolated_attribute(v0_color.b(), v1_color.b(), v2_color.b())
-                                  .ToFloat32() *
-                              255)),
-                    static_cast<u8>(
-                        round(get_interpolated_attribute(v0_color.a(), v1_color.a(), v2_color.a())
-                                  .ToFloat32() *
-                              255)),
+                    static_cast<u8>(round(
+                        get_interpolated_attribute(v0_color.x, v1_color.x, v2_color.x).ToFloat32() *
+                        255)),
+                    static_cast<u8>(round(
+                        get_interpolated_attribute(v0_color.y, v1_color.y, v2_color.y).ToFloat32() *
+                        255)),
+                    static_cast<u8>(round(
+                        get_interpolated_attribute(v0_color.z, v1_color.z, v2_color.z).ToFloat32() *
+                        255)),
+                    static_cast<u8>(round(
+                        get_interpolated_attribute(v0_color.w, v1_color.w, v2_color.w).ToFloat32() *
+                        255)),
                 };
 
-                // Get all texture coordinates up front to avoid repeated accessor calls
+                // Texture coordinate interpolation
                 auto tc0_v0 = v0.tc0();
                 auto tc0_v1 = v1.tc0();
                 auto tc0_v2 = v2.tc0();
@@ -459,17 +455,18 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
 
                 std::array<Common::Vec2<f24>, 3> uv;
                 // TC0 coordinates
-                uv[0].u() = get_interpolated_attribute(tc0_v0.u(), tc0_v1.u(), tc0_v2.u());
-                uv[0].v() = get_interpolated_attribute(tc0_v0.v(), tc0_v1.v(), tc0_v2.v());
+                uv[0].x = get_interpolated_attribute(tc0_v0.x, tc0_v1.x, tc0_v2.x);
+                uv[0].y = get_interpolated_attribute(tc0_v0.y, tc0_v1.y, tc0_v2.y);
                 // TC1 coordinates
-                uv[1].u() = get_interpolated_attribute(tc1_v0.u(), tc1_v1.u(), tc1_v2.u());
-                uv[1].v() = get_interpolated_attribute(tc1_v0.v(), tc1_v1.v(), tc1_v2.v());
+                uv[1].x = get_interpolated_attribute(tc1_v0.x, tc1_v1.x, tc1_v2.x);
+                uv[1].y = get_interpolated_attribute(tc1_v0.y, tc1_v1.y, tc1_v2.y);
                 // TC2 coordinates
-                uv[2].u() = get_interpolated_attribute(tc2_v0.u(), tc2_v1.u(), tc2_v2.u());
-                uv[2].v() = get_interpolated_attribute(tc2_v0.v(), tc2_v1.v(), tc2_v2.v());
+                uv[2].x = get_interpolated_attribute(tc2_v0.x, tc2_v1.x, tc2_v2.x);
+                uv[2].y = get_interpolated_attribute(tc2_v0.y, tc2_v1.y, tc2_v2.y);
 
                 // Sample bound texture units.
                 const f24 tc0_w = get_interpolated_attribute(v0.tc0_w, v1.tc0_w, v2.tc0_w);
+
                 const auto texture_color = TextureColor(uv, textures, tc0_w);
 
                 Common::Vec4<u8> primary_fragment_color = {0, 0, 0, 0};
@@ -521,7 +518,7 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                 }
 
                 // Does alpha testing happen before or after stencil?
-                if (!DoAlphaTest(combiner_output.a())) {
+                if (!DoAlphaTest(combiner_output.w)) { // Changed from a()
                     continue;
                 }
                 WriteFog(depth, combiner_output);
@@ -554,10 +551,9 @@ std::array<Common::Vec4<u8>, 4> RasterizerSoftware::TextureColor(
         }
 
         const s32 coordinate_i = (i == 2 && regs.texturing.main_config.texture2_use_coord1) ? 1 : i;
-        f24 u = uv[coordinate_i].u();
-        f24 v = uv[coordinate_i].v();
+        f24 u = uv[coordinate_i].x; // Changed from u()
+        f24 v = uv[coordinate_i].y; // Changed from v()
 
-        // Only unit 0 respects the texturing type (according to 3DBrew)
         PAddr texture_address = texture.config.GetPhysicalAddress();
         f24 shadow_z;
         if (i == 0) {
@@ -584,7 +580,7 @@ std::array<Common::Vec4<u8>, 4> RasterizerSoftware::TextureColor(
                 break;
             }
             case TexturingRegs::TextureConfig::Disabled:
-                continue; // skip this unit and continue to the next unit
+                continue;
             default:
                 LOG_ERROR(HW_GPU, "Unhandled texture type {:x}", (int)texture.config.type);
                 UNIMPLEMENTED();
@@ -618,9 +614,6 @@ std::array<Common::Vec4<u8>, 4> RasterizerSoftware::TextureColor(
                                                border_color.b.Value(), border_color.a.Value())
                                    .Cast<u8>();
         } else {
-            // Textures are laid out from bottom to top, hence we invert the t coordinate.
-            // NOTE: This may not be the right place for the inversion.
-            // TODO: Check if this applies to ETC textures, too.
             s = GetWrappedTexCoord(texture.config.wrap_s, s, texture.config.width);
             t = texture.config.height - 1 -
                 GetWrappedTexCoord(texture.config.wrap_t, t, texture.config.height);
@@ -628,31 +621,23 @@ std::array<Common::Vec4<u8>, 4> RasterizerSoftware::TextureColor(
             const u8* texture_data = memory.GetPhysicalPointer(texture_address);
             const auto info = TextureInfo::FromPicaRegister(texture.config, texture.format);
 
-            // TODO: Apply the min and mag filters to the texture
             texture_color[i] = LookupTexture(texture_data, s, t, info);
         }
 
         if (i == 0 && (texture.config.type == TexturingRegs::TextureConfig::Shadow2D ||
                        texture.config.type == TexturingRegs::TextureConfig::ShadowCube)) {
-
             s32 z_int = static_cast<s32>(std::min(shadow_z.ToFloat32(), 1.0f) * 0xFFFFFF);
             z_int -= regs.texturing.shadow.bias << 1;
             const auto& color = texture_color[i];
             const s32 z_ref = (color.w << 16) | (color.z << 8) | color.y;
-            u8 density;
-            if (z_ref >= z_int) {
-                density = color.x;
-            } else {
-                density = 0;
-            }
+            u8 density = (z_ref >= z_int) ? color.x : 0;
             texture_color[i] = {density, density, density, density};
         }
     }
 
-    // Sample procedural texture
     if (regs.texturing.main_config.texture3_enable) {
         const auto& proctex_uv = uv[regs.texturing.main_config.texture3_coordinates];
-        texture_color[3] = ProcTex(proctex_uv.u().ToFloat32(), proctex_uv.v().ToFloat32(),
+        texture_color[3] = ProcTex(proctex_uv.x.ToFloat32(), proctex_uv.y.ToFloat32(),
                                    regs.texturing, pica.proctex);
     }
 
@@ -671,9 +656,10 @@ Common::Vec4<u8> RasterizerSoftware::PixelColor(u16 x, u16 y,
             DEBUG_ASSERT(channel < 4);
 
             const Common::Vec4<u8> blend_const =
-                Common::MakeVec(
-                    output_merger.blend_const.r.Value(), output_merger.blend_const.g.Value(),
-                    output_merger.blend_const.b.Value(), output_merger.blend_const.a.Value())
+                Common::MakeVec(output_merger.blend_const.x.Value(), // Changed from r.Value()
+                                output_merger.blend_const.y.Value(), // Changed from g.Value()
+                                output_merger.blend_const.z.Value(), // Changed from b.Value()
+                                output_merger.blend_const.w.Value()) // Changed from a.Value()
                     .Cast<u8>();
 
             switch (factor) {
@@ -690,27 +676,27 @@ Common::Vec4<u8> RasterizerSoftware::PixelColor(u16 x, u16 y,
             case FramebufferRegs::BlendFactor::OneMinusDestColor:
                 return 255 - dest[channel];
             case FramebufferRegs::BlendFactor::SourceAlpha:
-                return combiner_output.a();
+                return combiner_output.w; // Changed from a()
             case FramebufferRegs::BlendFactor::OneMinusSourceAlpha:
-                return 255 - combiner_output.a();
+                return 255 - combiner_output.w; // Changed from a()
             case FramebufferRegs::BlendFactor::DestAlpha:
-                return dest.a();
+                return dest.w; // Changed from a()
             case FramebufferRegs::BlendFactor::OneMinusDestAlpha:
-                return 255 - dest.a();
+                return 255 - dest.w; // Changed from a()
             case FramebufferRegs::BlendFactor::ConstantColor:
                 return blend_const[channel];
             case FramebufferRegs::BlendFactor::OneMinusConstantColor:
                 return 255 - blend_const[channel];
             case FramebufferRegs::BlendFactor::ConstantAlpha:
-                return blend_const.a();
+                return blend_const.w; // Changed from a()
             case FramebufferRegs::BlendFactor::OneMinusConstantAlpha:
-                return 255 - blend_const.a();
+                return 255 - blend_const.w; // Changed from a()
             case FramebufferRegs::BlendFactor::SourceAlphaSaturate:
-                // Returns 1.0 for the alpha channel
                 if (channel == 3) {
                     return 255;
                 }
-                return std::min(combiner_output.a(), static_cast<u8>(255 - dest.a()));
+                return std::min(combiner_output.w,
+                                static_cast<u8>(255 - dest.w)); // Changed from a()
             default:
                 LOG_CRITICAL(HW_GPU, "Unknown blend factor {:x}", factor);
                 UNIMPLEMENTED();
@@ -729,22 +715,23 @@ Common::Vec4<u8> RasterizerSoftware::PixelColor(u16 x, u16 y,
 
         blend_output = EvaluateBlendEquation(combiner_output, srcfactor, dest, dstfactor,
                                              params.blend_equation_rgb);
-        blend_output.a() = EvaluateBlendEquation(combiner_output, srcfactor, dest, dstfactor,
-                                                 params.blend_equation_a)
-                               .a();
+        blend_output.w =
+            EvaluateBlendEquation(combiner_output, srcfactor, dest, dstfactor, // Changed from a()
+                                  params.blend_equation_a)
+                .w; // Changed from a()
     } else {
-        blend_output =
-            Common::MakeVec(LogicOp(combiner_output.r(), dest.r(), output_merger.logic_op),
-                            LogicOp(combiner_output.g(), dest.g(), output_merger.logic_op),
-                            LogicOp(combiner_output.b(), dest.b(), output_merger.logic_op),
-                            LogicOp(combiner_output.a(), dest.a(), output_merger.logic_op));
+        blend_output = Common::MakeVec(
+            LogicOp(combiner_output.x, dest.x, output_merger.logic_op),  // Changed from r()
+            LogicOp(combiner_output.y, dest.y, output_merger.logic_op),  // Changed from g()
+            LogicOp(combiner_output.z, dest.z, output_merger.logic_op),  // Changed from b()
+            LogicOp(combiner_output.w, dest.w, output_merger.logic_op)); // Changed from a()
     }
 
     const Common::Vec4<u8> result = {
-        output_merger.red_enable ? blend_output.r() : dest.r(),
-        output_merger.green_enable ? blend_output.g() : dest.g(),
-        output_merger.blue_enable ? blend_output.b() : dest.b(),
-        output_merger.alpha_enable ? blend_output.a() : dest.a(),
+        output_merger.red_enable ? blend_output.x : dest.x,   // Changed from r()
+        output_merger.green_enable ? blend_output.y : dest.y, // Changed from g()
+        output_merger.blue_enable ? blend_output.z : dest.z,  // Changed from b()
+        output_merger.alpha_enable ? blend_output.w : dest.w, // Changed from a()
     };
 
     return result;
@@ -766,10 +753,11 @@ Common::Vec4<u8> RasterizerSoftware::WriteTevConfig(
     Common::Vec4<u8> combiner_output = {0, 0, 0, 0};
     Common::Vec4<u8> combiner_buffer = {0, 0, 0, 0};
     Common::Vec4<u8> next_combiner_buffer =
-        Common::MakeVec(regs.texturing.tev_combiner_buffer_color.r.Value(),
-                        regs.texturing.tev_combiner_buffer_color.g.Value(),
-                        regs.texturing.tev_combiner_buffer_color.b.Value(),
-                        regs.texturing.tev_combiner_buffer_color.a.Value())
+        Common::MakeVec(
+            regs.texturing.tev_combiner_buffer_color.x.Value(), // Changed from r.Value()
+            regs.texturing.tev_combiner_buffer_color.y.Value(), // Changed from g.Value()
+            regs.texturing.tev_combiner_buffer_color.z.Value(), // Changed from b.Value()
+            regs.texturing.tev_combiner_buffer_color.w.Value()) // Changed from a.Value()
             .Cast<u8>();
 
     for (u32 tev_stage_index = 0; tev_stage_index < tev_stages.size(); ++tev_stage_index) {
@@ -795,8 +783,10 @@ Common::Vec4<u8> RasterizerSoftware::WriteTevConfig(
             case Source::PreviousBuffer:
                 return combiner_buffer;
             case Source::Constant:
-                return Common::MakeVec(tev_stage.const_r.Value(), tev_stage.const_g.Value(),
-                                       tev_stage.const_b.Value(), tev_stage.const_a.Value())
+                return Common::MakeVec(tev_stage.const_x.Value(), // Changed from const_r.Value()
+                                       tev_stage.const_y.Value(), // Changed from const_g.Value()
+                                       tev_stage.const_z.Value(), // Changed from const_b.Value()
+                                       tev_stage.const_w.Value()) // Changed from const_a.Value()
                     .Cast<u8>();
             case Source::Previous:
                 return combiner_output;
@@ -841,25 +831,28 @@ Common::Vec4<u8> RasterizerSoftware::WriteTevConfig(
             alpha_output = AlphaCombine(tev_stage.alpha_op, alpha_result);
         }
 
-        combiner_output[0] = std::min(255U, color_output.r() * tev_stage.GetColorMultiplier());
-        combiner_output[1] = std::min(255U, color_output.g() * tev_stage.GetColorMultiplier());
-        combiner_output[2] = std::min(255U, color_output.b() * tev_stage.GetColorMultiplier());
+        combiner_output[0] =
+            std::min(255U, color_output.x * tev_stage.GetColorMultiplier()); // Changed from r()
+        combiner_output[1] =
+            std::min(255U, color_output.y * tev_stage.GetColorMultiplier()); // Changed from g()
+        combiner_output[2] =
+            std::min(255U, color_output.z * tev_stage.GetColorMultiplier()); // Changed from b()
         combiner_output[3] = std::min(255U, alpha_output * tev_stage.GetAlphaMultiplier());
 
         combiner_buffer = next_combiner_buffer;
 
         if (regs.texturing.tev_combiner_buffer_input.TevStageUpdatesCombinerBufferColor(
                 tev_stage_index)) {
-            next_combiner_buffer.r() = combiner_output.r();
-            next_combiner_buffer.g() = combiner_output.g();
-            next_combiner_buffer.b() = combiner_output.b();
+            next_combiner_buffer.x = combiner_output.x; // Changed from r()
+            next_combiner_buffer.y = combiner_output.y; // Changed from g()
+            next_combiner_buffer.z = combiner_output.z; // Changed from b()
         }
 
         if (regs.texturing.tev_combiner_buffer_input.TevStageUpdatesCombinerBufferAlpha(
                 tev_stage_index)) {
-            next_combiner_buffer.a() = combiner_output.a();
+            next_combiner_buffer.w = combiner_output.w; // Changed from a()
         }
-    }
+    } // End of for loop
 
     return combiner_output;
 }
@@ -871,8 +864,9 @@ void RasterizerSoftware::WriteFog(float depth, Common::Vec4<u8>& combiner_output
      **/
     if (regs.texturing.fog_mode == TexturingRegs::FogMode::Fog) {
         const Common::Vec3<u8> fog_color =
-            Common::MakeVec(regs.texturing.fog_color.r.Value(), regs.texturing.fog_color.g.Value(),
-                            regs.texturing.fog_color.b.Value())
+            Common::MakeVec(regs.texturing.fog_color.x.Value(), // Changed from r.Value()
+                            regs.texturing.fog_color.y.Value(), // Changed from g.Value()
+                            regs.texturing.fog_color.z.Value()) // Changed from b.Value()
                 .Cast<u8>();
 
         float fog_index;
