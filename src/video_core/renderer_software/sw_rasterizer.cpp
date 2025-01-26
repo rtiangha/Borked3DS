@@ -853,10 +853,6 @@ Common::Vec4<u8> RasterizerSoftware::WriteTevConfig(
 }
 
 void RasterizerSoftware::WriteFog(float depth, Common::Vec4<u8>& combiner_output) const {
-    /**
-     * Apply fog combiner. Not fully accurate. We'd have to know what data type is used to
-     * store the depth etc. Using float for now until we know more about Pica datatypes.
-     **/
     if (regs.texturing.fog_mode == TexturingRegs::FogMode::Fog) {
         const Common::Vec3<u8> fog_color =
             Common::MakeVec(regs.texturing.fog_color.r.Value(), regs.texturing.fog_color.g.Value(),
@@ -876,10 +872,14 @@ void RasterizerSoftware::WriteFog(float depth, Common::Vec4<u8>& combiner_output
         const auto& fog_lut_entry = pica.fog.lut[static_cast<u32>(fog_i)];
         f32 fog_factor = fog_lut_entry.ToFloat() + fog_lut_entry.DiffToFloat() * fog_f;
         fog_factor = std::clamp(fog_factor, 0.0f, 1.0f);
-        for (u32 i = 0; i < 3; i++) {
-            combiner_output[i] = static_cast<u8>(fog_factor * combiner_output[i] +
-                                                 (1.0f - fog_factor) * fog_color[i]);
-        }
+
+        // Instead of using array indexing, use direct component access
+        combiner_output.r() =
+            static_cast<u8>(fog_factor * combiner_output.r() + (1.0f - fog_factor) * fog_color.r());
+        combiner_output.g() =
+            static_cast<u8>(fog_factor * combiner_output.g() + (1.0f - fog_factor) * fog_color.g());
+        combiner_output.b() =
+            static_cast<u8>(fog_factor * combiner_output.b() + (1.0f - fog_factor) * fog_color.b());
     }
 }
 
