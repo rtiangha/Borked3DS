@@ -3729,13 +3729,13 @@ void GMainWindow::UpdateWindowTitle() {
     const QString full_name = QString::fromUtf8(Common::g_build_fullname);
 
     if (game_title_long.isEmpty()) {
-        setWindowTitle(QStringLiteral("Borked3DS %1").arg(full_name));
+        setWindowTitle(QStringLiteral("Citra %1").arg(full_name));
     } else {
-        setWindowTitle(QStringLiteral("Borked3DS %1 | %2").arg(full_name, game_title_long));
-        render_window->setWindowTitle(QStringLiteral("Borked3DS %1 | %2 | %3")
+        setWindowTitle(QStringLiteral("Citra %1 | %2").arg(full_name, game_title_long));
+        render_window->setWindowTitle(QStringLiteral("Citra %1 | %2 | %3")
                                           .arg(full_name, game_title_long, tr("Primary Window")));
         secondary_window->setWindowTitle(
-            QStringLiteral("Borked3DS %1 | %2 | %3")
+            QStringLiteral("Citra %1 | %2 | %3")
                 .arg(full_name, game_title_long, tr("Secondary Window")));
     }
 }
@@ -3999,7 +3999,7 @@ int main(int argc, char* argv[]) {
 
     // Init settings params
     QCoreApplication::setOrganizationName(QStringLiteral("Borked3DS team"));
-    QCoreApplication::setApplicationName(QStringLiteral("Borked3DS"));
+    QCoreApplication::setApplicationName(QStringLiteral("Citra"));
 
     auto rounding_policy = GetHighDpiRoundingPolicy();
     QApplication::setHighDpiScaleFactorRoundingPolicy(rounding_policy);
