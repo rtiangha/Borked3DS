@@ -68,6 +68,16 @@ else()
     set(CRYPTOPP_INSTALL OFF CACHE BOOL "")
     set(CRYPTOPP_SOURCES "${CMAKE_SOURCE_DIR}/externals/cryptopp" CACHE STRING "")
     add_subdirectory(cryptopp-cmake)
+    # Disable LTO for cryptopp to avoid vtable linking issues
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(cryptopp PRIVATE
+            "-fno-lto"  # Disable LTO for cryptopp
+        )
+    # Make sure cryptopp is built without LTO
+    set_target_properties(cryptopp PROPERTIES 
+        INTERPROCEDURAL_OPTIMIZATION OFF
+    )
+    endif()
 endif()
 
 # dds-ktx
