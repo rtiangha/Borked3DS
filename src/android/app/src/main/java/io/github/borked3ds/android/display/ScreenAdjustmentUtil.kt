@@ -27,7 +27,7 @@ class ScreenAdjustmentUtil(
             context.display?.rotation ?: Surface.ROTATION_0
         } else {
             @Suppress("DEPRECATION")
-            defaultDisplay.rotation
+            defaultDisplay?.rotation ?: Surface.ROTATION_0
         }
     }
 
@@ -41,19 +41,23 @@ class ScreenAdjustmentUtil(
     }
 
     fun cycleLayouts() {
-        val landscapeValues = context.resources.getIntArray(R.array.landscapeValues)
-        val portraitValues = context.resources.getIntArray(R.array.portraitValues)
+        val landscapeValues = context.resources?.getIntArray(R.array.landscapeValues) ?: return
+        val portraitValues = context.resources?.getIntArray(R.array.portraitValues) ?: return
 
         if (NativeLibrary.isPortraitMode) {
-            val currentLayout = IntSetting.PORTRAIT_SCREEN_LAYOUT.int
+            val currentLayout = IntSetting.PORTRAIT_SCREEN_LAYOUT.int ?: return
             val pos = portraitValues.indexOf(currentLayout)
-            val layoutOption = portraitValues[(pos + 1) % portraitValues.size]
-            changePortraitOrientation(layoutOption)
+            if (pos != -1) {
+                val layoutOption = portraitValues[(pos + 1) % portraitValues.size]
+                changePortraitOrientation(layoutOption)
+            }
         } else {
-            val currentLayout = IntSetting.SCREEN_LAYOUT.int
+            val currentLayout = IntSetting.SCREEN_LAYOUT.int ?: return
             val pos = landscapeValues.indexOf(currentLayout)
-            val layoutOption = landscapeValues[(pos + 1) % landscapeValues.size]
-            changeScreenOrientation(layoutOption)
+            if (pos != -1) {
+                val layoutOption = landscapeValues[(pos + 1) % landscapeValues.size]
+                changeScreenOrientation(layoutOption)
+            }
         }
     }
 
@@ -76,5 +80,9 @@ class ScreenAdjustmentUtil(
         IntSetting.ORIENTATION_OPTION.int = orientationOption
         settings.saveSetting(IntSetting.ORIENTATION_OPTION, SettingsFile.FILE_NAME_CONFIG)
         activity.requestedOrientation = orientationOption
+    }
+
+    companion object {
+        private const val TAG = "ScreenAdjustmentUtil"
     }
 }
