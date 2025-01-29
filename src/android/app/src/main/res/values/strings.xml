@@ -13,6 +13,7 @@
     <string name="app_game_install_description">Next, you will need to select a Game Folder. Borked3DS will display all of the 3DS ROMs inside of the selected folder in the app.\n\nCIA ROMs, updates and DLC will need to be installed separately by clicking on the folder icon and selecting Install CIA.</string>
     <string name="id_label">ID</string>
     <string name="file_label">File</string>
+    <string name="unknown_error">Unknown error</string>
 
     <!-- Home Strings -->
     <string name="grid_menu_core_settings">Settings</string>
