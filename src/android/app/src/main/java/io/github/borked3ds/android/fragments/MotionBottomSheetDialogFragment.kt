@@ -45,57 +45,59 @@ class MotionBottomSheetDialogFragment : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = DialogInputBinding.inflate(inflater)
+        _binding = DialogInputBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        BottomSheetBehavior.from<View>(view.parent as View).state =
-            BottomSheetBehavior.STATE_EXPANDED
+        val parentView = view.parent as? View ?: return
+        BottomSheetBehavior.from(parentView).state = BottomSheetBehavior.STATE_EXPANDED
 
         isCancelable = false
         view.requestFocus()
         view.setOnFocusChangeListener { v, hasFocus -> if (!hasFocus) v.requestFocus() }
-        if (setting!!.isButtonMappingSupported()) {
-            dialog?.setOnKeyListener { _, _, event -> onKeyEvent(event) }
-        }
-        if (setting!!.isAxisMappingSupported()) {
-            binding.root.setOnGenericMotionListener { _, event -> onMotionEvent(event) }
-        }
 
-        val inputTypeId = when {
-            setting!!.isCirclePad() -> R.string.controller_circlepad
-            setting!!.isCStick() -> R.string.controller_c
-            setting!!.isDPad() -> R.string.controller_dpad
-            setting!!.isTrigger() -> R.string.controller_trigger
-            else -> R.string.button
-        }
-        binding.textTitle.text =
-            String.format(
+        setting?.let { setting ->
+            if (setting.isButtonMappingSupported()) {
+                dialog?.setOnKeyListener { _, _, event -> onKeyEvent(event) }
+            }
+            if (setting.isAxisMappingSupported()) {
+                binding.root.setOnGenericMotionListener { _, event -> onMotionEvent(event) }
+            }
+
+            val inputTypeId = when {
+                setting.isCirclePad() -> R.string.controller_circlepad
+                setting.isCStick() -> R.string.controller_c
+                setting.isDPad() -> R.string.controller_dpad
+                setting.isTrigger() -> R.string.controller_trigger
+                else -> R.string.button
+            }
+            binding.textTitle.text = String.format(
                 getString(R.string.input_dialog_title),
                 getString(inputTypeId),
-                getString(setting!!.nameId)
+                getString(setting.nameId)
             )
 
-        var messageResId: Int = R.string.input_dialog_description
-        if (setting!!.isAxisMappingSupported() && !setting!!.isTrigger()) {
-            // Use specialized message for axis left/right or up/down
-            messageResId = if (setting!!.isHorizontalOrientation()) {
-                R.string.input_binding_description_horizontal_axis
-            } else {
-                R.string.input_binding_description_vertical_axis
+            var messageResId: Int = R.string.input_dialog_description
+            if (setting.isAxisMappingSupported() && !setting.isTrigger()) {
+                // Use specialized message for axis left/right or up/down
+                messageResId = if (setting.isHorizontalOrientation()) {
+                    R.string.input_binding_description_horizontal_axis
+                } else {
+                    R.string.input_binding_description_vertical_axis
+                }
             }
-        }
-        binding.textMessage.text = getString(messageResId)
+            binding.textMessage.text = getString(messageResId)
 
-        binding.buttonClear.setOnClickListener {
-            setting?.removeOldMapping()
-            dismiss()
-        }
-        binding.buttonCancel.setOnClickListener {
-            onCancel?.invoke()
-            dismiss()
+            binding.buttonClear.setOnClickListener {
+                setting.removeOldMapping()
+                dismiss()
+            }
+            binding.buttonCancel.setOnClickListener {
+                onCancel?.invoke()
+                dismiss()
+            }
         }
     }
 
@@ -110,7 +112,7 @@ class MotionBottomSheetDialogFragment : BottomSheetDialogFragment() {
     }
 
     private fun onKeyEvent(event: KeyEvent): Boolean {
-        Log.debug("[MotionBottomSheetDialogFragment] Received key event: " + event.action)
+        Log.debug("[MotionBottomSheetDialogFragment] Received key event: ${event.action}")
         return when (event.action) {
             KeyEvent.ACTION_UP -> {
                 setting?.onKeyInput(event)
@@ -118,13 +120,12 @@ class MotionBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 // Even if we ignore the key, we still consume it. Thus return true regardless.
                 true
             }
-
             else -> false
         }
     }
 
     private fun onMotionEvent(event: MotionEvent): Boolean {
-        Log.debug("[MotionBottomSheetDialogFragment] Received motion event: " + event.action)
+        Log.debug("[MotionBottomSheetDialogFragment] Received motion event: ${event.action}")
         if (event.source and InputDevice.SOURCE_CLASS_JOYSTICK == 0) return false
         if (event.action != MotionEvent.ACTION_MOVE) return false
 
@@ -182,7 +183,9 @@ class MotionBottomSheetDialogFragment : BottomSheetDialogFragment() {
             // If only one axis moved, that's the winner.
             if (numMovedAxis == 1) {
                 waitingForEvent = false
-                setting?.onMotionInput(input, lastMovedRange!!, lastMovedDir)
+                lastMovedRange?.let { range ->
+                    setting?.onMotionInput(input, range, lastMovedDir)
+                }
                 dismiss()
             }
         }
