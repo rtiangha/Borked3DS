@@ -21,7 +21,7 @@ import kotlin.math.sqrt
 
 /**
  * Custom [BitmapDrawable] that is capable
- * of storing it's own ID.
+ * of storing its own ID.
  *
  * @param res                [Resources] instance.
  * @param bitmapOuter        [Bitmap] which represents the outer non-movable part of the joystick.
@@ -88,10 +88,12 @@ class InputOverlayDrawableJoystick(
     }
 
     fun draw(canvas: Canvas?) {
-        outerBitmap.draw(canvas!!)
-        boundsBoxBitmap.draw(canvas)
-        currentStateBitmapDrawable.alpha = opacity
-        currentStateBitmapDrawable.draw(canvas)
+        canvas?.let {
+            outerBitmap.draw(it)
+            boundsBoxBitmap.draw(it)
+            currentStateBitmapDrawable.alpha = opacity
+            currentStateBitmapDrawable.draw(it)
+        }
     }
 
     fun updateStatus(event: MotionEvent, overlay: InputOverlay): Boolean {
