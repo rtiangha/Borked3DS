@@ -5,11 +5,41 @@
 
 package io.github.borked3ds.android.viewmodel
 
+import android.view.Surface
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.github.borked3ds.android.NativeLibrary
+import io.github.borked3ds.android.viewmodel.EmulationState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-class EmulationViewModel : ViewModel() {
+class EmulationViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
+    private var emulationState: EmulationState? = null
+    var currentSurface: Surface? = null
+
+    fun initializeEmulationState(gamePath: String) {
+        if (emulationState == null) {
+            emulationState = EmulationState(gamePath)
+        }
+    }
+
+    fun getEmulationState(): EmulationState {
+        return emulationState ?: throw IllegalStateException("EmulationState not initialized")
+    }
+
+    // Handle surface changes
+    fun onSurfaceChanged(surface: Surface?) {
+        currentSurface = surface
+        emulationState?.newSurface(surface)
+    }
+
+    fun clearSurface() {
+        currentSurface = null
+        emulationState?.clearSurface()
+    }
+
     val emulationStarted get() = _emulationStarted.asStateFlow()
     private val _emulationStarted = MutableStateFlow(false)
 

@@ -81,6 +81,7 @@
 
         <activity
             android:name="io.github.borked3ds.android.activities.EmulationActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Borked3DS.Main">

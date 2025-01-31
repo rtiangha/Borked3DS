@@ -10,6 +10,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -130,6 +131,12 @@ class EmulationActivity : AppCompatActivity() {
         emulationStartTime = System.currentTimeMillis()
 
         applyOrientationSettings() // Check for orientation settings at startup
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyOrientationSettings() // Re-apply orientation without recreating
+        enableFullscreenImmersive()
     }
 
     // On some devices, the system bars will not disappear on first boot or after some
