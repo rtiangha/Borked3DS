@@ -551,6 +551,7 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
     }
 
     private fun defaultOverlayLandscape() {
+        // Get screen size
         var maxX = 0f
         var maxY = 0f
 
@@ -562,9 +563,9 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             maxY = bounds?.width()?.toFloat() ?: 0f
         } else {
             // For API 29 and below
-            val display = (context as? Activity)?.windowManager?.defaultDisplay
+            @Suppress("DEPRECATION") val display = (context as? Activity)?.windowManager?.defaultDisplay
             val outMetrics = DisplayMetrics()
-            display?.getMetrics(outMetrics)
+            @Suppress("DEPRECATION") display?.getMetrics(outMetrics)
             maxX = outMetrics.heightPixels.toFloat()
             maxY = outMetrics.widthPixels.toFloat()
         }
@@ -715,9 +716,9 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             maxY = bounds?.width()?.toFloat() ?: 0f
         } else {
             // For API 29 and below
-            val display = (context as? Activity)?.windowManager?.defaultDisplay
+            @Suppress("DEPRECATION") val display = (context as? Activity)?.windowManager?.defaultDisplay
             val outMetrics = DisplayMetrics()
-            display?.getMetrics(outMetrics)
+            @Suppress("DEPRECATION") display?.getMetrics(outMetrics)
             maxX = outMetrics.heightPixels.toFloat()
             maxY = outMetrics.widthPixels.toFloat()
         }
