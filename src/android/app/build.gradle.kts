@@ -22,7 +22,7 @@ plugins {
  * next 680 years.
  */
 val autoVersion = (((System.currentTimeMillis() / 1000) - 1451606400) / 10).toInt()
-val abiFilter = listOf("arm64-v8a", "x86_64")
+val abiFilter = listOf("arm64-v8a")
 
 val downloadedJniLibsPath = "${project.layout.buildDirectory.get().asFile}/downloadedJniLibs"
 
@@ -128,23 +128,6 @@ android {
                         "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",
                         "-DCMAKE_SHARED_LINKER_FLAGS=-flto=thin",
                         "-DANDROID_ARM_NEON=true"
-                    )
-                }
-            }
-        }
-
-        create("x86_64") {
-            dimension = "abi"
-            ndk {
-                abiFilters += "x86_64"
-            }
-            externalNativeBuild {
-                cmake {
-                    arguments(
-                        "-DCMAKE_CXX_FLAGS=-O3 -march=x86-64-v2 -mtune=x86-64-v3 -msse4.1",
-                        "-DCMAKE_C_FLAGS=-O3 -march=x86-64-v2 -mtune=x86-64-v3 -msse4.1",
-                        "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",
-                        "-DCMAKE_SHARED_LINKER_FLAGS=-flto=thin"
                     )
                 }
             }
@@ -333,9 +316,6 @@ android.applicationVariants.configureEach {
         // Define the copy specs at configuration time
         from(variant.outputs.first().outputFile.parentFile) {
             include("*.apk")
-        }
-        from(layout.buildDirectory.dir("outputs/bundle/${variant.name}")) {
-            include("*.aab")
         }
         into(layout.buildDirectory.dir("bundle"))
     }
