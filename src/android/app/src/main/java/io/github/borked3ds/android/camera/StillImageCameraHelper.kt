@@ -18,7 +18,7 @@ import io.github.borked3ds.android.NativeLibrary
 
 // Used in native code.
 object StillImageCameraHelper {
-    private val filePickerLock = Any()
+    private val filePickerLock = Object()
     private var filePickerPath: String? = null
 
     // Opens file picker for camera.
