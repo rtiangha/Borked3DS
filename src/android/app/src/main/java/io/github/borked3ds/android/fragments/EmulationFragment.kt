@@ -120,6 +120,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
+    /**
+     * Initialize anything that doesn't depend on the layout / views in here.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -177,6 +180,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         return binding.root
     }
 
+    // This is using the correct scope, lint is just acting up
     @SuppressLint("UnsafeRepeatOnLifecycleDetector")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -190,6 +194,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             binding.surfaceInputOverlay.setIsInEditMode(false)
         }
 
+        // Show/hide the "Stats" overlay
         updateshowPerfStatsOvelrayOverlay()
 
         val position = IntSetting.PERF_OVERLAY_POSITION.int
@@ -1294,6 +1299,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
         @get:Synchronized
         val isStopped: Boolean
+            // Getters for the current state
             get() = state == State.STOPPED
 
         @get:Synchronized
@@ -1315,6 +1321,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         }
 
+        // State changing methods
         @Synchronized
         fun pause() {
             if (state != State.PAUSED) {
@@ -1357,6 +1364,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         }
 
+        // Surface callbacks
         @Synchronized
         fun newSurface(surface: Surface?) {
             this.surface = surface
