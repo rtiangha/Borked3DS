@@ -31,14 +31,17 @@ class SettingsFragment : Fragment(), SettingsFragmentView {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        activityView = requireActivity() as SettingsActivityView
+        activityView = requireActivity() as? SettingsActivityView
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val menuTag = requireArguments().getString(ARGUMENT_MENU_TAG)
         val gameId = requireArguments().getString(ARGUMENT_GAME_ID)
-        fragmentPresenter.onCreate(menuTag!!, gameId!!)
+        if (menuTag == null || gameId == null) {
+            throw IllegalStateException("menuTag and gameId must not be null")
+        }
+        fragmentPresenter.onCreate(menuTag, gameId)
     }
 
     override fun onCreateView(
@@ -46,7 +49,7 @@ class SettingsFragment : Fragment(), SettingsFragmentView {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentSettingsBinding.inflate(layoutInflater)
+        _binding = FragmentSettingsBinding.inflate(layoutInflater, container, false)
         return binding.root
     }
 
@@ -56,7 +59,9 @@ class SettingsFragment : Fragment(), SettingsFragmentView {
             adapter = settingsAdapter
             layoutManager = LinearLayoutManager(activity)
         }
-        fragmentPresenter.onViewCreated(settingsAdapter!!)
+        settingsAdapter?.let {
+            fragmentPresenter.onViewCreated(it)
+        }
 
         setInsets()
     }
@@ -64,13 +69,11 @@ class SettingsFragment : Fragment(), SettingsFragmentView {
     override fun onDetach() {
         super.onDetach()
         activityView = null
-        if (settingsAdapter != null) {
-            settingsAdapter!!.closeDialog()
-        }
+        settingsAdapter?.closeDialog()
     }
 
     override fun showSettingsList(settingsList: ArrayList<SettingsItem>) {
-        settingsAdapter!!.setSettingsList(settingsList)
+        settingsAdapter?.setSettingsList(settingsList)
     }
 
     override fun loadSettingsList() {
@@ -78,15 +81,14 @@ class SettingsFragment : Fragment(), SettingsFragmentView {
     }
 
     override fun loadSubMenu(menuKey: String) {
-        activityView!!.showSettingsFragment(
-            menuKey,
-            true,
-            requireArguments().getString(ARGUMENT_GAME_ID)!!
-        )
+        val gameId = requireArguments().getString(ARGUMENT_GAME_ID)
+        if (gameId != null) {
+            activityView?.showSettingsFragment(menuKey, true, gameId)
+        }
     }
 
-    override fun showToastMessage(message: String?, is_long: Boolean) {
-        activityView!!.showToastMessage(message!!, is_long)
+    override fun showToastMessage(message: String?, isLong: Boolean) {
+        activityView?.showToastMessage(message ?: "", isLong)
     }
 
     override fun putSetting(setting: AbstractSetting) {
@@ -94,7 +96,7 @@ class SettingsFragment : Fragment(), SettingsFragmentView {
     }
 
     override fun onSettingChanged() {
-        activityView!!.onSettingChanged()
+        activityView?.onSettingChanged()
     }
 
     private fun setInsets() {

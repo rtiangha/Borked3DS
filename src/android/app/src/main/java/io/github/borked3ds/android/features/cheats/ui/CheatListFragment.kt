@@ -63,7 +63,7 @@ class CheatListFragment : Fragment() {
                     cheatsViewModel.cheatAddedEvent.collect { position: Int? ->
                         position?.let {
                             binding.cheatList.apply {
-                                post { (adapter as CheatsAdapter).notifyItemInserted(it) }
+                                post { (adapter as? CheatsAdapter)?.notifyItemInserted(it) }
                             }
                         }
                     }
@@ -74,7 +74,7 @@ class CheatListFragment : Fragment() {
                     cheatsViewModel.cheatChangedEvent.collect { position: Int? ->
                         position?.let {
                             binding.cheatList.apply {
-                                post { (adapter as CheatsAdapter).notifyItemChanged(it) }
+                                post { (adapter as? CheatsAdapter)?.notifyItemChanged(it) }
                             }
                         }
                     }
@@ -85,7 +85,7 @@ class CheatListFragment : Fragment() {
                     cheatsViewModel.cheatDeletedEvent.collect { position: Int? ->
                         position?.let {
                             binding.cheatList.apply {
-                                post { (adapter as CheatsAdapter).notifyItemRemoved(it) }
+                                post { (adapter as? CheatsAdapter)?.notifyItemRemoved(it) }
                             }
                         }
                     }
@@ -119,10 +119,12 @@ class CheatListFragment : Fragment() {
             val leftInsets = barInsets.left + cutoutInsets.left
             val rightInsets = barInsets.right + cutoutInsets.right
 
-            val mlpAppBar = binding.toolbarCheatList.layoutParams as MarginLayoutParams
-            mlpAppBar.leftMargin = leftInsets
-            mlpAppBar.rightMargin = rightInsets
-            binding.toolbarCheatList.layoutParams = mlpAppBar
+            val mlpAppBar = binding.toolbarCheatList.layoutParams as? MarginLayoutParams
+            mlpAppBar?.let {
+                it.leftMargin = leftInsets
+                it.rightMargin = rightInsets
+                binding.toolbarCheatList.layoutParams = it
+            }
 
             binding.cheatList.updatePadding(
                 left = leftInsets,
@@ -131,12 +133,14 @@ class CheatListFragment : Fragment() {
                         resources.getDimensionPixelSize(R.dimen.spacing_fab_list)
             )
 
-            val mlpFab = binding.fab.layoutParams as MarginLayoutParams
-            val fabPadding = resources.getDimensionPixelSize(R.dimen.spacing_large)
-            mlpFab.leftMargin = leftInsets + fabPadding
-            mlpFab.bottomMargin = barInsets.bottom + fabPadding
-            mlpFab.rightMargin = rightInsets + fabPadding
-            binding.fab.layoutParams = mlpFab
+            val mlpFab = binding.fab.layoutParams as? MarginLayoutParams
+            mlpFab?.let {
+                val fabPadding = resources.getDimensionPixelSize(R.dimen.spacing_large)
+                it.leftMargin = leftInsets + fabPadding
+                it.bottomMargin = barInsets.bottom + fabPadding
+                it.rightMargin = rightInsets + fabPadding
+                binding.fab.layoutParams = it
+            }
             windowInsets
         }
     }

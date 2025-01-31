@@ -45,26 +45,24 @@ class GamesViewModel : ViewModel() {
         val storedGames =
             PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
                 .getStringSet(GameHelper.KEY_GAMES, emptySet())
-        if (storedGames!!.isNotEmpty()) {
+        if (storedGames?.isNotEmpty() == true) {
             val deserializedGames = mutableSetOf<Game>()
             storedGames.forEach {
-                val game: Game
-                try {
-                    game = Json.decodeFromString(it)
+                val game: Game? = try {
+                    Json.decodeFromString<Game>(it)
                 } catch (ignored: Exception) {
-                    return@forEach
+                    null
                 }
 
-                val gameExists =
-                    DocumentFile.fromSingleUri(
+                game?.let { g ->
+                    val gameExists = DocumentFile.fromSingleUri(
                         Borked3DSApplication.appContext,
-                        Uri.parse(game.path)
-                    )
-                        ?.exists()
-                if (gameExists == true) {
-                    deserializedGames.add(game)
-                } else if (game.isInstalled) {
-                    deserializedGames.add(game)
+                        Uri.parse(g.path)
+                    )?.exists()
+
+                    if (gameExists == true || g.isInstalled) {
+                        deserializedGames.add(g)
+                    }
                 }
             }
             setGames(deserializedGames.toList())

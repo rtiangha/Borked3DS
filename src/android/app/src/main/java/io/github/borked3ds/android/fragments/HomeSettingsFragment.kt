@@ -94,11 +94,12 @@ class HomeSettingsFragment : Fragment() {
                 {
                     val inflater = LayoutInflater.from(context)
                     val inputBinding = DialogSoftwareKeyboardBinding.inflate(inflater)
-                    var textInputValue: String = preferences.getString("last_artic_base_addr", "")!!
+                    var textInputValue: String =
+                        preferences.getString("last_artic_base_addr", "") ?: ""
 
                     inputBinding.editTextInput.setText(textInputValue)
                     inputBinding.editTextInput.doOnTextChanged { text, _, _, _ ->
-                        textInputValue = text.toString()
+                        textInputValue = text?.toString() ?: ""
                     }
 
                     context?.let {
@@ -170,7 +171,7 @@ class HomeSettingsFragment : Fragment() {
                 HomeSettingStringUtils.ResId(R.string.select_borked3ds_user_folder),
                 HomeSettingStringUtils.ResId(R.string.select_borked3ds_user_folder_home_description),
                 R.drawable.ic_home,
-                { mainActivity?.openBorked3DSDirectory?.launch(null) },
+                { mainActivity.openBorked3DSDirectory?.launch(null) },
                 details = homeViewModel.userDir
             ),
             HomeSetting(
@@ -261,13 +262,13 @@ class HomeSettingsFragment : Fragment() {
                 Toast.LENGTH_LONG
             ).show()
 
-            homeViewModel.setGamesDir(requireActivity(), result.path!!)
+            homeViewModel.setGamesDir(requireActivity(), result.path ?: "")
         }
 
     private fun shareLog() {
         val logDirectory = DocumentFile.fromTreeUri(
             requireContext(),
-            PermissionsHandler.borked3dsDirectory
+            PermissionsHandler.borked3dsDirectory ?: return
         )?.findFile("log")
         val currentLog = logDirectory?.findFile("borked3ds_log.txt")
         val oldLog = logDirectory?.findFile("borked3ds_log.txt.old.txt")

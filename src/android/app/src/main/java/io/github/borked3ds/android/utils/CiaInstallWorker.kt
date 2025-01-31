@@ -27,7 +27,8 @@ class CiaInstallWorker(
     private val PROGRESS_NOTIFICATION_ID = SUMMARY_NOTIFICATION_ID + 1
     private var statusNotificationId = SUMMARY_NOTIFICATION_ID + 2
 
-    private val notificationManager = context.getSystemService(NotificationManager::class.java)
+    private val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
     private val installProgressBuilder = NotificationCompat.Builder(
         context,
         context.getString(R.string.cia_install_notification_channel_id)
@@ -114,12 +115,12 @@ class CiaInstallWorker(
 
         // Even if newer versions of Android don't show the group summary text that you design,
         // you always need to manually set a summary to enable grouped notifications.
-        notificationManager.notify(SUMMARY_NOTIFICATION_ID, summaryNotification)
-        notificationManager.notify(statusNotificationId++, installStatusBuilder.build())
+        notificationManager?.notify(SUMMARY_NOTIFICATION_ID, summaryNotification)
+        notificationManager?.notify(statusNotificationId++, installStatusBuilder.build())
     }
 
     override fun doWork(): Result {
-        val selectedFiles = inputData.getStringArray("CIA_FILES")!!
+        val selectedFiles = inputData.getStringArray("CIA_FILES") ?: return Result.failure()
         val toastText: CharSequence = context.resources.getQuantityString(
             R.plurals.cia_install_toast,
             selectedFiles.size, selectedFiles.size
@@ -144,7 +145,7 @@ class CiaInstallWorker(
             val res = installCIA(file)
             notifyInstallStatus(filename, res)
         }
-        notificationManager.cancel(PROGRESS_NOTIFICATION_ID)
+        notificationManager?.cancel(PROGRESS_NOTIFICATION_ID)
         return Result.success()
     }
 
@@ -159,7 +160,7 @@ class CiaInstallWorker(
         }
         lastNotifiedTime = currentTime
         installProgressBuilder.setProgress(max, progress, false)
-        notificationManager.notify(PROGRESS_NOTIFICATION_ID, installProgressBuilder.build())
+        notificationManager?.notify(PROGRESS_NOTIFICATION_ID, installProgressBuilder.build())
     }
 
     override fun getForegroundInfo(): ForegroundInfo =

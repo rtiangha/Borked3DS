@@ -13,8 +13,11 @@ import io.github.borked3ds.android.features.settings.model.view.RunnableSetting
 import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class RunnableViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
-    SettingViewHolder(binding.root, adapter) {
+class RunnableViewHolder(
+    val binding: ListItemSettingBinding,
+    adapter: SettingsAdapter
+) : SettingViewHolder(binding.root, adapter) {
+
     private lateinit var setting: RunnableSetting
 
     override fun bind(item: SettingsItem) {
@@ -42,20 +45,15 @@ class RunnableViewHolder(val binding: ListItemSettingBinding, adapter: SettingsA
 
         if (setting.value != null) {
             binding.textSettingValue.visibility = View.VISIBLE
-            binding.textSettingValue.text = setting.value!!.invoke()
+            binding.textSettingValue.text = setting.value?.invoke() ?: ""
         } else {
             binding.textSettingValue.visibility = View.GONE
         }
 
-        if (setting.isEditable) {
-            binding.textSettingName.alpha = 1f
-            binding.textSettingDescription.alpha = 1f
-            binding.textSettingValue.alpha = 1f
-        } else {
-            binding.textSettingName.alpha = 0.5f
-            binding.textSettingDescription.alpha = 0.5f
-            binding.textSettingValue.alpha = 0.5f
-        }
+        val textAlpha = if (setting.isEditable) 1f else 0.5f
+        binding.textSettingName.alpha = textAlpha
+        binding.textSettingDescription.alpha = textAlpha
+        binding.textSettingValue.alpha = textAlpha
     }
 
     override fun onClick(clicked: View) {

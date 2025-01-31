@@ -13,8 +13,11 @@ import io.github.borked3ds.android.features.settings.model.view.InputBindingSett
 import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class InputBindingSettingViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
-    SettingViewHolder(binding.root, adapter) {
+class InputBindingSettingViewHolder(
+    val binding: ListItemSettingBinding,
+    adapter: SettingsAdapter
+) : SettingViewHolder(binding.root, adapter) {
+
     private lateinit var setting: InputBindingSetting
 
     override fun bind(item: SettingsItem) {
@@ -22,7 +25,7 @@ class InputBindingSettingViewHolder(val binding: ListItemSettingBinding, adapter
             PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
         setting = item as InputBindingSetting
         binding.textSettingName.setText(item.nameId)
-        val uiString = preferences.getString(setting.abstractSetting.key, "")!!
+        val uiString = preferences.getString(setting.abstractSetting.key, "") ?: ""
         if (uiString.isNotEmpty()) {
             binding.textSettingDescription.visibility = View.GONE
             binding.textSettingValue.visibility = View.VISIBLE
@@ -32,15 +35,10 @@ class InputBindingSettingViewHolder(val binding: ListItemSettingBinding, adapter
             binding.textSettingValue.visibility = View.GONE
         }
 
-        if (setting.isEditable) {
-            binding.textSettingName.alpha = 1f
-            binding.textSettingDescription.alpha = 1f
-            binding.textSettingValue.alpha = 1f
-        } else {
-            binding.textSettingName.alpha = 0.5f
-            binding.textSettingDescription.alpha = 0.5f
-            binding.textSettingValue.alpha = 0.5f
-        }
+        val textAlpha = if (setting.isEditable) 1f else 0.5f
+        binding.textSettingName.alpha = textAlpha
+        binding.textSettingDescription.alpha = textAlpha
+        binding.textSettingValue.alpha = textAlpha
     }
 
     override fun onClick(clicked: View) {
@@ -53,7 +51,7 @@ class InputBindingSettingViewHolder(val binding: ListItemSettingBinding, adapter
 
     override fun onLongClick(clicked: View): Boolean {
         if (setting.isEditable) {
-            adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
+            return adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
         } else {
             adapter.onClickDisabledSetting()
         }

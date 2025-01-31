@@ -68,8 +68,8 @@ class SearchFragment : Fragment() {
 
         preferences = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
 
-        if (savedInstanceState != null) {
-            binding.searchText.setText(savedInstanceState.getString(SEARCH_TEXT))
+        savedInstanceState?.let {
+            binding.searchText.setText(it.getString(SEARCH_TEXT))
         }
 
         val inflater = LayoutInflater.from(requireContext())
@@ -85,7 +85,7 @@ class SearchFragment : Fragment() {
         binding.chipGroup.setOnCheckedStateChangeListener { _, _ -> filterAndSearch() }
 
         binding.searchText.doOnTextChanged { text: CharSequence?, _: Int, _: Int, _: Int ->
-            if (text.toString().isNotEmpty()) {
+            if (text?.toString()?.isNotEmpty() == true) {
                 binding.clearButton.visibility = View.VISIBLE
             } else {
                 binding.clearButton.visibility = View.INVISIBLE
@@ -112,7 +112,7 @@ class SearchFragment : Fragment() {
             launch {
                 repeatOnLifecycle(Lifecycle.State.CREATED) {
                     gamesViewModel.searchedGames.collect {
-                        (binding.gridGamesSearch.adapter as GameAdapter).submitGameList(it)
+                        (binding.gridGamesSearch.adapter as? GameAdapter)?.submitGameList(it)
                         if (it.isEmpty()) {
                             binding.noResultsView.visibility = View.VISIBLE
                         } else {
@@ -196,16 +196,16 @@ class SearchFragment : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        if (_binding != null) {
+        _binding?.let {
             outState.putString(SEARCH_TEXT, binding.searchText.text.toString())
         }
     }
 
     private fun focusSearch() {
-        if (_binding != null) {
+        _binding?.let {
             binding.searchText.requestFocus()
             val imm = requireActivity()
-                .getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager?
+                .getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.showSoftInput(binding.searchText, InputMethodManager.SHOW_IMPLICIT)
         }
     }
