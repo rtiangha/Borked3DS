@@ -19,8 +19,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 class DateTimeViewHolder(
-    private val binding: ListItemSettingBinding,
-    private val adapter: SettingsAdapter
+    val binding: ListItemSettingBinding,
+    val adapter: SettingsAdapter
 ) : SettingViewHolder(binding.root, adapter) {
 
     private lateinit var setting: DateTimeSetting
@@ -69,7 +69,7 @@ class DateTimeViewHolder(
 
     override fun onLongClick(clicked: View): Boolean {
         if (setting.isEditable) {
-            return adapter.onLongClick(setting.setting, bindingAdapterPosition) ?: false
+            return adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
         } else {
             adapter.onClickDisabledSetting()
         }
