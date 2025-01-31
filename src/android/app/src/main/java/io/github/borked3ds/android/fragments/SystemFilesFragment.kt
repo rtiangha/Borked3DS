@@ -126,19 +126,19 @@ class SystemFilesFragment : Fragment() {
         }
 
         reloadUi()
-        if (savedInstanceState != null) {
+        savedInstanceState?.let {
             setDropdownSelection(
                 binding.dropdownSystemType,
                 systemTypeDropdown,
-                savedInstanceState.getInt(SYS_TYPE)
+                it.getInt(SYS_TYPE)
             )
             setDropdownSelection(
                 binding.dropdownSystemRegion,
                 systemRegionDropdown,
-                savedInstanceState.getInt(REGION)
+                it.getInt(REGION)
             )
             binding.dropdownSystemRegionStart
-                .setText(savedInstanceState.getString(REGION_START), false)
+                .setText(it.getString(REGION_START), false)
         }
 
         setInsets()
@@ -202,7 +202,7 @@ class SystemFilesFragment : Fragment() {
 
         populateHomeMenuOptions()
         binding.buttonStartHomeMenu.setOnClickListener {
-            val menuPath = homeMenuMap[binding.dropdownSystemRegionStart.text.toString()]!!
+            val menuPath = homeMenuMap[binding.dropdownSystemRegionStart.text.toString()] ?: return@setOnClickListener
             val menu = Game(
                 title = getString(R.string.home_menu),
                 path = menuPath,
@@ -232,8 +232,8 @@ class SystemFilesFragment : Fragment() {
         dropdownItem: DropdownItem,
         selection: Int
     ) {
-        if (dropdown.adapter != null) {
-            dropdown.setText(dropdown.adapter.getItem(selection).toString(), false)
+        dropdown.adapter?.let {
+            dropdown.setText(it.getItem(selection).toString(), false)
         }
         dropdownItem.position = selection
     }
