@@ -20,7 +20,7 @@ import java.time.format.FormatStyle
 
 class DateTimeViewHolder(
     val binding: ListItemSettingBinding,
-    val adapter: SettingsAdapter
+    adapter: SettingsAdapter
 ) : SettingViewHolder(binding.root, adapter) {
 
     private lateinit var setting: DateTimeSetting

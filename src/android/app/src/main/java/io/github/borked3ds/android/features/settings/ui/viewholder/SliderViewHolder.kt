@@ -17,7 +17,7 @@ import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
 class SliderViewHolder(
     val binding: ListItemSettingBinding,
-    val adapter: SettingsAdapter
+    adapter: SettingsAdapter
 ) : SettingViewHolder(binding.root, adapter) {
 
     private lateinit var setting: SliderSetting
