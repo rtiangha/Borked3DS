@@ -142,12 +142,12 @@ class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {
     override fun onPanelSlide(panel: View, slideOffset: Float) {}
     override fun onPanelOpened(panel: View) {
         val rtl = panel.layoutDirection == View.LAYOUT_DIRECTION_RTL
-        cheatDetailsLastFocus!!.requestFocus(if (rtl) View.FOCUS_LEFT else View.FOCUS_RIGHT)
+        cheatDetailsLastFocus?.requestFocus(if (rtl) View.FOCUS_LEFT else View.FOCUS_RIGHT)
     }
 
     override fun onPanelClosed(panel: View) {
         val rtl = panel.layoutDirection == View.LAYOUT_DIRECTION_RTL
-        cheatDetailsLastFocus!!.requestFocus(if (rtl) View.FOCUS_RIGHT else View.FOCUS_LEFT)
+        cheatDetailsLastFocus?.requestFocus(if (rtl) View.FOCUS_RIGHT else View.FOCUS_LEFT)
     }
 
     private fun onIsEditingChanged(isEditing: Boolean) {
@@ -157,7 +157,7 @@ class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {
     }
 
     private fun onSelectedCheatChanged(selectedCheat: Cheat?) {
-        val cheatSelected = selectedCheat != null || cheatsViewModel.isEditing.value!!
+        val cheatSelected = selectedCheat != null || cheatsViewModel.isEditing.value == true
         if (!cheatSelected && binding.slidingPaneLayout.isOpen) {
             binding.slidingPaneLayout.close()
         }
@@ -168,18 +168,18 @@ class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {
     fun onListViewFocusChange(hasFocus: Boolean) {
         if (hasFocus) {
             cheatListLastFocus = binding.cheatListContainer.findFocus()
-            if (cheatListLastFocus == null) throw NullPointerException()
-            binding.slidingPaneLayout.close()
+            cheatListLastFocus?.let {
+                binding.slidingPaneLayout.close()
+            } ?: throw NullPointerException("Cheat list focus is null.")
         }
     }
 
     fun onDetailsViewFocusChange(hasFocus: Boolean) {
         if (hasFocus) {
             cheatDetailsLastFocus = binding.cheatDetailsContainer.findFocus()
-            if (cheatDetailsLastFocus == null) {
-                throw NullPointerException()
-            }
-            binding.slidingPaneLayout.open()
+            cheatDetailsLastFocus?.let {
+                binding.slidingPaneLayout.open()
+            } ?: throw NullPointerException("Cheat details focus is null.")
         }
     }
 
@@ -204,19 +204,21 @@ class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {
 
             // Set keyboard insets if the system supports smooth keyboard animations
             val mlpDetails =
-                binding.cheatDetailsContainer.layoutParams as ViewGroup.MarginLayoutParams
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                if (keyboardInsets.bottom > 0) {
-                    mlpDetails.bottomMargin = keyboardInsets.bottom
+                binding.cheatDetailsContainer.layoutParams as? ViewGroup.MarginLayoutParams
+            mlpDetails?.let {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    if (keyboardInsets.bottom > 0) {
+                        it.bottomMargin = keyboardInsets.bottom
+                    } else {
+                        it.bottomMargin = barInsets.bottom
+                    }
                 } else {
-                    mlpDetails.bottomMargin = barInsets.bottom
+                    if (it.bottomMargin == 0) {
+                        it.bottomMargin = barInsets.bottom
+                    }
                 }
-            } else {
-                if (mlpDetails.bottomMargin == 0) {
-                    mlpDetails.bottomMargin = barInsets.bottom
-                }
+                binding.cheatDetailsContainer.layoutParams = it
             }
-            binding.cheatDetailsContainer.layoutParams = mlpDetails
             windowInsets
         }
 
@@ -232,11 +234,13 @@ class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {
                         runningAnimations: List<WindowInsetsAnimationCompat>
                     ): WindowInsetsCompat {
                         val mlpDetails =
-                            binding.cheatDetailsContainer.layoutParams as ViewGroup.MarginLayoutParams
-                        keyboardInsets = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-                        barInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
-                        mlpDetails.bottomMargin = keyboardInsets.coerceAtLeast(barInsets)
-                        binding.cheatDetailsContainer.layoutParams = mlpDetails
+                            binding.cheatDetailsContainer.layoutParams as? ViewGroup.MarginLayoutParams
+                        mlpDetails?.let {
+                            keyboardInsets = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                            barInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+                            it.bottomMargin = keyboardInsets.coerceAtLeast(barInsets)
+                            binding.cheatDetailsContainer.layoutParams = it
+                        }
                         return insets
                     }
                 })
