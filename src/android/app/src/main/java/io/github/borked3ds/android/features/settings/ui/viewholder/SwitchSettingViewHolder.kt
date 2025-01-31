@@ -12,8 +12,10 @@ import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.model.view.SwitchSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class SwitchSettingViewHolder(val binding: ListItemSettingSwitchBinding, adapter: SettingsAdapter) :
-    SettingViewHolder(binding.root, adapter) {
+class SwitchSettingViewHolder(
+    private val binding: ListItemSettingSwitchBinding,
+    private val adapter: SettingsAdapter
+) : SettingViewHolder(binding.root, adapter) {
 
     private lateinit var setting: SwitchSetting
 
@@ -51,7 +53,7 @@ class SwitchSettingViewHolder(val binding: ListItemSettingSwitchBinding, adapter
 
     override fun onLongClick(clicked: View): Boolean {
         if (setting.isEditable) {
-            return adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
+            return adapter.onLongClick(setting.setting, bindingAdapterPosition) ?: false
         } else {
             adapter.onClickDisabledSetting()
         }
