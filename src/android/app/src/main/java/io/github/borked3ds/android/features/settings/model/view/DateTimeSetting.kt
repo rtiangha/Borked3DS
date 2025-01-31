@@ -19,15 +19,19 @@ class DateTimeSetting(
 
     val value: String
         get() = if (setting != null) {
-            val setting = setting as AbstractStringSetting
-            setting.string
+            val stringSetting = setting as? AbstractStringSetting
+            stringSetting?.string ?: defaultValue ?: ""
         } else {
-            defaultValue!!
+            defaultValue ?: ""
         }
 
     fun setSelectedValue(datetime: String): AbstractStringSetting {
-        val stringSetting = setting as AbstractStringSetting
-        stringSetting.string = datetime
-        return stringSetting
+        val stringSetting = setting as? AbstractStringSetting
+        return if (stringSetting != null) {
+            stringSetting.string = datetime
+            stringSetting
+        } else {
+            throw IllegalStateException("Setting is not an AbstractStringSetting or is null.")
+        }
     }
 }

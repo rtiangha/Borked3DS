@@ -23,15 +23,19 @@ object SoftwareKeyboard {
 
     private fun ExecuteImpl(config: KeyboardConfig) {
         val emulationActivity = NativeLibrary.sEmulationActivity.get()
+        if (emulationActivity == null) {
+            Log.error("EmulationActivity is null")
+            return
+        }
         data = KeyboardData(0, "")
         KeyboardDialogFragment.newInstance(config)
-            .show(emulationActivity!!.supportFragmentManager, KeyboardDialogFragment.TAG)
+            .show(emulationActivity.supportFragmentManager, KeyboardDialogFragment.TAG)
     }
 
     fun HandleValidationError(config: KeyboardConfig, error: ValidationError) {
-        val emulationActivity = NativeLibrary.sEmulationActivity.get()!!
+        val emulationActivity = NativeLibrary.sEmulationActivity.get() ?: return
         val message: String = when (error) {
-            ValidationError.FixedLengthRequired -> emulationActivity.getResources()
+            ValidationError.FixedLengthRequired -> emulationActivity.resources
                 .getQuantityString(
                     R.plurals.fixed_length_required,
                     config.maxTextLength,
@@ -39,7 +43,7 @@ object SoftwareKeyboard {
                 )
 
             ValidationError.MaxLengthExceeded ->
-                emulationActivity.getResources().getQuantityString(
+                emulationActivity.resources.getQuantityString(
                     R.plurals.max_length_exceeded,
                     config.maxTextLength,
                     config.maxTextLength
@@ -55,7 +59,7 @@ object SoftwareKeyboard {
         }
 
         MessageDialogFragment.newInstance(R.string.software_keyboard, message).show(
-            NativeLibrary.sEmulationActivity.get()!!.supportFragmentManager,
+            emulationActivity.supportFragmentManager,
             MessageDialogFragment.TAG
         )
     }
@@ -66,11 +70,13 @@ object SoftwareKeyboard {
             Log.error("Unexpected button config None")
             return KeyboardData(0, "")
         }
-        NativeLibrary.sEmulationActivity.get()!!.runOnUiThread { ExecuteImpl(config) }
+        val emulationActivity = NativeLibrary.sEmulationActivity.get() ?: return KeyboardData(0, "")
+        emulationActivity.runOnUiThread { ExecuteImpl(config) }
         synchronized(finishLock) {
             try {
                 finishLock.wait()
             } catch (ignored: Exception) {
+                // Ignore interruption
             }
         }
         return data
@@ -137,6 +143,7 @@ object SoftwareKeyboard {
 
     /// Corresponds to Frontend::KeyboardData
     class KeyboardData(var button: Int, var text: String)
+
     class Filter : InputFilter {
         override fun filter(
             source: CharSequence,

@@ -156,9 +156,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         }
 
-        try {
-            game = args.game ?: intentGame!!
-        } catch (e: NullPointerException) {
+        game = args.game ?: intentGame ?: run {
             Toast.makeText(
                 requireContext(),
                 R.string.no_game_present,
@@ -241,6 +239,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 // No op
             }
         })
+
         binding.inGameMenu.menu.findItem(R.id.menu_lock_drawer).apply {
             val titleId =
                 if (EmulationMenuSettings.drawerLockMode == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
@@ -263,14 +262,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             )
         }
 
-        binding.inGameMenu.getHeaderView(0).apply {
+        binding.inGameMenu.getHeaderView(0)?.apply {
             val titleView = findViewById<TextView>(R.id.text_game_title)
             val iconView = findViewById<ImageView>(R.id.game_icon)
 
-            titleView.text = game.title
+            titleView?.text = game.title
 
             GameIconUtils.loadGameIcon(requireActivity(), game, iconView)
         }
+
         binding.inGameMenu.setNavigationItemSelectedListener {
             when (it.itemId) {
                 R.id.menu_emulation_pause -> {
@@ -373,7 +373,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         SettingsFile.FILE_NAME_CONFIG,
                         ""
                     )
-
                     true
                 }
 
@@ -546,23 +545,24 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun setupBorked3DSDirectoriesThenStartEmulation() {
         val directoryInitializationState = DirectoryInitialization.start()
-        if (directoryInitializationState ===
-            DirectoryInitializationState.BORKED3DS_DIRECTORIES_INITIALIZED
-        ) {
-            emulationState.run(emulationActivity.isActivityRecreated)
-        } else if (directoryInitializationState ===
-            DirectoryInitializationState.EXTERNAL_STORAGE_PERMISSION_NEEDED
-        ) {
-            Toast.makeText(context, R.string.write_permission_needed, Toast.LENGTH_SHORT)
-                .show()
-        } else if (directoryInitializationState ===
-            DirectoryInitializationState.CANT_FIND_EXTERNAL_STORAGE
-        ) {
-            Toast.makeText(
-                context,
-                R.string.external_storage_not_mounted,
-                Toast.LENGTH_SHORT
-            ).show()
+        when (directoryInitializationState) {
+            DirectoryInitializationState.BORKED3DS_DIRECTORIES_INITIALIZED -> {
+                emulationState.run(emulationActivity.isActivityRecreated)
+            }
+
+            DirectoryInitializationState.EXTERNAL_STORAGE_PERMISSION_NEEDED -> {
+                Toast.makeText(context, R.string.write_permission_needed, Toast.LENGTH_SHORT).show()
+            }
+
+            DirectoryInitializationState.CANT_FIND_EXTERNAL_STORAGE -> {
+                Toast.makeText(context, R.string.external_storage_not_mounted, Toast.LENGTH_SHORT)
+                    .show()
+            }
+
+            else -> {
+                // Handle any other states if necessary
+                Toast.makeText(context, R.string.unknown_error, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -594,7 +594,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun showStateSubmenu(isSaving: Boolean) {
-
         val savestates = NativeLibrary.getSavestateInfo()
 
         val popupMenu = PopupMenu(
@@ -891,21 +890,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         popupMenu.menuInflater.inflate(R.menu.menu_landscape_screen_layout, popupMenu.menu)
 
         val layoutOptionMenuItem = when (IntSetting.SCREEN_LAYOUT.int) {
-            ScreenLayout.ORIGINAL.int ->
-                R.id.menu_screen_layout_original
-
-            ScreenLayout.SINGLE_SCREEN.int ->
-                R.id.menu_screen_layout_single
-
-            ScreenLayout.SIDE_SCREEN.int ->
-                R.id.menu_screen_layout_sidebyside
-
-            ScreenLayout.HYBRID_SCREEN.int ->
-                R.id.menu_screen_layout_hybrid
-
-            ScreenLayout.CUSTOM_LAYOUT.int ->
-                R.id.menu_screen_layout_custom
-
+            ScreenLayout.ORIGINAL.int -> R.id.menu_screen_layout_original
+            ScreenLayout.SINGLE_SCREEN.int -> R.id.menu_screen_layout_single
+            ScreenLayout.SIDE_SCREEN.int -> R.id.menu_screen_layout_sidebyside
+            ScreenLayout.HYBRID_SCREEN.int -> R.id.menu_screen_layout_hybrid
+            ScreenLayout.CUSTOM_LAYOUT.int -> R.id.menu_screen_layout_custom
             else -> R.id.menu_screen_layout_largescreen
         }
         popupMenu.menu.findItem(layoutOptionMenuItem).isChecked = true
@@ -963,15 +952,9 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         popupMenu.menuInflater.inflate(R.menu.menu_portrait_screen_layout, popupMenu.menu)
 
         val layoutOptionMenuItem = when (IntSetting.PORTRAIT_SCREEN_LAYOUT.int) {
-            PortraitScreenLayout.TOP_FULL_WIDTH.int ->
-                R.id.menu_portrait_layout_top_full
-
-            PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int ->
-                R.id.menu_portrait_layout_custom
-
-            else ->
-                R.id.menu_portrait_layout_top_full
-
+            PortraitScreenLayout.TOP_FULL_WIDTH.int -> R.id.menu_portrait_layout_top_full
+            PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int -> R.id.menu_portrait_layout_custom
+            else -> R.id.menu_portrait_layout_top_full
         }
 
         popupMenu.menu.findItem(layoutOptionMenuItem).isChecked = true
@@ -1071,7 +1054,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         textValue.setSelection(textValue.length())
                         setControlScale(slider.value.toInt(), target)
                     }
-
                 })
             textInput.suffixText = "%"
         }
@@ -1116,9 +1098,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             })
 
-
             slider.addOnChangeListener { _: Slider, value: Float, _: Boolean ->
-
                 if (textValue.text.toString() != slider.value.toInt().toString()) {
                     textValue.setText(String.format(Locale.ROOT, "%d", slider.value.toInt()))
                     textValue.setSelection(textValue.length())
@@ -1215,7 +1195,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.surfaceInputOverlay.resetButtonPlacement()
     }
 
-    fun updateshowPerfStatsOvelrayOverlay() {
+    private fun updateshowPerfStatsOvelrayOverlay() {
         if (EmulationMenuSettings.showPerfStatsOvelray) {
             val FPS = 1
             val SPEED = 3
@@ -1320,19 +1300,18 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun getBatteryTemperature(): Float {
-        try {
+        return try {
             val batteryIntent =
                 requireContext().registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             // Temperature in tenths of a degree Celsius
             val temperature = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
             // Convert to degrees Celsius
-            return temperature / 10.0f
+            temperature / 10.0f
         } catch (e: Exception) {
             Log.error("[EmulationFragment] Failed to get battery temperature: ${e.message}")
-            return 0.0f
+            0.0f
         }
     }
-
 
     private fun celsiusToFahrenheit(celsius: Float): Float {
         return (celsius * 9 / 5) + 32

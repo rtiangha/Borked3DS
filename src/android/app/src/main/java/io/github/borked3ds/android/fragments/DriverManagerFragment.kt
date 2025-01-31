@@ -85,13 +85,13 @@ class DriverManagerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.apply {
             launch {
                 driverViewModel.driverList.collectLatest {
-                    (binding.listDrivers.adapter as DriverAdapter).submitList(it)
+                    (binding.listDrivers.adapter as? DriverAdapter)?.submitList(it)
                 }
             }
             launch {
                 driverViewModel.newDriverInstalled.collect {
                     if (_binding != null && it) {
-                        (binding.listDrivers.adapter as DriverAdapter).apply {
+                        (binding.listDrivers.adapter as? DriverAdapter)?.apply {
                             notifyItemChanged(driverViewModel.previouslySelectedDriver)
                             notifyItemChanged(driverViewModel.selectedDriver)
                             driverViewModel.setNewDriverInstalled(false)
@@ -179,4 +179,9 @@ class DriverManagerFragment : Fragment() {
                 return@newInstance Any()
             }.show(childFragmentManager, IndeterminateProgressDialogFragment.TAG)
         }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 }

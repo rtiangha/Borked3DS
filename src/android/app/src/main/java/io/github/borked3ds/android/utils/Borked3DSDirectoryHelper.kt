@@ -15,7 +15,7 @@ import io.github.borked3ds.android.model.SetupCallback
 import io.github.borked3ds.android.viewmodel.HomeViewModel
 
 /**
- * Borked3DS directory initialization ui flow controller.
+ * Borked3DS directory initialization UI flow controller.
  */
 class Borked3DSDirectoryHelper(private val fragmentActivity: FragmentActivity) {
     fun showBorked3DSDirectoryDialog(result: Uri, callback: SetupCallback? = null) {
@@ -24,7 +24,7 @@ class Borked3DSDirectoryHelper(private val fragmentActivity: FragmentActivity) {
             result.toString(),
             Borked3DSDirectoryDialogFragment.Listener { moveData: Boolean, path: Uri ->
                 val previous = PermissionsHandler.borked3dsDirectory
-                // Do noting if user select the previous path.
+                // Do nothing if the user selects the previous path.
                 if (path == previous) {
                     return@Listener
                 }
@@ -39,12 +39,12 @@ class Borked3DSDirectoryHelper(private val fragmentActivity: FragmentActivity) {
                     initializeBorked3DSDirectory(path)
                     callback?.onStepCompleted()
                     val viewModel = ViewModelProvider(fragmentActivity)[HomeViewModel::class.java]
-                    viewModel.setUserDir(fragmentActivity, path.path!!)
+                    viewModel.setUserDir(fragmentActivity, path.path ?: return@Listener)
                     viewModel.setPickingUserDir(false)
                     return@Listener
                 }
 
-                // If user check move data, show copy progress dialog.
+                // If the user checks "move data," show the copy progress dialog.
                 CopyDirProgressDialog.newInstance(fragmentActivity, previous, path, callback)
                     ?.show(fragmentActivity.supportFragmentManager, CopyDirProgressDialog.TAG)
             })

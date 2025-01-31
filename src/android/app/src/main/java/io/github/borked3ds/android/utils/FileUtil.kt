@@ -43,28 +43,29 @@ object FileUtil {
      */
     @JvmStatic
     fun createFile(directory: String, filename: String): DocumentFile? {
-        try {
+        return try {
             val directoryUri = Uri.parse(directory)
-            val parent = DocumentFile.fromTreeUri(context, directoryUri)
-                ?: return null
+            val parent = DocumentFile.fromTreeUri(context, directoryUri) ?: return null
             val decodedFilename = URLDecoder.decode(filename, DECODE_METHOD)
             val extensionPosition = decodedFilename.lastIndexOf('.')
 
-            var extension = ""
-            if (extensionPosition > 0) {
-                extension = decodedFilename.substring(extensionPosition)
+            val extension = if (extensionPosition > 0) {
+                decodedFilename.substring(extensionPosition)
+            } else {
+                ""
             }
 
-            var mimeType = APPLICATION_OCTET_STREAM
-            if (extension == ".txt") {
-                mimeType = TEXT_PLAIN
+            val mimeType = if (extension == ".txt") {
+                TEXT_PLAIN
+            } else {
+                APPLICATION_OCTET_STREAM
             }
 
             val exists = parent.findFile(decodedFilename)
-            return exists ?: parent.createFile(mimeType, decodedFilename)
+            exists ?: parent.createFile(mimeType, decodedFilename)
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot create file, error: " + e.message)
-            return null
+            Log.error("[FileUtil]: Cannot create file, error: ${e.message}")
+            null
         }
     }
 
@@ -77,17 +78,15 @@ object FileUtil {
      */
     @JvmStatic
     fun createDir(directory: String, directoryName: String): DocumentFile? {
-        try {
+        return try {
             val directoryUri = Uri.parse(directory)
-            val parent: DocumentFile =
-                DocumentFile.fromTreeUri(context, directoryUri)
-                    ?: return null
+            val parent = DocumentFile.fromTreeUri(context, directoryUri) ?: return null
             val decodedDirectoryName = URLDecoder.decode(directoryName, DECODE_METHOD)
             val exists = parent.findFile(decodedDirectoryName)
-            return exists ?: parent.createDirectory(decodedDirectoryName)
+            exists ?: parent.createDirectory(decodedDirectoryName)
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot create file, error: " + e.message)
-            return null
+            Log.error("[FileUtil]: Cannot create directory, error: ${e.message}")
+            null
         }
     }
 
@@ -100,20 +99,17 @@ object FileUtil {
      */
     @JvmStatic
     fun openContentUri(path: String, openMode: String): Int {
-        try {
-            context
-                .contentResolver
-                .openFileDescriptor(Uri.parse(path), openMode)
-                .use { parcelFileDescriptor ->
-                    if (parcelFileDescriptor == null) {
-                        Log.error("[FileUtil]: Cannot get the file descriptor from uri: $path")
-                        return -1
-                    }
-                    return parcelFileDescriptor.detachFd()
-                }
+        return try {
+            context.contentResolver.openFileDescriptor(Uri.parse(path), openMode)
+                ?.use { parcelFileDescriptor ->
+                    parcelFileDescriptor.detachFd()
+                } ?: run {
+                Log.error("[FileUtil]: Cannot get the file descriptor from uri: $path")
+                -1
+            }
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot open content uri, error: " + e.message)
-            return -1
+            Log.error("[FileUtil]: Cannot open content uri, error: ${e.message}")
+            -1
         }
     }
 
@@ -142,20 +138,20 @@ object FileUtil {
 
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, docId)
             c = context.contentResolver.query(childrenUri, columns, null, null, null)
-            while (c!!.moveToNext()) {
-                val documentId = c.getString(0)
-                val documentName = c.getString(1)
-                val documentMimeType = c.getString(2)
+            while (c?.moveToNext() == true) {
+                val documentId = c.getString(0) ?: continue
+                val documentName = c.getString(1) ?: continue
+                val documentMimeType = c.getString(2) ?: continue
                 val documentUri = DocumentsContract.buildDocumentUriUsingTree(uri, documentId)
                 val document = CheapDocument(documentName, documentMimeType, documentUri)
                 results.add(document)
             }
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot list file error: " + e.message)
+            Log.error("[FileUtil]: Cannot list file error: ${e.message}")
         } finally {
             closeQuietly(c)
         }
-        return results.toTypedArray<CheapDocument>()
+        return results.toTypedArray()
     }
 
     /**
@@ -167,23 +163,17 @@ object FileUtil {
     @JvmStatic
     fun exists(path: String): Boolean {
         var c: Cursor? = null
-        try {
+        return try {
             val uri = Uri.parse(path)
             val columns = arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-            c = context.contentResolver.query(
-                uri,
-                columns,
-                null,
-                null,
-                null
-            )
-            return c!!.count > 0
+            c = context.contentResolver.query(uri, columns, null, null, null)
+            c?.count ?: 0 > 0
         } catch (e: Exception) {
-            Log.info("[FileUtil] Cannot find file from given path, error: " + e.message)
+            Log.info("[FileUtil] Cannot find file from given path, error: ${e.message}")
+            false
         } finally {
             closeQuietly(c)
         }
-        return false
     }
 
     /**
@@ -195,20 +185,17 @@ object FileUtil {
     @JvmStatic
     fun isDirectory(path: String): Boolean {
         val columns = arrayOf(DocumentsContract.Document.COLUMN_MIME_TYPE)
-        var isDirectory = false
         var c: Cursor? = null
-        try {
+        return try {
             val uri = Uri.parse(path)
             c = context.contentResolver.query(uri, columns, null, null, null)
-            c!!.moveToNext()
-            val mimeType = c.getString(0)
-            isDirectory = mimeType == DocumentsContract.Document.MIME_TYPE_DIR
+            c?.moveToNext() == true && c.getString(0) == DocumentsContract.Document.MIME_TYPE_DIR
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot list files, error: " + e.message)
+            Log.error("[FileUtil]: Cannot list files, error: ${e.message}")
+            false
         } finally {
             closeQuietly(c)
         }
-        return isDirectory
     }
 
     /**
@@ -220,32 +207,26 @@ object FileUtil {
     @JvmStatic
     fun getFilename(uri: Uri): String {
         val columns = arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-        var filename = ""
         var c: Cursor? = null
-        try {
-            c = context.contentResolver.query(
-                uri,
-                columns,
-                null,
-                null,
-                null
-            )
-            c!!.moveToNext()
-            filename = c.getString(0)
+        return try {
+            c = context.contentResolver.query(uri, columns, null, null, null)
+            if (c?.moveToNext() == true) {
+                c.getString(0) ?: ""
+            } else {
+                ""
+            }
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot get file name, error: " + e.message)
+            Log.error("[FileUtil]: Cannot get file name, error: ${e.message}")
+            ""
         } finally {
             closeQuietly(c)
         }
-        return filename
     }
 
     @JvmStatic
     fun getFilesName(path: String): Array<String?> {
         val uri = Uri.parse(path)
-        val files: MutableList<String> = ArrayList()
-        listFiles(uri).forEach { files.add(it.filename) }
-        return files.toTypedArray<String?>()
+        return listFiles(uri).map { it.filename }.toTypedArray()
     }
 
     /**
@@ -257,25 +238,21 @@ object FileUtil {
     @JvmStatic
     fun getFileSize(path: String): Long {
         val columns = arrayOf(DocumentsContract.Document.COLUMN_SIZE)
-        var size: Long = 0
         var c: Cursor? = null
-        try {
+        return try {
             val uri = Uri.parse(path)
-            c = context.contentResolver.query(
-                uri,
-                columns,
-                null,
-                null,
-                null
-            )
-            c!!.moveToNext()
-            size = c.getLong(0)
+            c = context.contentResolver.query(uri, columns, null, null, null)
+            if (c?.moveToNext() == true) {
+                c.getLong(0)
+            } else {
+                0L
+            }
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot get file size, error: " + e.message)
+            Log.error("[FileUtil]: Cannot get file size, error: ${e.message}")
+            0L
         } finally {
             closeQuietly(c)
         }
-        return size
     }
 
     @JvmStatic
@@ -284,34 +261,34 @@ object FileUtil {
         destinationUri: Uri,
         destinationFilename: String
     ): Boolean {
-        try {
+        return try {
             val destinationParent =
                 DocumentFile.fromTreeUri(context, destinationUri) ?: return false
             val filename = URLDecoder.decode(destinationFilename, "UTF-8")
             var destination = destinationParent.findFile(filename)
             if (destination == null) {
-                destination =
-                    destinationParent.createFile("application/octet-stream", filename)
+                destination = destinationParent.createFile("application/octet-stream", filename)
             }
             if (destination == null) {
                 return false
             }
 
-            val input = context.contentResolver.openInputStream(sourceUri)
-            val output = context.contentResolver.openOutputStream(destination.uri, "wt")
+            val input = context.contentResolver.openInputStream(sourceUri) ?: return false
+            val output =
+                context.contentResolver.openOutputStream(destination.uri, "wt") ?: return false
             val buffer = ByteArray(1024)
             var len: Int
-            while (input!!.read(buffer).also { len = it } != -1) {
-                output!!.write(buffer, 0, len)
+            while (input.read(buffer).also { len = it } != -1) {
+                output.write(buffer, 0, len)
             }
             input.close()
-            output?.flush()
-            output?.close()
-            return true
+            output.flush()
+            output.close()
+            true
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot copy file, error: " + e.message)
+            Log.error("[FileUtil]: Cannot copy file, error: ${e.message}")
+            false
         }
-        return false
     }
 
     fun copyUriToInternalStorage(
@@ -321,8 +298,8 @@ object FileUtil {
     ): Boolean {
         var input: InputStream? = null
         var output: FileOutputStream? = null
-        try {
-            input = context.contentResolver.openInputStream(sourceUri!!)
+        return try {
+            input = context.contentResolver.openInputStream(sourceUri ?: return false)
             output = FileOutputStream("$destinationParentPath/$destinationFilename")
             val buffer = ByteArray(1024)
             var len: Int
@@ -330,26 +307,14 @@ object FileUtil {
                 output.write(buffer, 0, len)
             }
             output.flush()
-            return true
+            true
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot copy file, error: " + e.message)
+            Log.error("[FileUtil]: Cannot copy file, error: ${e.message}")
+            false
         } finally {
-            if (input != null) {
-                try {
-                    input.close()
-                } catch (e: IOException) {
-                    Log.error("[FileUtil]: Cannot close input file, error: " + e.message)
-                }
-            }
-            if (output != null) {
-                try {
-                    output.close()
-                } catch (e: IOException) {
-                    Log.error("[FileUtil]: Cannot close output file, error: " + e.message)
-                }
-            }
+            input?.closeQuietly()
+            output?.closeQuietly()
         }
-        return false
     }
 
     fun copyDir(
@@ -413,38 +378,40 @@ object FileUtil {
                 val toUri = to.uri
                 val toPath = toUri.path ?: ""
                 val toParent = to.parentFile ?: continue
-                copyFile(file.first.uri, toParent.uri, to.name!!)
+                copyFile(file.first.uri, toParent.uri, to.name ?: continue)
                 progress++
                 listener?.onCopyProgress(toPath, progress, files.size)
             }
             listener?.onComplete()
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot copy directory, error: " + e.message)
+            Log.error("[FileUtil]: Cannot copy directory, error: ${e.message}")
         }
     }
 
     @JvmStatic
     fun renameFile(path: String, destinationFilename: String): Boolean {
-        try {
+        return try {
             val uri = Uri.parse(path)
-            DocumentsContract.renameDocument(context.contentResolver, uri, destinationFilename)
-            return true
+            DocumentsContract.renameDocument(
+                context.contentResolver,
+                uri,
+                destinationFilename
+            ) != null
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot rename file, error: " + e.message)
+            Log.error("[FileUtil]: Cannot rename file, error: ${e.message}")
+            false
         }
-        return false
     }
 
     @JvmStatic
     fun deleteDocument(path: String): Boolean {
-        try {
+        return try {
             val uri = Uri.parse(path)
             DocumentsContract.deleteDocument(context.contentResolver, uri)
-            return true
         } catch (e: Exception) {
-            Log.error("[FileUtil]: Cannot delete document, error: " + e.message)
+            Log.error("[FileUtil]: Cannot delete document, error: ${e.message}")
+            false
         }
-        return false
     }
 
     @Throws(IOException::class)
@@ -462,9 +429,9 @@ object FileUtil {
 
         var offset = 0
         var numRead = 0
-        context.contentResolver.openInputStream(uri).use { inputStream ->
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
             while (offset < bytes.size &&
-                inputStream!!.read(bytes, offset, bytes.size - offset).also { numRead = it } >= 0
+                inputStream.read(bytes, offset, bytes.size - offset).also { numRead = it } >= 0
             ) {
                 offset += numRead
             }
@@ -472,7 +439,7 @@ object FileUtil {
 
         // Ensure all the bytes have been read in
         if (offset < bytes.size) {
-            throw IOException("Could not completely read file " + file.name)
+            throw IOException("Could not completely read file ${file.name}")
         }
 
         return bytes
@@ -493,7 +460,7 @@ object FileUtil {
                     throw SecurityException("Zip file attempted path traversal! ${entry.name}")
                 }
 
-                if (!destinationDirectory.isDirectory && !destinationDirectory.mkdirs()) {
+                if (destinationDirectory?.isDirectory != true && destinationDirectory?.mkdirs() != true) {
                     throw IOException("Failed to create directory $destinationDirectory")
                 }
 
@@ -509,12 +476,18 @@ object FileUtil {
         sourceFile: Uri,
         destinationDir: DocumentFile
     ): DocumentFile? {
-        val filename = getFilename(sourceFile)
-        val destinationFile = destinationDir.createFile("application/zip", filename)!!
-        destinationFile.outputStream().use { os ->
-            sourceFile.inputStream().use { it.copyTo(os) }
+        return try {
+            val filename = getFilename(sourceFile)
+            val destinationFile =
+                destinationDir.createFile("application/zip", filename) ?: return null
+            destinationFile.outputStream().use { os ->
+                sourceFile.inputStream().use { it.copyTo(os) }
+            }
+            destinationDir.findFile(filename)
+        } catch (e: Exception) {
+            Log.error("[FileUtil]: Cannot copy file to external storage, error: ${e.message}")
+            null
         }
-        return destinationDir.findFile(filename)
     }
 
     fun isRootTreeUri(uri: Uri): Boolean {
@@ -537,7 +510,7 @@ object FileUtil {
                 uri,
                 DocumentsContract.getTreeDocumentId(uri)
             )
-            val pfd = context.contentResolver.openFileDescriptor(docTreeUri, "r")!!
+            val pfd = context.contentResolver.openFileDescriptor(docTreeUri, "r") ?: return 0.0
             val stats = Os.fstatvfs(pfd.fileDescriptor)
             val spaceInGigaBytes = stats.f_bavail * stats.f_bsize / 1024.0 / 1024 / 1024
             pfd.close()
@@ -548,13 +521,11 @@ object FileUtil {
         }
 
     fun closeQuietly(closeable: AutoCloseable?) {
-        if (closeable != null) {
-            try {
-                closeable.close()
-            } catch (rethrown: RuntimeException) {
-                throw rethrown
-            } catch (ignored: Exception) {
-            }
+        try {
+            closeable?.close()
+        } catch (rethrown: RuntimeException) {
+            throw rethrown
+        } catch (ignored: Exception) {
         }
     }
 
@@ -577,23 +548,43 @@ object FileUtil {
         }
 
     fun DocumentFile.inputStream(): InputStream =
-        Borked3DSApplication.appContext.contentResolver.openInputStream(uri)!!
+        context.contentResolver.openInputStream(uri)
+            ?: throw IOException("Failed to open input stream")
 
     fun DocumentFile.outputStream(): OutputStream =
-        Borked3DSApplication.appContext.contentResolver.openOutputStream(uri)!!
+        context.contentResolver.openOutputStream(uri)
+            ?: throw IOException("Failed to open output stream")
 
     fun Uri.inputStream(): InputStream =
-        Borked3DSApplication.appContext.contentResolver.openInputStream(this)!!
+        context.contentResolver.openInputStream(this)
+            ?: throw IOException("Failed to open input stream")
 
     fun Uri.outputStream(): OutputStream =
-        Borked3DSApplication.appContext.contentResolver.openOutputStream(this)!!
+        context.contentResolver.openOutputStream(this)
+            ?: throw IOException("Failed to open output stream")
 
     fun Uri.asDocumentFile(): DocumentFile? =
-        DocumentFile.fromSingleUri(Borked3DSApplication.appContext, this)
+        DocumentFile.fromSingleUri(context, this)
 
     interface CopyDirListener {
         fun onSearchProgress(directoryName: String)
         fun onCopyProgress(filename: String, progress: Int, max: Int)
         fun onComplete()
+    }
+}
+
+private fun InputStream?.closeQuietly() {
+    try {
+        this?.close()
+    } catch (e: IOException) {
+        Log.error("[FileUtil]: Cannot close input stream, error: ${e.message}")
+    }
+}
+
+private fun OutputStream?.closeQuietly() {
+    try {
+        this?.close()
+    } catch (e: IOException) {
+        Log.error("[FileUtil]: Cannot close output stream, error: ${e.message}")
     }
 }
