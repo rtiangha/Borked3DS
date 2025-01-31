@@ -16,8 +16,8 @@ import io.github.borked3ds.android.features.settings.model.view.SliderSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
 class SliderViewHolder(
-    private val binding: ListItemSettingBinding,
-    private val adapter: SettingsAdapter
+    val binding: ListItemSettingBinding,
+    val adapter: SettingsAdapter
 ) : SettingViewHolder(binding.root, adapter) {
 
     private lateinit var setting: SliderSetting
@@ -55,7 +55,7 @@ class SliderViewHolder(
 
     override fun onLongClick(clicked: View): Boolean {
         if (setting.isEditable) {
-            return adapter.onLongClick(setting.setting, bindingAdapterPosition) ?: false
+            return adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
         } else {
             adapter.onClickDisabledSetting()
         }
