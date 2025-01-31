@@ -131,9 +131,9 @@ class DownloadSystemFilesDialogFragment : DialogFragment() {
 
     override fun onResume() {
         super.onResume()
-        val alertDialog = dialog as AlertDialog
-        val negativeButton = alertDialog.getButton(Dialog.BUTTON_NEGATIVE)
-        negativeButton.setOnClickListener {
+        val alertDialog = dialog as? AlertDialog
+        val negativeButton = alertDialog?.getButton(Dialog.BUTTON_NEGATIVE)
+        negativeButton?.setOnClickListener {
             downloadViewModel.cancel()
             dialog?.setTitle(R.string.cancelling)
             binding.progressBar.isIndeterminate = true
