@@ -18,17 +18,17 @@ class Settings {
     var isLoaded = false
 
     /**
-     * A HashMap<String, SettingSection> that constructs a new SettingSection instead of returning null
+     * A HashMap<String></String>, SettingSection> that constructs a new SettingSection instead of returning null
      * when getting a key not already in the map
      */
     class SettingsSectionMap : HashMap<String, SettingSection?>() {
         override operator fun get(key: String): SettingSection? {
             if (!super.containsKey(key)) {
                 val section = SettingSection(key)
-                super[key] = section
+                super.put(key, section)
                 return section
             }
-            return super[key]
+            return super.get(key)
         }
     }
 
