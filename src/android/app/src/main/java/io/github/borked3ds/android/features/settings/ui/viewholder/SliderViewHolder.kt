@@ -15,8 +15,11 @@ import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.model.view.SliderSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class SliderViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
-    SettingViewHolder(binding.root, adapter) {
+class SliderViewHolder(
+    private val binding: ListItemSettingBinding,
+    private val adapter: SettingsAdapter
+) : SettingViewHolder(binding.root, adapter) {
+
     private lateinit var setting: SliderSetting
 
     override fun bind(item: SettingsItem) {
@@ -29,23 +32,17 @@ class SliderViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAda
             binding.textSettingDescription.visibility = View.GONE
         }
         binding.textSettingValue.visibility = View.VISIBLE
-        binding.textSettingValue.text = when (setting.setting) {
-            is ScaledFloatSetting ->
-                "${(setting.setting as ScaledFloatSetting).float.toInt()}${setting.units}"
-
-            is FloatSetting -> "${(setting.setting as AbstractFloatSetting).float}${setting.units}"
-            else -> "${(setting.setting as AbstractIntSetting).int}${setting.units}"
+        binding.textSettingValue.text = when (val settingValue = setting.setting) {
+            is ScaledFloatSetting -> "${settingValue.float.toInt()}${setting.units}"
+            is FloatSetting -> "${settingValue.float}${setting.units}"
+            is AbstractIntSetting -> "${settingValue.int}${setting.units}"
+            else -> ""
         }
 
-        if (setting.isEditable) {
-            binding.textSettingName.alpha = 1f
-            binding.textSettingDescription.alpha = 1f
-            binding.textSettingValue.alpha = 1f
-        } else {
-            binding.textSettingName.alpha = 0.5f
-            binding.textSettingDescription.alpha = 0.5f
-            binding.textSettingValue.alpha = 0.5f
-        }
+        val textAlpha = if (setting.isEditable) 1f else 0.5f
+        binding.textSettingName.alpha = textAlpha
+        binding.textSettingDescription.alpha = textAlpha
+        binding.textSettingValue.alpha = textAlpha
     }
 
     override fun onClick(clicked: View) {
@@ -58,7 +55,7 @@ class SliderViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAda
 
     override fun onLongClick(clicked: View): Boolean {
         if (setting.isEditable) {
-            return adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
+            return adapter.onLongClick(setting.setting, bindingAdapterPosition) ?: false
         } else {
             adapter.onClickDisabledSetting()
         }
