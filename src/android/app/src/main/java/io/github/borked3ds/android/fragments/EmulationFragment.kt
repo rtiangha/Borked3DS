@@ -76,6 +76,7 @@ import io.github.borked3ds.android.utils.GameHelper
 import io.github.borked3ds.android.utils.GameIconUtils
 import io.github.borked3ds.android.utils.Log
 import io.github.borked3ds.android.utils.ViewUtils
+import io.github.borked3ds.android.viewmodel.EmulationState
 import io.github.borked3ds.android.viewmodel.EmulationViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -120,6 +121,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
+    private fun getCurrentOrientationIndex(): Int {
+        val currentOrientation = resources.configuration.orientation
+        return orientations.indexOf(currentOrientation).takeIf { it >= 0 } ?: 0
+    }
+
     /**
      * Initialize anything that doesn't depend on the layout / views in here.
      */
@@ -162,6 +168,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             return
         }
 
+        emulationViewModel.initializeEmulationState(game.path)
         emulationState = EmulationState(game.path)
         emulationActivity = requireActivity() as EmulationActivity
         screenAdjustmentUtil = ScreenAdjustmentUtil(
@@ -189,7 +196,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         if (requireActivity().isFinishing) {
             return
         }
-
         binding.surfaceEmulation.holder.addCallback(this)
         binding.doneControlConfig.setOnClickListener {
             binding.doneControlConfig.visibility = View.GONE
@@ -473,11 +479,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 }
             }
         }
-    }
-
-    private fun getCurrentOrientationIndex(): Int {
-        val currentOrientation = resources.configuration.orientation
-        return orientations.indexOf(currentOrientation).takeIf { it >= 0 } ?: 0
     }
 
     private fun rotateScreen() {
@@ -1338,160 +1339,21 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        // We purposely don't do anything here.
-        // All work is done in surfaceChanged, which we are guaranteed to get even for surface creation.
+        emulationViewModel.onSurfaceChanged(holder.surface)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        Log.debug("[EmulationFragment] Surface changed. Resolution: " + width + "x" + height)
-        emulationState.newSurface(holder.surface)
+        Log.debug("[EmulationFragment] Surface changed. Resolution: $width x $height")
+        emulationViewModel.onSurfaceChanged(holder.surface)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
-        emulationState.clearSurface()
+        emulationState?.clearSurface()
     }
 
     override fun doFrame(frameTimeNanos: Long) {
         Choreographer.getInstance().postFrameCallback(this)
         NativeLibrary.doFrame()
-    }
-
-    private class EmulationState(private val gamePath: String) {
-        private var state: State
-        private var surface: Surface? = null
-
-        init {
-            // Starting state is stopped.
-            state = State.STOPPED
-        }
-
-        @get:Synchronized
-        val isStopped: Boolean
-            get() = state == State.STOPPED
-
-        @get:Synchronized
-        val isPaused: Boolean
-            // Getters for the current state
-            get() = state == State.PAUSED
-
-        @get:Synchronized
-        val isRunning: Boolean
-            get() = state == State.RUNNING
-
-        @Synchronized
-        fun stop() {
-            if (state != State.STOPPED) {
-                Log.debug("[EmulationFragment] Stopping emulation.")
-                state = State.STOPPED
-                NativeLibrary.stopEmulation()
-            } else {
-                Log.warning("[EmulationFragment] Stop called while already stopped.")
-            }
-        }
-
-        // State changing methods
-        @Synchronized
-        fun pause() {
-            if (state != State.PAUSED) {
-                state = State.PAUSED
-                Log.debug("[EmulationFragment] Pausing emulation.")
-
-                // Release the surface before pausing, since emulation has to be running for that.
-                NativeLibrary.surfaceDestroyed()
-                NativeLibrary.pauseEmulation()
-            } else {
-                Log.warning("[EmulationFragment] Pause called while already paused.")
-            }
-        }
-
-        @Synchronized
-        fun unpause() {
-            if (state != State.RUNNING) {
-                state = State.RUNNING
-                Log.debug("[EmulationFragment] Unpausing emulation.")
-
-                NativeLibrary.unPauseEmulation()
-            } else {
-                Log.warning("[EmulationFragment] Unpause called while already running.")
-            }
-        }
-
-        @Synchronized
-        fun run(isActivityRecreated: Boolean) {
-            if (isActivityRecreated) {
-                if (NativeLibrary.isRunning()) {
-                    state = State.PAUSED
-                }
-            } else {
-                Log.debug("[EmulationFragment] activity resumed or fresh start")
-            }
-
-            // If the surface is set, run now. Otherwise, wait for it to get set.
-            if (surface != null) {
-                runWithValidSurface()
-            }
-        }
-
-        // Surface callbacks
-        @Synchronized
-        fun newSurface(surface: Surface?) {
-            this.surface = surface
-            if (this.surface != null) {
-                runWithValidSurface()
-            }
-        }
-
-        @Synchronized
-        fun clearSurface() {
-            if (surface == null) {
-                Log.warning("[EmulationFragment] clearSurface called, but surface already null.")
-            } else {
-                surface = null
-                Log.debug("[EmulationFragment] Surface destroyed.")
-                when (state) {
-                    State.RUNNING -> {
-                        NativeLibrary.surfaceDestroyed()
-                        state = State.PAUSED
-                    }
-
-                    State.PAUSED -> {
-                        Log.warning("[EmulationFragment] Surface cleared while emulation paused.")
-                    }
-
-                    else -> {
-                        Log.warning("[EmulationFragment] Surface cleared while emulation stopped.")
-                    }
-                }
-            }
-        }
-
-        private fun runWithValidSurface() {
-            NativeLibrary.surfaceChanged(surface!!)
-            when (state) {
-                State.STOPPED -> {
-                    Thread({
-                        Log.debug("[EmulationFragment] Starting emulation thread.")
-                        NativeLibrary.run(gamePath)
-                    }, "NativeEmulation").start()
-                }
-
-                State.PAUSED -> {
-                    Log.debug("[EmulationFragment] Resuming emulation.")
-                    NativeLibrary.unPauseEmulation()
-                }
-
-                else -> {
-                    Log.debug("[EmulationFragment] Bug, run called while already running.")
-                }
-            }
-            state = State.RUNNING
-        }
-
-        private enum class State {
-            STOPPED,
-            RUNNING,
-            PAUSED
-        }
     }
 
     override fun onDestroyView() {
