@@ -557,13 +557,15 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // For API 30 and above
-            val windowMetrics: WindowMetrics? = (context as? Activity)?.windowManager?.currentWindowMetrics
+            val windowMetrics: WindowMetrics? =
+                (context as? Activity)?.windowManager?.currentWindowMetrics
             val bounds = windowMetrics?.bounds
             maxX = bounds?.height()?.toFloat() ?: 0f
             maxY = bounds?.width()?.toFloat() ?: 0f
         } else {
             // For API 29 and below
-            @Suppress("DEPRECATION") val display = (context as? Activity)?.windowManager?.defaultDisplay
+            @Suppress("DEPRECATION") val display =
+                (context as? Activity)?.windowManager?.defaultDisplay
             val outMetrics = DisplayMetrics()
             @Suppress("DEPRECATION") display?.getMetrics(outMetrics)
             maxX = outMetrics.heightPixels.toFloat()
@@ -710,13 +712,15 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // For API 30 and above
-            val windowMetrics: WindowMetrics? = (context as? Activity)?.windowManager?.currentWindowMetrics
+            val windowMetrics: WindowMetrics? =
+                (context as? Activity)?.windowManager?.currentWindowMetrics
             val bounds = windowMetrics?.bounds
             maxX = bounds?.height()?.toFloat() ?: 0f
             maxY = bounds?.width()?.toFloat() ?: 0f
         } else {
             // For API 29 and below
-            @Suppress("DEPRECATION") val display = (context as? Activity)?.windowManager?.defaultDisplay
+            @Suppress("DEPRECATION") val display =
+                (context as? Activity)?.windowManager?.defaultDisplay
             val outMetrics = DisplayMetrics()
             @Suppress("DEPRECATION") display?.getMetrics(outMetrics)
             maxX = outMetrics.heightPixels.toFloat()
@@ -816,11 +820,13 @@ class InputOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(contex
             )
             .putFloat(
                 NativeLibrary.ButtonType.BUTTON_SELECT.toString() + portrait + "-X",
-                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_PORTRAIT_X).toFloat() / 1000 * maxX
+                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_PORTRAIT_X)
+                    .toFloat() / 1000 * maxX
             )
             .putFloat(
                 NativeLibrary.ButtonType.BUTTON_SELECT.toString() + portrait + "-Y",
-                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_PORTRAIT_Y).toFloat() / 1000 * maxY
+                resources.getInteger(R.integer.N3DS_BUTTON_SELECT_PORTRAIT_Y)
+                    .toFloat() / 1000 * maxY
             )
             .putFloat(
                 NativeLibrary.ButtonType.BUTTON_HOME.toString() + portrait + "-X",

@@ -254,7 +254,9 @@ class SetupFragment : Fragment() {
                     false,
                     true,
                     {
-                        if (preferences.getString(GameHelper.KEY_GAME_PATH, "")?.isNotEmpty() == true) {
+                        if (preferences.getString(GameHelper.KEY_GAME_PATH, "")
+                                ?.isNotEmpty() == true
+                        ) {
                             StepState.STEP_COMPLETE
                         } else {
                             StepState.STEP_INCOMPLETE

@@ -548,12 +548,16 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             DirectoryInitializationState.BORKED3DS_DIRECTORIES_INITIALIZED -> {
                 emulationState.run(emulationActivity.isActivityRecreated)
             }
+
             DirectoryInitializationState.EXTERNAL_STORAGE_PERMISSION_NEEDED -> {
                 Toast.makeText(context, R.string.write_permission_needed, Toast.LENGTH_SHORT).show()
             }
+
             DirectoryInitializationState.CANT_FIND_EXTERNAL_STORAGE -> {
-                Toast.makeText(context, R.string.external_storage_not_mounted, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, R.string.external_storage_not_mounted, Toast.LENGTH_SHORT)
+                    .show()
             }
+
             else -> {
                 // Handle any other states if necessary
                 Toast.makeText(context, R.string.unknown_error, Toast.LENGTH_SHORT).show()
@@ -575,10 +579,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     showStateSubmenu(true)
                     true
                 }
+
                 R.id.menu_emulation_load_state -> {
                     showStateSubmenu(false)
                     true
                 }
+
                 else -> true
             }
         }
@@ -709,111 +715,137 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     binding.surfaceInputOverlay.refreshControls()
                     true
                 }
+
                 R.id.menu_show_perf_overlay -> {
                     EmulationMenuSettings.showPerfStatsOvelray =
                         !EmulationMenuSettings.showPerfStatsOvelray
                     updateshowPerfStatsOvelrayOverlay()
                     true
                 }
+
                 R.id.menu_haptic_feedback -> {
                     EmulationMenuSettings.hapticFeedback = !EmulationMenuSettings.hapticFeedback
                     updateshowPerfStatsOvelrayOverlay()
                     true
                 }
+
                 R.id.menu_emulation_edit_layout -> {
                     editControlsPlacement()
                     binding.drawerLayout.close()
                     true
                 }
+
                 R.id.menu_emulation_toggle_controls -> {
                     showToggleControlsDialog()
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_reset_all -> {
                     resetAllScales()
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale -> {
                     showAdjustScaleDialog("controlScale")
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_a -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_A)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_b -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_B)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_x -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_X)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_y -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_Y)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_l -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.TRIGGER_L)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_r -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.TRIGGER_R)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_zl -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_ZL)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_zr -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_ZR)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_start -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_START)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_select -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_SELECT)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_controller_dpad -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.DPAD)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_controller_circlepad -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.STICK_LEFT)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_controller_c -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.STICK_C)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_home -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_HOME)
                     true
                 }
+
                 R.id.menu_emulation_adjust_scale_button_swap -> {
                     showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_SWAP)
                     true
                 }
+
                 R.id.menu_emulation_adjust_opacity -> {
                     showAdjustOpacityDialog()
                     true
                 }
+
                 R.id.menu_emulation_joystick_rel_center -> {
                     EmulationMenuSettings.joystickRelCenter =
                         !EmulationMenuSettings.joystickRelCenter
                     true
                 }
+
                 R.id.menu_emulation_dpad_slide_enable -> {
                     EmulationMenuSettings.dpadSlide = !EmulationMenuSettings.dpadSlide
                     true
                 }
+
                 R.id.menu_emulation_reset_overlay -> {
                     showResetOverlayDialog()
                     true
                 }
+
                 else -> true
             }
         }
@@ -835,10 +867,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     emulationActivity.openFileLauncher.launch(false)
                     true
                 }
+
                 R.id.menu_emulation_amiibo_remove -> {
                     NativeLibrary.removeAmiibo()
                     true
                 }
+
                 else -> true
             }
         }
@@ -870,22 +904,27 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.LARGE_SCREEN.int)
                     true
                 }
+
                 R.id.menu_screen_layout_single -> {
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.SINGLE_SCREEN.int)
                     true
                 }
+
                 R.id.menu_screen_layout_sidebyside -> {
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.SIDE_SCREEN.int)
                     true
                 }
+
                 R.id.menu_screen_layout_hybrid -> {
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.HYBRID_SCREEN.int)
                     true
                 }
+
                 R.id.menu_screen_layout_original -> {
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.ORIGINAL.int)
                     true
                 }
+
                 R.id.menu_screen_layout_custom -> {
                     Toast.makeText(
                         requireContext(),
@@ -895,6 +934,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.CUSTOM_LAYOUT.int)
                     true
                 }
+
                 else -> true
             }
         }
@@ -924,6 +964,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.TOP_FULL_WIDTH.int)
                     true
                 }
+
                 R.id.menu_portrait_layout_custom -> {
                     Toast.makeText(
                         requireContext(),
@@ -933,6 +974,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                     screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int)
                     true
                 }
+
                 else -> true
             }
         }
@@ -1228,20 +1270,25 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 params.gravity = (Gravity.TOP or Gravity.START)
                 params.setMargins(resources.getDimensionPixelSize(R.dimen.spacing_large), 0, 0, 0)
             }
+
             1 -> {
                 params.gravity = (Gravity.TOP or Gravity.CENTER_HORIZONTAL)
             }
+
             2 -> {
                 params.gravity = (Gravity.TOP or Gravity.END)
                 params.setMargins(0, 0, resources.getDimensionPixelSize(R.dimen.spacing_large), 0)
             }
+
             3 -> {
                 params.gravity = (Gravity.BOTTOM or Gravity.START)
                 params.setMargins(resources.getDimensionPixelSize(R.dimen.spacing_large), 0, 0, 0)
             }
+
             4 -> {
                 params.gravity = (Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
             }
+
             5 -> {
                 params.gravity = (Gravity.BOTTOM or Gravity.END)
                 params.setMargins(0, 0, resources.getDimensionPixelSize(R.dimen.spacing_large), 0)
@@ -1385,9 +1432,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         NativeLibrary.surfaceDestroyed()
                         state = State.PAUSED
                     }
+
                     State.PAUSED -> {
                         Log.warning("[EmulationFragment] Surface cleared while emulation paused.")
                     }
+
                     else -> {
                         Log.warning("[EmulationFragment] Surface cleared while emulation stopped.")
                     }
@@ -1404,10 +1453,12 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         NativeLibrary.run(gamePath)
                     }, "NativeEmulation").start()
                 }
+
                 State.PAUSED -> {
                     Log.debug("[EmulationFragment] Resuming emulation.")
                     NativeLibrary.unPauseEmulation()
                 }
+
                 else -> {
                     Log.debug("[EmulationFragment] Bug, run called while already running.")
                 }

@@ -209,11 +209,12 @@ class SettingsAdapter(
         calendar.timeInMillis = storedTime
         calendar.timeZone = TimeZone.getTimeZone("UTC")
 
-        val timeFormat: Int = if (DateFormat.is24HourFormat(fragmentView.activityView as AppCompatActivity)) {
-            TimeFormat.CLOCK_24H
-        } else {
-            TimeFormat.CLOCK_12H
-        }
+        val timeFormat: Int =
+            if (DateFormat.is24HourFormat(fragmentView.activityView as AppCompatActivity)) {
+                TimeFormat.CLOCK_24H
+            } else {
+                TimeFormat.CLOCK_12H
+            }
 
         val datePicker: MaterialDatePicker<Long> = MaterialDatePicker.Builder.datePicker()
             .setSelection(storedTime)

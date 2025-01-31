@@ -202,7 +202,8 @@ class SystemFilesFragment : Fragment() {
 
         populateHomeMenuOptions()
         binding.buttonStartHomeMenu.setOnClickListener {
-            val menuPath = homeMenuMap[binding.dropdownSystemRegionStart.text.toString()] ?: return@setOnClickListener
+            val menuPath = homeMenuMap[binding.dropdownSystemRegionStart.text.toString()]
+                ?: return@setOnClickListener
             val menu = Game(
                 title = getString(R.string.home_menu),
                 path = menuPath,

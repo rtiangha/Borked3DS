@@ -120,7 +120,8 @@ class DocumentsTree {
             // Create directory if it doesn't exist and creation is enabled
             if (child == null && createIfNotExists) {
                 try {
-                    val createdDir = FileUtil.createDir(current.uri.toString(), component) ?: return null
+                    val createdDir =
+                        FileUtil.createDir(current.uri.toString(), component) ?: return null
                     child = DocumentsNode(createdDir, true).apply {
                         parent = current
                     }
@@ -158,9 +159,11 @@ class DocumentsTree {
         val sourceNode = resolvePath(sourcePath) ?: return false
         val destinationNode = resolvePath(destinationParentPath) ?: return false
         return try {
-            val destinationParent = DocumentFile.fromTreeUri(context, destinationNode.uri!!) ?: return false
+            val destinationParent =
+                DocumentFile.fromTreeUri(context, destinationNode.uri!!) ?: return false
             val filename = URLDecoder.decode(destinationFilename, "UTF-8")
-            val destination = destinationParent.createFile("application/octet-stream", filename) ?: return false
+            val destination =
+                destinationParent.createFile("application/octet-stream", filename) ?: return false
             val document = DocumentsNode().apply {
                 uri = destination.uri
                 parent = destinationNode
@@ -169,7 +172,8 @@ class DocumentsTree {
                 loaded = true
             }
             val input = context.contentResolver.openInputStream(sourceNode.uri!!) ?: return false
-            val output = context.contentResolver.openOutputStream(destination.uri, "wt") ?: return false
+            val output =
+                context.contentResolver.openOutputStream(destination.uri, "wt") ?: return false
             val buffer = ByteArray(1024)
             var len: Int
             while (input.read(buffer).also { len = it } != -1) {

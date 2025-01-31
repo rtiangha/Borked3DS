@@ -237,7 +237,8 @@ class CheatsFragment : Fragment(), SlidingPaneLayout.PanelSlideListener {
                             binding.cheatDetailsContainer.layoutParams as? ViewGroup.MarginLayoutParams
                         mlpDetails?.let {
                             keyboardInsets = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-                            barInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+                            barInsets =
+                                insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
                             it.bottomMargin = keyboardInsets.coerceAtLeast(barInsets)
                             binding.cheatDetailsContainer.layoutParams = it
                         }

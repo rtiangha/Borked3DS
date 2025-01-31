@@ -30,7 +30,8 @@ class GameIconFetcher(
     override suspend fun fetch(): FetchResult {
         val icon = getGameIcon(game.icon)
         return DrawableResult(
-            drawable = icon?.toDrawable(options.context.resources) ?: throw IllegalStateException("Failed to load game icon"),
+            drawable = icon?.toDrawable(options.context.resources)
+                ?: throw IllegalStateException("Failed to load game icon"),
             isSampled = false,
             dataSource = DataSource.DISK
         )

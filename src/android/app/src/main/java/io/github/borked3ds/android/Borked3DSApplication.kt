@@ -19,7 +19,8 @@ import io.github.borked3ds.android.utils.PermissionsHandler
 
 class Borked3DSApplication : Application() {
     private fun createNotificationChannel() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        val notificationManager =
+            getSystemService(NOTIFICATION_SERVICE) as? NotificationManager
         notificationManager?.let {
             // General notification
             val name: CharSequence = getString(R.string.app_notification_channel_name)

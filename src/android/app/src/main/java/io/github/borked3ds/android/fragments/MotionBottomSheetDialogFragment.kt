@@ -120,6 +120,7 @@ class MotionBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 // Even if we ignore the key, we still consume it. Thus return true regardless.
                 true
             }
+
             else -> false
         }
     }

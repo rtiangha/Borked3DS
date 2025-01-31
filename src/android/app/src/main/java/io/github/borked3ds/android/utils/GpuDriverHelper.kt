@@ -38,7 +38,8 @@ object GpuDriverHelper {
             if (driverDirectory == null) {
                 driverDirectory = FileUtil.createDir(root.uri.toString(), "gpu_drivers")
             }
-            return driverDirectory ?: throw IllegalStateException("Failed to create driver directory")
+            return driverDirectory
+                ?: throw IllegalStateException("Failed to create driver directory")
         }
 
     fun initializeDriverParameters() {

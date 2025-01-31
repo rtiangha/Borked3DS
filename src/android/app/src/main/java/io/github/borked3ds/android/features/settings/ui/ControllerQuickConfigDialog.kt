@@ -133,7 +133,8 @@ class ControllerQuickConfigDialog(
             setting?.isCStick() == true -> R.drawable.stick_c
             setting?.isDPad() == true -> R.drawable.dpad
             else -> {
-                val resourceTitle = setting?.nameId?.let { context.resources.getResourceEntryName(it) }
+                val resourceTitle =
+                    setting?.nameId?.let { context.resources.getResourceEntryName(it) }
                 if (resourceTitle?.startsWith("direction") == true) {
                     R.drawable.dpad
                 } else {

@@ -7,7 +7,6 @@ package io.github.borked3ds.android.features.settings.ui.viewholder
 
 import android.view.View
 import io.github.borked3ds.android.databinding.ListItemSettingBinding
-import io.github.borked3ds.android.features.settings.model.AbstractFloatSetting
 import io.github.borked3ds.android.features.settings.model.AbstractIntSetting
 import io.github.borked3ds.android.features.settings.model.FloatSetting
 import io.github.borked3ds.android.features.settings.model.ScaledFloatSetting

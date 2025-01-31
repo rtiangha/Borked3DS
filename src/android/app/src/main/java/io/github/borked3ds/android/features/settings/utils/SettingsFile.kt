@@ -179,14 +179,16 @@ object SettingsFile {
         val root =
             DocumentFile.fromTreeUri(Borked3DSApplication.appContext, Uri.parse(userDirectory))
         val configDirectory = root?.findFile("config")
-        return configDirectory?.findFile("$fileName.ini") ?: throw IllegalStateException("Settings file not found")
+        return configDirectory?.findFile("$fileName.ini")
+            ?: throw IllegalStateException("Settings file not found")
     }
 
     private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
         val root =
             DocumentFile.fromTreeUri(Borked3DSApplication.appContext, Uri.parse(userDirectory))
         val configDirectory = root?.findFile("GameSettings")
-        return configDirectory?.findFile("$gameId.ini") ?: throw IllegalStateException("Custom game settings file not found")
+        return configDirectory?.findFile("$gameId.ini")
+            ?: throw IllegalStateException("Custom game settings file not found")
     }
 
     private fun sectionFromLine(line: String, isCustomGame: Boolean): SettingSection {

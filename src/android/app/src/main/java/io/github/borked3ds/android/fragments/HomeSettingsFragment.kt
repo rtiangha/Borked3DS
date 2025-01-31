@@ -94,7 +94,8 @@ class HomeSettingsFragment : Fragment() {
                 {
                     val inflater = LayoutInflater.from(context)
                     val inputBinding = DialogSoftwareKeyboardBinding.inflate(inflater)
-                    var textInputValue: String = preferences.getString("last_artic_base_addr", "") ?: ""
+                    var textInputValue: String =
+                        preferences.getString("last_artic_base_addr", "") ?: ""
 
                     inputBinding.editTextInput.setText(textInputValue)
                     inputBinding.editTextInput.doOnTextChanged { text, _, _, _ ->

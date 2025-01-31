@@ -42,8 +42,9 @@ class GamesViewModel : ViewModel() {
 
     init {
         // Retrieve list of cached games
-        val storedGames = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
-            .getStringSet(GameHelper.KEY_GAMES, emptySet())
+        val storedGames =
+            PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
+                .getStringSet(GameHelper.KEY_GAMES, emptySet())
         if (storedGames?.isNotEmpty() == true) {
             val deserializedGames = mutableSetOf<Game>()
             storedGames.forEach {

@@ -100,9 +100,10 @@ object FileUtil {
     @JvmStatic
     fun openContentUri(path: String, openMode: String): Int {
         return try {
-            context.contentResolver.openFileDescriptor(Uri.parse(path), openMode)?.use { parcelFileDescriptor ->
-                parcelFileDescriptor.detachFd()
-            } ?: run {
+            context.contentResolver.openFileDescriptor(Uri.parse(path), openMode)
+                ?.use { parcelFileDescriptor ->
+                    parcelFileDescriptor.detachFd()
+                } ?: run {
                 Log.error("[FileUtil]: Cannot get the file descriptor from uri: $path")
                 -1
             }
@@ -261,7 +262,8 @@ object FileUtil {
         destinationFilename: String
     ): Boolean {
         return try {
-            val destinationParent = DocumentFile.fromTreeUri(context, destinationUri) ?: return false
+            val destinationParent =
+                DocumentFile.fromTreeUri(context, destinationUri) ?: return false
             val filename = URLDecoder.decode(destinationFilename, "UTF-8")
             var destination = destinationParent.findFile(filename)
             if (destination == null) {
@@ -272,7 +274,8 @@ object FileUtil {
             }
 
             val input = context.contentResolver.openInputStream(sourceUri) ?: return false
-            val output = context.contentResolver.openOutputStream(destination.uri, "wt") ?: return false
+            val output =
+                context.contentResolver.openOutputStream(destination.uri, "wt") ?: return false
             val buffer = ByteArray(1024)
             var len: Int
             while (input.read(buffer).also { len = it } != -1) {
@@ -389,7 +392,11 @@ object FileUtil {
     fun renameFile(path: String, destinationFilename: String): Boolean {
         return try {
             val uri = Uri.parse(path)
-            DocumentsContract.renameDocument(context.contentResolver, uri, destinationFilename) != null
+            DocumentsContract.renameDocument(
+                context.contentResolver,
+                uri,
+                destinationFilename
+            ) != null
         } catch (e: Exception) {
             Log.error("[FileUtil]: Cannot rename file, error: ${e.message}")
             false
@@ -471,7 +478,8 @@ object FileUtil {
     ): DocumentFile? {
         return try {
             val filename = getFilename(sourceFile)
-            val destinationFile = destinationDir.createFile("application/zip", filename) ?: return null
+            val destinationFile =
+                destinationDir.createFile("application/zip", filename) ?: return null
             destinationFile.outputStream().use { os ->
                 sourceFile.inputStream().use { it.copyTo(os) }
             }
@@ -540,16 +548,20 @@ object FileUtil {
         }
 
     fun DocumentFile.inputStream(): InputStream =
-        context.contentResolver.openInputStream(uri) ?: throw IOException("Failed to open input stream")
+        context.contentResolver.openInputStream(uri)
+            ?: throw IOException("Failed to open input stream")
 
     fun DocumentFile.outputStream(): OutputStream =
-        context.contentResolver.openOutputStream(uri) ?: throw IOException("Failed to open output stream")
+        context.contentResolver.openOutputStream(uri)
+            ?: throw IOException("Failed to open output stream")
 
     fun Uri.inputStream(): InputStream =
-        context.contentResolver.openInputStream(this) ?: throw IOException("Failed to open input stream")
+        context.contentResolver.openInputStream(this)
+            ?: throw IOException("Failed to open input stream")
 
     fun Uri.outputStream(): OutputStream =
-        context.contentResolver.openOutputStream(this) ?: throw IOException("Failed to open output stream")
+        context.contentResolver.openOutputStream(this)
+            ?: throw IOException("Failed to open output stream")
 
     fun Uri.asDocumentFile(): DocumentFile? =
         DocumentFile.fromSingleUri(context, this)

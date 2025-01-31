@@ -71,7 +71,8 @@ class EmulationActivity : AppCompatActivity() {
 
     private val emulationFragment: EmulationFragment?
         get() {
-            val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragment_container) as? NavHostFragment
+            val navHostFragment =
+                supportFragmentManager.findFragmentById(R.id.fragment_container) as? NavHostFragment
             return navHostFragment?.childFragmentManager?.fragments?.lastOrNull() as? EmulationFragment
         }
 
@@ -98,7 +99,8 @@ class EmulationActivity : AppCompatActivity() {
         hotkeyUtility = HotkeyUtility(this, screenAdjustmentUtil, hotkeyFunctions)
         setContentView(binding.root)
 
-        val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragment_container) as? NavHostFragment
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.fragment_container) as? NavHostFragment
         val navController = navHostFragment?.navController
         navController?.setGraph(R.navigation.emulation_navigation, intent.extras)
 
@@ -283,7 +285,8 @@ class EmulationActivity : AppCompatActivity() {
             return super.dispatchKeyEvent(event)
         }
 
-        val button = preferences.getInt(InputBindingSetting.getInputButtonKey(event), event.scanCode)
+        val button =
+            preferences.getInt(InputBindingSetting.getInputButtonKey(event), event.scanCode)
         val action: Int = when (event.action) {
             KeyEvent.ACTION_DOWN -> {
                 // On some devices, the back gesture / button press is not intercepted by androidx
@@ -345,8 +348,10 @@ class EmulationActivity : AppCompatActivity() {
             val axis = range.axis
             val origValue = event.getAxisValue(axis)
             var value = ControllerMappingHelper.scaleAxis(input, axis, origValue)
-            val nextMapping = preferences.getInt(InputBindingSetting.getInputAxisButtonKey(axis), -1)
-            val guestOrientation = preferences.getInt(InputBindingSetting.getInputAxisOrientationKey(axis), -1)
+            val nextMapping =
+                preferences.getInt(InputBindingSetting.getInputAxisButtonKey(axis), -1)
+            val guestOrientation =
+                preferences.getInt(InputBindingSetting.getInputAxisOrientationKey(axis), -1)
             if (nextMapping == -1 || guestOrientation == -1) {
                 // Axis is unmapped
                 continue

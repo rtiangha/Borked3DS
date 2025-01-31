@@ -14,7 +14,8 @@ class CustomViewHolder<out V : ViewBinding>(val binding: V) : RecyclerView.ViewH
 /**
  * Extension function to get the LayoutInflater from a View.
  */
-fun View.getInflater(): LayoutInflater = LayoutInflater.from(context) ?: throw IllegalStateException("Context is null.")
+fun View.getInflater(): LayoutInflater =
+    LayoutInflater.from(context) ?: throw IllegalStateException("Context is null.")
 
 /**
  * Interface for creating ViewBinding instances.

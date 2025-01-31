@@ -27,7 +27,8 @@ class CiaInstallWorker(
     private val PROGRESS_NOTIFICATION_ID = SUMMARY_NOTIFICATION_ID + 1
     private var statusNotificationId = SUMMARY_NOTIFICATION_ID + 2
 
-    private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+    private val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
     private val installProgressBuilder = NotificationCompat.Builder(
         context,
         context.getString(R.string.cia_install_notification_channel_id)

@@ -179,7 +179,8 @@ class CheatDetailsFragment : Fragment() {
             val leftInsets = barInsets.left + cutoutInsets.left
             val rightInsets = barInsets.right + cutoutInsets.right
 
-            val mlpAppBar = binding.toolbarCheatDetails.layoutParams as? ViewGroup.MarginLayoutParams
+            val mlpAppBar =
+                binding.toolbarCheatDetails.layoutParams as? ViewGroup.MarginLayoutParams
             mlpAppBar?.let {
                 it.leftMargin = leftInsets
                 it.rightMargin = rightInsets
