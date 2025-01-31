@@ -18,8 +18,11 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-class DateTimeViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
-    SettingViewHolder(binding.root, adapter) {
+class DateTimeViewHolder(
+    private val binding: ListItemSettingBinding,
+    private val adapter: SettingsAdapter
+) : SettingViewHolder(binding.root, adapter) {
+
     private lateinit var setting: DateTimeSetting
 
     @SuppressLint("SimpleDateFormat")
@@ -33,6 +36,7 @@ class DateTimeViewHolder(val binding: ListItemSettingBinding, adapter: SettingsA
             binding.textSettingDescription.visibility = View.GONE
         }
         binding.textSettingValue.visibility = View.VISIBLE
+
         val epochTime = try {
             setting.value.toLong()
         } catch (e: NumberFormatException) {
@@ -41,22 +45,18 @@ class DateTimeViewHolder(val binding: ListItemSettingBinding, adapter: SettingsA
 
             val formatter = SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ssZZZZ")
             val gmt = formatter.parse("${date}T${time}+0000")
-            gmt!!.time / 1000
+            gmt?.time?.div(1000) ?: 0L
         }
-        val instant = Instant.ofEpochMilli(epochTime * 1000)
+
+        val instant = Instant.ofEpochSecond(epochTime)
         val zonedTime = ZonedDateTime.ofInstant(instant, ZoneId.of("UTC"))
         val dateFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
         binding.textSettingValue.text = dateFormatter.format(zonedTime)
 
-        if (setting.isEditable) {
-            binding.textSettingName.alpha = 1f
-            binding.textSettingDescription.alpha = 1f
-            binding.textSettingValue.alpha = 1f
-        } else {
-            binding.textSettingName.alpha = 0.5f
-            binding.textSettingDescription.alpha = 0.5f
-            binding.textSettingValue.alpha = 0.5f
-        }
+        val textAlpha = if (setting.isEditable) 1f else 0.5f
+        binding.textSettingName.alpha = textAlpha
+        binding.textSettingDescription.alpha = textAlpha
+        binding.textSettingValue.alpha = textAlpha
     }
 
     override fun onClick(clicked: View) {
@@ -69,7 +69,7 @@ class DateTimeViewHolder(val binding: ListItemSettingBinding, adapter: SettingsA
 
     override fun onLongClick(clicked: View): Boolean {
         if (setting.isEditable) {
-            return adapter.onLongClick(setting.setting!!, bindingAdapterPosition)
+            return adapter.onLongClick(setting.setting, bindingAdapterPosition) ?: false
         } else {
             adapter.onClickDisabledSetting()
         }
