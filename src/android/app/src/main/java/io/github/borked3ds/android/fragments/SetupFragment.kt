@@ -254,7 +254,7 @@ class SetupFragment : Fragment() {
                     false,
                     true,
                     {
-                        if (preferences.getString(GameHelper.KEY_GAME_PATH, "")!!.isNotEmpty()) {
+                        if (preferences.getString(GameHelper.KEY_GAME_PATH, "")?.isNotEmpty() == true) {
                             StepState.STEP_COMPLETE
                         } else {
                             StepState.STEP_INCOMPLETE
@@ -343,10 +343,10 @@ class SetupFragment : Fragment() {
         }
         binding.buttonBack.setOnClickListener { pageBackward() }
 
-        if (savedInstanceState != null) {
-            val nextIsVisible = savedInstanceState.getBoolean(KEY_NEXT_VISIBILITY)
-            val backIsVisible = savedInstanceState.getBoolean(KEY_BACK_VISIBILITY)
-            hasBeenWarned = savedInstanceState.getBooleanArray(KEY_HAS_BEEN_WARNED)!!
+        savedInstanceState?.let {
+            val nextIsVisible = it.getBoolean(KEY_NEXT_VISIBILITY)
+            val backIsVisible = it.getBoolean(KEY_BACK_VISIBILITY)
+            hasBeenWarned = it.getBooleanArray(KEY_HAS_BEEN_WARNED) ?: BooleanArray(pages.size)
 
             if (nextIsVisible) {
                 binding.buttonNext.visibility = View.VISIBLE
@@ -354,7 +354,7 @@ class SetupFragment : Fragment() {
             if (backIsVisible) {
                 binding.buttonBack.visibility = View.VISIBLE
             }
-        } else {
+        } ?: run {
             hasBeenWarned = BooleanArray(pages.size)
         }
 
@@ -433,7 +433,7 @@ class SetupFragment : Fragment() {
             // dir. This effectively means that multiple game directory is supported.
             SearchLocationHelper.addLocation(requireContext(), result)
 
-            homeViewModel.setGamesDir(requireActivity(), result.path!!)
+            homeViewModel.setGamesDir(requireActivity(), result.path ?: "")
 
             gamesDirCallback.onStepCompleted()
         }
