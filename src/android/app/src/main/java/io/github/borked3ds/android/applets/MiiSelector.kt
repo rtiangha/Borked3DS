@@ -13,7 +13,7 @@ import java.io.Serializable
 @Keep
 object MiiSelector {
     lateinit var data: MiiSelectorData
-    val finishLock = Any()
+    val finishLock = Object()
 
     private fun ExecuteImpl(config: MiiSelectorConfig) {
         val emulationActivity = NativeLibrary.sEmulationActivity.get()
