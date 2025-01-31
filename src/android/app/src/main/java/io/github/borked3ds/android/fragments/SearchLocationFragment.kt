@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
+import androidx.activity.result.registerForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -117,7 +118,7 @@ class SearchLocationFragment : Fragment() {
                     }.addCallback(object : Snackbar.Callback() {
                         override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                             if (event != DISMISS_EVENT_ACTION) {
-                                SearchLocationHelper.deleteLocation(requireContext(), uri!!)
+                                SearchLocationHelper.deleteLocation(requireContext(), uri ?: return)
                                 populateAdapter()
                                 gamesViewModel.reloadGames(false)
                             }
