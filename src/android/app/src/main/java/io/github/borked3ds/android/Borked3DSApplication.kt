@@ -19,7 +19,8 @@ import io.github.borked3ds.android.utils.PermissionsHandler
 
 class Borked3DSApplication : Application() {
     private fun createNotificationChannel() {
-        with(getSystemService(NotificationManager::class.java)) {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.let {
             // General notification
             val name: CharSequence = getString(R.string.app_notification_channel_name)
             val description = getString(R.string.app_notification_channel_description)
@@ -31,7 +32,7 @@ class Borked3DSApplication : Application() {
             generalChannel.description = description
             generalChannel.setSound(null, null)
             generalChannel.vibrationPattern = null
-            createNotificationChannel(generalChannel)
+            it.createNotificationChannel(generalChannel)
 
             // CIA Install notifications
             val ciaChannel = NotificationChannel(
@@ -43,7 +44,7 @@ class Borked3DSApplication : Application() {
                 getString(R.string.cia_install_notification_channel_description)
             ciaChannel.setSound(null, null)
             ciaChannel.vibrationPattern = null
-            createNotificationChannel(ciaChannel)
+            it.createNotificationChannel(ciaChannel)
         }
     }
 
@@ -73,7 +74,9 @@ class Borked3DSApplication : Application() {
     companion object {
         private var application: Borked3DSApplication? = null
 
-        val appContext: Context get() = application!!.applicationContext
+        val appContext: Context
+            get() = application?.applicationContext
+                ?: throw IllegalStateException("Application context is not available.")
 
         @SuppressLint("StaticFieldLeak")
         lateinit var documentsTree: DocumentsTree
