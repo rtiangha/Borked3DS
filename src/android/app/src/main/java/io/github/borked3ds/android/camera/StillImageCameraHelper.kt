@@ -18,7 +18,7 @@ import io.github.borked3ds.android.NativeLibrary
 
 // Used in native code.
 object StillImageCameraHelper {
-    private val filePickerLock = Object()
+    private val filePickerLock = Any()
     private var filePickerPath: String? = null
 
     // Opens file picker for camera.
@@ -29,15 +29,17 @@ object StillImageCameraHelper {
 
         // At this point, we are assuming that we already have permissions as they are
         // needed to launch a game
-        emulationActivity!!.runOnUiThread {
+        emulationActivity?.runOnUiThread {
             val request = PickVisualMediaRequest.Builder()
                 .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly).build()
             emulationActivity.openImageLauncher.launch(request)
-        }
+        } ?: return null
+
         synchronized(filePickerLock) {
             try {
                 filePickerLock.wait()
             } catch (ignored: InterruptedException) {
+                // Ignore the interruption and continue
             }
         }
         return filePickerPath
