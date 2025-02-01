@@ -168,7 +168,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         emulationViewModel.initializeEmulationState(game.path)
-        emulationState = EmulationState(game.path)
+        emulationState = emulationViewModel.getEmulationState() ?: throw IllegalStateException("EmulationState not initialized")
         emulationActivity = requireActivity() as EmulationActivity
         screenAdjustmentUtil = ScreenAdjustmentUtil(
             emulationActivity,
