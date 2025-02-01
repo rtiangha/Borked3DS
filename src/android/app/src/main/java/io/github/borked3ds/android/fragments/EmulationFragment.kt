@@ -499,13 +499,16 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun rotateScreen() {
         val activity = context as? Activity ?: return
-        currentOrientationIndex = (currentOrientationIndex + 1) % orientations.size
-        activity.requestedOrientation = orientations[currentOrientationIndex]
-        IntSetting.ORIENTATION_OPTION.int = activity.requestedOrientation
+        val currentOrientation = activity.requestedOrientation
+        val currentIndex = orientations.indexOf(currentOrientation).takeIf { it != -1 } ?: 0
+        val newIndex = (currentIndex + 1) % orientations.size
+        activity.requestedOrientation = orientations[newIndex]
+        IntSetting.ORIENTATION_OPTION.int = orientations[newIndex]
         settingsViewModel.settings.saveSetting(
             IntSetting.ORIENTATION_OPTION,
             SettingsFile.FILE_NAME_CONFIG
         )
+        currentOrientationIndex = newIndex // Keep the index in sync for any other uses
     }
 
     fun isDrawerOpen(): Boolean {
