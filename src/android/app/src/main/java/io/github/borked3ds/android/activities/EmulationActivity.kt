@@ -10,12 +10,14 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,7 +59,8 @@ import io.github.borked3ds.android.viewmodel.EmulationViewModel
 class EmulationActivity : AppCompatActivity() {
     private val preferences: SharedPreferences
         get() = PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
-    var isActivityRecreated = false
+
+    var isActivityRecreated: Boolean = false
     private val emulationViewModel: EmulationViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
 
@@ -67,11 +70,11 @@ class EmulationActivity : AppCompatActivity() {
     private lateinit var hotkeyUtility: HotkeyUtility
     private var emulationStartTime: Long = 0
 
-    private val emulationFragment: EmulationFragment
+    private val emulationFragment: EmulationFragment?
         get() {
             val navHostFragment =
-                supportFragmentManager.findFragmentById(R.id.fragment_container) as NavHostFragment
-            return navHostFragment.getChildFragmentManager().fragments.last() as EmulationFragment
+                supportFragmentManager.findFragmentById(R.id.fragment_container) as? NavHostFragment
+            return navHostFragment?.childFragmentManager?.fragments?.lastOrNull() as? EmulationFragment
         }
 
     private var isEmulationRunning: Boolean = false
@@ -89,7 +92,7 @@ class EmulationActivity : AppCompatActivity() {
             window.setSustainedPerformanceMode(true)
         }
 
-        NativeLibrary.enableAdrenoTurboMode(BooleanSetting.ADRENO_GPU_BOOST.boolean)
+        NativeLibrary.enableAdrenoTurboMode(BooleanSetting.ADRENO_GPU_BOOST.boolean ?: false)
 
         binding = ActivityEmulationBinding.inflate(layoutInflater)
         screenAdjustmentUtil = ScreenAdjustmentUtil(this, windowManager, settingsViewModel.settings)
@@ -98,31 +101,32 @@ class EmulationActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.fragment_container) as NavHostFragment
-        val navController = navHostFragment.navController
-        navController.setGraph(R.navigation.emulation_navigation, intent.extras)
+            supportFragmentManager.findFragmentById(R.id.fragment_container) as? NavHostFragment
+        val navController = navHostFragment?.navController
+        navController?.setGraph(R.navigation.emulation_navigation, intent.extras)
 
         isActivityRecreated = savedInstanceState != null
+
 
         // Set these options now so that the SurfaceView the game renders into is the right size.
         enableFullscreenImmersive()
 
         // Override Borked3DS core INI with the one set by our in game menu
         val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            display!!.rotation
+            display?.rotation ?: Surface.ROTATION_0
         } else {
             @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.rotation
+            windowManager.defaultDisplay?.rotation ?: Surface.ROTATION_0
         }
         NativeLibrary.swapScreens(EmulationMenuSettings.swapScreens, rotation)
 
-        EmulationLifecycleUtil.addShutdownHook(hook = {
+        EmulationLifecycleUtil.addShutdownHook {
             if (intent.getBooleanExtra("launched_from_shortcut", false)) {
                 finishAffinity()
             } else {
-                this.finish()
+                finish()
             }
-        })
+        }
 
         isEmulationRunning = true
         instance = this
@@ -130,6 +134,12 @@ class EmulationActivity : AppCompatActivity() {
         emulationStartTime = System.currentTimeMillis()
 
         applyOrientationSettings() // Check for orientation settings at startup
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyOrientationSettings() // Re-apply orientation without recreating
+        enableFullscreenImmersive()
     }
 
     // On some devices, the system bars will not disappear on first boot or after some
@@ -165,17 +175,14 @@ class EmulationActivity : AppCompatActivity() {
         NativeLibrary.enableAdrenoTurboMode(false)
         hotkeyFunctions.resetTurboSpeed()
         EmulationLifecycleUtil.clear()
-        val sessionTime = System.currentTimeMillis() - emulationStartTime
 
-        val game = try {
-            intent.extras?.let { extras ->
-                BundleCompat.getParcelable(extras, "game", Game::class.java)
-            } ?: throw IllegalStateException("Missing game data in intent extras")
-        } catch (e: Exception) {
-            throw IllegalStateException("Failed to retrieve game data: ${e.message}", e)
+        val game = intent.extras?.let { extras ->
+            BundleCompat.getParcelable(extras, "game", Game::class.java)
         }
-
-        PlayTimeTracker.addPlayTime(game, sessionTime)
+        if (game != null) {
+            val sessionTime = System.currentTimeMillis() - emulationStartTime
+            PlayTimeTracker.addPlayTime(game, sessionTime)
+        }
 
         isEmulationRunning = false
         instance = null
@@ -187,6 +194,8 @@ class EmulationActivity : AppCompatActivity() {
         permissions: Array<String>,
         grantResults: IntArray
     ) {
+        if (grantResults.isEmpty()) return
+
         when (requestCode) {
             NativeLibrary.REQUEST_CODE_NATIVE_CAMERA -> {
                 if (grantResults[0] != PackageManager.PERMISSION_GRANTED &&
@@ -247,7 +256,7 @@ class EmulationActivity : AppCompatActivity() {
         val attributes = window.attributes
 
         attributes.layoutInDisplayCutoutMode =
-            if (BooleanSetting.EXPAND_TO_CUTOUT_AREA.boolean) {
+            if (BooleanSetting.EXPAND_TO_CUTOUT_AREA.boolean == true) {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             } else {
                 // TODO: Remove this once we properly account for display insets in the input overlay
@@ -266,7 +275,7 @@ class EmulationActivity : AppCompatActivity() {
     }
 
     private fun applyOrientationSettings() {
-        val orientationOption = IntSetting.ORIENTATION_OPTION.int
+        val orientationOption = IntSetting.ORIENTATION_OPTION.int ?: 0
         screenAdjustmentUtil.changeActivityOrientation(orientationOption)
     }
 
@@ -279,7 +288,7 @@ class EmulationActivity : AppCompatActivity() {
             return false
         }
 
-        if (emulationFragment.isDrawerOpen()) {
+        if (emulationFragment?.isDrawerOpen() == true) {
             return super.dispatchKeyEvent(event)
         }
 
@@ -296,16 +305,13 @@ class EmulationActivity : AppCompatActivity() {
 
                 hotkeyUtility.handleHotkey(button)
 
-                // Normal key events.
                 NativeLibrary.ButtonState.PRESSED
             }
 
             KeyEvent.ACTION_UP -> NativeLibrary.ButtonState.RELEASED
             else -> return false
         }
-        val input = event.device
-            ?: // Controller was disconnected
-            return false
+        val input = event.device ?: return false // Controller was disconnected
         return NativeLibrary.onGamePadEvent(input.descriptor, button, action)
     }
 
@@ -323,7 +329,7 @@ class EmulationActivity : AppCompatActivity() {
         // TODO: Move this check into native code - prevents crash if input pressed before starting emulation
         if (!NativeLibrary.isRunning() ||
             (event.source and InputDevice.SOURCE_CLASS_JOYSTICK == 0) ||
-            emulationFragment.isDrawerOpen()
+            emulationFragment?.isDrawerOpen() == true
         ) {
             return super.dispatchGenericMotionEvent(event)
         }
@@ -332,7 +338,7 @@ class EmulationActivity : AppCompatActivity() {
         if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
             return true
         }
-        val input = event.device
+        val input = event.device ?: return true
         val motions = input.motionRanges
         val axisValuesCirclePad = floatArrayOf(0.0f, 0.0f)
         val axisValuesCStick = floatArrayOf(0.0f, 0.0f)
@@ -357,8 +363,8 @@ class EmulationActivity : AppCompatActivity() {
                 // Axis is unmapped
                 continue
             }
+            // Skip joystick wobble
             if (value > 0f && value < 0.1f || value < 0f && value > -0.1f) {
-                // Skip joystick wobble
                 value = 0f
             }
             when (nextMapping) {
@@ -456,7 +462,6 @@ class EmulationActivity : AppCompatActivity() {
             )
         }
 
-        // Work-around to allow D-pad axis to be bound to emulated buttons
         if (axisValuesDPad[0] == 0f) {
             NativeLibrary.onGamePadEvent(
                 NativeLibrary.TouchScreenDevice,
@@ -534,20 +539,21 @@ class EmulationActivity : AppCompatActivity() {
 
     val openFileLauncher =
         registerForActivityResult(OpenFileResultContract()) { result: Intent? ->
-            if (result == null) return@registerForActivityResult
-            val selectedFiles = FileBrowserHelper.getSelectedFiles(
-                result, applicationContext, listOf<String>("bin")
-            ) ?: return@registerForActivityResult
-            onAmiiboSelected(selectedFiles[0])
+            result?.let {
+                val selectedFiles = FileBrowserHelper.getSelectedFiles(
+                    it, applicationContext, listOf("bin")
+                )
+                selectedFiles?.firstOrNull()?.let { file ->
+                    onAmiiboSelected(file)
+                }
+            }
         }
 
     val openImageLauncher =
         registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { result: Uri? ->
-            if (result == null) {
-                return@registerForActivityResult
+            result?.let {
+                OnFilePickerResult(it.toString())
             }
-
-            OnFilePickerResult(result.toString())
         }
 
     companion object {

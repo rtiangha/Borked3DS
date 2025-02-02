@@ -29,7 +29,6 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.util.TreeMap
 
-
 /**
  * Contains static methods for interacting with .ini files in which settings are stored.
  */
@@ -73,18 +72,16 @@ object SettingsFile {
                 }
             }
         } catch (e: FileNotFoundException) {
-            Log.error("[SettingsFile] File not found: " + ini.uri + e.message)
+            Log.error("[SettingsFile] File not found: ${ini.uri} ${e.message}")
             view?.onSettingsFileNotFound()
         } catch (e: IOException) {
-            Log.error("[SettingsFile] Error reading from: " + ini.uri + e.message)
+            Log.error("[SettingsFile] Error reading from: ${ini.uri} ${e.message}")
             view?.onSettingsFileNotFound()
         } finally {
-            if (reader != null) {
-                try {
-                    reader.close()
-                } catch (e: IOException) {
-                    Log.error("[SettingsFile] Error closing: " + ini.uri + e.message)
-                }
+            try {
+                reader?.close()
+            } catch (e: IOException) {
+                Log.error("[SettingsFile] Error closing: ${ini.uri} ${e.message}")
             }
         }
         return sections
@@ -132,13 +129,15 @@ object SettingsFile {
             val keySet: Set<String> = sections.keys
             for (key in keySet) {
                 val section = sections[key]
-                writeSection(writer, section!!)
+                if (section != null) {
+                    writeSection(writer, section)
+                }
             }
-            inputStream!!.close()
+            inputStream?.close()
             val outputStream = context.contentResolver.openOutputStream(ini.uri, "wt")
             writer.store(outputStream)
-            outputStream!!.flush()
-            outputStream.close()
+            outputStream?.flush()
+            outputStream?.close()
         } catch (e: Exception) {
             Log.error("[SettingsFile] File not found: $fileName.ini: ${e.message}")
             view.showToastMessage(
@@ -158,44 +157,38 @@ object SettingsFile {
             val inputStream = context.contentResolver.openInputStream(ini.uri)
             val writer = Wini(inputStream)
             writer.put(setting.section, setting.key, setting.valueAsString)
-            inputStream!!.close()
+            inputStream?.close()
             val outputStream = context.contentResolver.openOutputStream(ini.uri, "wt")
             writer.store(outputStream)
-            outputStream!!.flush()
-            outputStream.close()
+            outputStream?.flush()
+            outputStream?.close()
         } catch (e: Exception) {
             Log.error("[SettingsFile] File not found: $fileName.ini: ${e.message}")
         }
     }
 
     private fun mapSectionNameFromIni(generalSectionName: String): String? {
-        return if (sectionsMap.getForward(generalSectionName) != null) {
-            sectionsMap.getForward(generalSectionName)
-        } else {
-            generalSectionName
-        }
+        return sectionsMap.getForward(generalSectionName) ?: generalSectionName
     }
 
     private fun mapSectionNameToIni(generalSectionName: String): String {
-        return if (sectionsMap.getBackward(generalSectionName) != null) {
-            sectionsMap.getBackward(generalSectionName).toString()
-        } else {
-            generalSectionName
-        }
+        return sectionsMap.getBackward(generalSectionName) ?: generalSectionName
     }
 
     fun getSettingsFile(fileName: String): DocumentFile {
         val root =
             DocumentFile.fromTreeUri(Borked3DSApplication.appContext, Uri.parse(userDirectory))
-        val configDirectory = root!!.findFile("config")
-        return configDirectory!!.findFile("$fileName.ini")!!
+        val configDirectory = root?.findFile("config")
+        return configDirectory?.findFile("$fileName.ini")
+            ?: throw IllegalStateException("Settings file not found")
     }
 
     private fun getCustomGameSettingsFile(gameId: String): DocumentFile {
         val root =
             DocumentFile.fromTreeUri(Borked3DSApplication.appContext, Uri.parse(userDirectory))
-        val configDirectory = root!!.findFile("GameSettings")
-        return configDirectory!!.findFile("$gameId.ini")!!
+        val configDirectory = root?.findFile("GameSettings")
+        return configDirectory?.findFile("$gameId.ini")
+            ?: throw IllegalStateException("Custom game settings file not found")
     }
 
     private fun sectionFromLine(line: String, isCustomGame: Boolean): SettingSection {
@@ -276,7 +269,9 @@ object SettingsFile {
         val keySet: Set<String> = settings.keys
         for (key in keySet) {
             val setting = settings[key]
-            parser.put(header, setting!!.key, setting.valueAsString)
+            if (setting != null) {
+                parser.put(header, setting.key, setting.valueAsString)
+            }
         }
     }
 }

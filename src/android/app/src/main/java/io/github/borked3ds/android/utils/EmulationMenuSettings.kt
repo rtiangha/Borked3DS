@@ -28,11 +28,11 @@ object EmulationMenuSettings {
                 .apply()
         }
 
-    var showPerfStatsOvelray: Boolean
-        get() = preferences.getBoolean("EmulationMenuSettings_showPerfStatsOvelray", false)
+    var showPerfStatsOverlay: Boolean
+        get() = preferences.getBoolean("EmulationMenuSettings_showPerfStatsOverlay", false)
         set(value) {
             preferences.edit()
-                .putBoolean("EmulationMenuSettings_showPerfStatsOvelray", value)
+                .putBoolean("EmulationMenuSettings_showPerfStatsOverlay", value)
                 .apply()
         }
     var hapticFeedback: Boolean

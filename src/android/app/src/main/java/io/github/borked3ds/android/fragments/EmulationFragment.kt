@@ -26,7 +26,6 @@ import android.view.Choreographer
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
-import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.View
 import android.view.ViewGroup
@@ -76,6 +75,7 @@ import io.github.borked3ds.android.utils.GameHelper
 import io.github.borked3ds.android.utils.GameIconUtils
 import io.github.borked3ds.android.utils.Log
 import io.github.borked3ds.android.utils.ViewUtils
+import io.github.borked3ds.android.viewmodel.EmulationState
 import io.github.borked3ds.android.viewmodel.EmulationViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -120,6 +120,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
+    private fun getCurrentOrientationIndex(): Int {
+        val currentOrientation = resources.configuration.orientation
+        return orientations.indexOf(currentOrientation).takeIf { it >= 0 } ?: 0
+    }
+
     /**
      * Initialize anything that doesn't depend on the layout / views in here.
      */
@@ -150,23 +155,24 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         }
 
-        try {
-            game = args.game ?: intentGame!!
-        } catch (e: NullPointerException) {
-            Toast.makeText(
-                requireContext(),
-                R.string.no_game_present,
-                Toast.LENGTH_SHORT
-            ).show()
+        game = args.game ?: intentGame ?: run {
+            activity?.applicationContext?.let { appContext ->
+                Toast.makeText(
+                    appContext,
+                    R.string.no_game_present,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
             requireActivity().finish()
             return
         }
 
-        emulationState = EmulationState(game.path)
+        emulationViewModel.initializeEmulationState(game.path)
+        emulationState = emulationViewModel.getEmulationState() ?: throw IllegalStateException("EmulationState not initialized")
         emulationActivity = requireActivity() as EmulationActivity
         screenAdjustmentUtil = ScreenAdjustmentUtil(
-            requireContext(),
-            requireActivity().windowManager,
+            emulationActivity,
+            emulationActivity.windowManager,
             settingsViewModel.settings
         )
         EmulationLifecycleUtil.addShutdownHook(hook = { emulationState.stop() })
@@ -189,7 +195,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         if (requireActivity().isFinishing) {
             return
         }
-
         binding.surfaceEmulation.holder.addCallback(this)
         binding.doneControlConfig.setOnClickListener {
             binding.doneControlConfig.visibility = View.GONE
@@ -197,7 +202,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         // Show/hide the "Stats" overlay
-        updateshowPerfStatsOvelrayOverlay()
+        updateShowPerfStatsOverlay()
 
         val position = IntSetting.PERF_OVERLAY_POSITION.int
         updatePerfStatsPosition(position)
@@ -235,6 +240,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 // No op
             }
         })
+
         binding.inGameMenu.menu.findItem(R.id.menu_lock_drawer).apply {
             val titleId =
                 if (EmulationMenuSettings.drawerLockMode == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
@@ -250,40 +256,50 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 }
 
             title = getString(titleId)
-            icon = ResourcesCompat.getDrawable(
-                resources,
-                iconId,
-                requireContext().theme
-            )
+            context?.let { safeContext ->
+                icon = ResourcesCompat.getDrawable(
+                    resources,
+                    iconId,
+                    safeContext.theme
+                )
+            }
         }
 
-        binding.inGameMenu.getHeaderView(0).apply {
+        binding.inGameMenu.getHeaderView(0)?.apply {
             val titleView = findViewById<TextView>(R.id.text_game_title)
             val iconView = findViewById<ImageView>(R.id.game_icon)
 
-            titleView.text = game.title
+            titleView?.text = game.title
 
-            GameIconUtils.loadGameIcon(requireActivity(), game, iconView)
+            context?.let { safeContext ->
+                GameIconUtils.loadGameIcon(requireActivity(), game, iconView)
+            }
+            true
         }
+
         binding.inGameMenu.setNavigationItemSelectedListener {
             when (it.itemId) {
                 R.id.menu_emulation_pause -> {
                     if (emulationState.isPaused) {
                         emulationState.unpause()
                         it.title = resources.getString(R.string.pause_emulation)
-                        it.icon = ResourcesCompat.getDrawable(
-                            resources,
-                            R.drawable.ic_pause,
-                            requireContext().theme
-                        )
+                        context?.let { safeContext ->
+                            it.icon = ResourcesCompat.getDrawable(
+                                resources,
+                                R.drawable.ic_pause,
+                                safeContext.theme
+                            )
+                        }
                     } else {
                         emulationState.pause()
                         it.title = resources.getString(R.string.resume_emulation)
-                        it.icon = ResourcesCompat.getDrawable(
-                            resources,
-                            R.drawable.ic_play,
-                            requireContext().theme
-                        )
+                        context?.let { safeContext ->
+                            it.icon = ResourcesCompat.getDrawable(
+                                resources,
+                                R.drawable.ic_play,
+                                safeContext.theme
+                            )
+                        }
                     }
                     true
                 }
@@ -329,21 +345,25 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                             EmulationMenuSettings.drawerLockMode =
                                 DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                             it.title = resources.getString(R.string.unlock_drawer)
-                            it.icon = ResourcesCompat.getDrawable(
-                                resources,
-                                R.drawable.ic_lock,
-                                requireContext().theme
-                            )
+                            context?.let { safeContext ->
+                                it.icon = ResourcesCompat.getDrawable(
+                                    resources,
+                                    R.drawable.ic_lock,
+                                    safeContext.theme
+                                )
+                            }
                         }
 
                         DrawerLayout.LOCK_MODE_LOCKED_CLOSED -> {
                             EmulationMenuSettings.drawerLockMode = DrawerLayout.LOCK_MODE_UNLOCKED
                             it.title = resources.getString(R.string.lock_drawer)
-                            it.icon = ResourcesCompat.getDrawable(
-                                resources,
-                                R.drawable.ic_unlocked,
-                                requireContext().theme
-                            )
+                            context?.let { safeContext ->
+                                it.icon = ResourcesCompat.getDrawable(
+                                    resources,
+                                    R.drawable.ic_unlocked,
+                                    safeContext.theme
+                                )
+                            }
                         }
                     }
                     true
@@ -363,11 +383,10 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
                 R.id.menu_settings -> {
                     SettingsActivity.launch(
-                        requireContext(),
+                        requireActivity(),
                         SettingsFile.FILE_NAME_CONFIG,
                         ""
                     )
-
                     true
                 }
 
@@ -378,21 +397,25 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
                 R.id.menu_exit -> {
                     NativeLibrary.pauseEmulation()
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.emulation_close_game)
-                        .setMessage(R.string.emulation_close_game_message)
-                        .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
-                            EmulationLifecycleUtil.closeGame()
-                        }
-                        .setNegativeButton(android.R.string.cancel) { _: DialogInterface?, _: Int ->
-                            NativeLibrary.unPauseEmulation()
-                        }
-                        .setOnCancelListener { NativeLibrary.unPauseEmulation() }
-                        .show()
-                    true
+                    context?.let { safeContext ->
+                        MaterialAlertDialogBuilder(safeContext)
+                            .setTitle(R.string.emulation_close_game)
+                            .setMessage(R.string.emulation_close_game_message)
+                            .setPositiveButton(android.R.string.ok) { _, _ ->
+                                EmulationLifecycleUtil.closeGame()
+                            }
+                            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                                NativeLibrary.unPauseEmulation()
+                            }
+                            .setOnCancelListener {
+                                NativeLibrary.unPauseEmulation()
+                            }
+                            .show()
+                        true  // Explicit return for non-null context
+                    } ?: false  // Return false if context is null
                 }
 
-                else -> true
+                else -> false
             }
         }
 
@@ -413,7 +436,6 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             }
         )
 
-        GameIconUtils.loadGameIcon(requireActivity(), game, binding.loadingImage)
         binding.loadingTitle.text = game.title
 
         viewLifecycleOwner.lifecycleScope.apply {
@@ -475,20 +497,18 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
     }
 
-    private fun getCurrentOrientationIndex(): Int {
-        val currentOrientation = resources.configuration.orientation
-        return orientations.indexOf(currentOrientation).takeIf { it >= 0 } ?: 0
-    }
-
     private fun rotateScreen() {
         val activity = context as? Activity ?: return
-        currentOrientationIndex = (currentOrientationIndex + 1) % orientations.size
-        activity.requestedOrientation = orientations[currentOrientationIndex]
-        IntSetting.ORIENTATION_OPTION.int = activity.requestedOrientation
+        val currentOrientation = activity.requestedOrientation
+        val currentIndex = orientations.indexOf(currentOrientation).takeIf { it != -1 } ?: 0
+        val newIndex = (currentIndex + 1) % orientations.size
+        activity.requestedOrientation = orientations[newIndex]
+        IntSetting.ORIENTATION_OPTION.int = orientations[newIndex]
         settingsViewModel.settings.saveSetting(
             IntSetting.ORIENTATION_OPTION,
             SettingsFile.FILE_NAME_CONFIG
         )
+        currentOrientationIndex = newIndex // Keep the index in sync for any other uses
     }
 
     fun isDrawerOpen(): Boolean {
@@ -510,11 +530,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             NativeLibrary.unPauseEmulation()
             binding.inGameMenu.menu.findItem(R.id.menu_emulation_pause)?.let { menuItem ->
                 menuItem.title = resources.getString(R.string.pause_emulation)
-                menuItem.icon = ResourcesCompat.getDrawable(
-                    resources,
-                    R.drawable.ic_pause,
-                    requireContext().theme
-                )
+                context?.let { safeContext ->
+                    menuItem.icon = ResourcesCompat.getDrawable(
+                        resources,
+                        R.drawable.ic_pause,
+                        safeContext.theme
+                    )
+                }
             }
 
             val position = IntSetting.PERF_OVERLAY_POSITION.int
@@ -524,7 +546,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         if (DirectoryInitialization.areBorked3DSDirectoriesReady()) {
-            emulationState.run(emulationActivity.isActivityRecreated)
+            emulationState.run(emulationActivity.isActivityRecreated ?: false)
         } else {
             setupBorked3DSDirectoriesThenStartEmulation()
         }
@@ -545,131 +567,150 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
 
     private fun setupBorked3DSDirectoriesThenStartEmulation() {
         val directoryInitializationState = DirectoryInitialization.start()
-        if (directoryInitializationState ===
-            DirectoryInitializationState.BORKED3DS_DIRECTORIES_INITIALIZED
-        ) {
-            emulationState.run(emulationActivity.isActivityRecreated)
-        } else if (directoryInitializationState ===
-            DirectoryInitializationState.EXTERNAL_STORAGE_PERMISSION_NEEDED
-        ) {
-            Toast.makeText(context, R.string.write_permission_needed, Toast.LENGTH_SHORT)
-                .show()
-        } else if (directoryInitializationState ===
-            DirectoryInitializationState.CANT_FIND_EXTERNAL_STORAGE
-        ) {
-            Toast.makeText(
-                context,
-                R.string.external_storage_not_mounted,
-                Toast.LENGTH_SHORT
-            ).show()
+        if (!isAdded) return // Check if fragment is attached
+
+        activity?.applicationContext?.let { appContext ->
+            when (directoryInitializationState) {
+                DirectoryInitializationState.BORKED3DS_DIRECTORIES_INITIALIZED -> {
+                    emulationState.run(emulationActivity.isActivityRecreated)
+                }
+
+                DirectoryInitializationState.EXTERNAL_STORAGE_PERMISSION_NEEDED -> {
+                    Toast.makeText(appContext, R.string.write_permission_needed, Toast.LENGTH_SHORT)
+                        .show()
+                }
+
+                DirectoryInitializationState.CANT_FIND_EXTERNAL_STORAGE -> {
+                    Toast.makeText(
+                        appContext,
+                        R.string.external_storage_not_mounted,
+                        Toast.LENGTH_SHORT
+                    )
+                        .show()
+                }
+
+                else -> {
+                    // Handle any other states if necessary
+                    Toast.makeText(appContext, R.string.unknown_error, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
     private fun showSavestateMenu() {
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_emulation_savestates)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_emulation_savestates)
+            )
 
-        popupMenu.menuInflater.inflate(R.menu.menu_savestates, popupMenu.menu)
+            popupMenu.menuInflater.inflate(R.menu.menu_savestates, popupMenu.menu)
 
-        popupMenu.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.menu_emulation_save_state -> {
-                    showStateSubmenu(true)
-                    true
+            popupMenu.setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_emulation_save_state -> {
+                        showStateSubmenu(true)
+                        true
+                    }
+
+                    R.id.menu_emulation_load_state -> {
+                        showStateSubmenu(false)
+                        true
+                    }
+
+                    else -> true
                 }
-
-                R.id.menu_emulation_load_state -> {
-                    showStateSubmenu(false)
-                    true
-                }
-
-                else -> true
             }
-        }
 
-        popupMenu.show()
+            popupMenu.show()
+        }
     }
 
     private fun showStateSubmenu(isSaving: Boolean) {
-
         val savestates = NativeLibrary.getSavestateInfo()
 
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_emulation_savestates)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_emulation_savestates)
+            )
 
-        popupMenu.menu.apply {
-            for (i in 0 until NativeLibrary.SAVESTATE_SLOT_COUNT) {
-                val slot = i
-                var enableClick = isSaving
-                val text = if (slot == NativeLibrary.QUICKSAVE_SLOT) {
-                    getString(R.string.emulation_quicksave_slot)
-                } else {
-                    getString(R.string.emulation_empty_state_slot, slot)
-                }
-
-                add(text).setEnabled(enableClick).setOnMenuItemClickListener {
-                    if (isSaving) {
-                        NativeLibrary.saveState(slot)
-                        Toast.makeText(
-                            context,
-                            getString(R.string.quicksave_saving),
-                            Toast.LENGTH_SHORT
-                        ).show()
+            popupMenu.menu.apply {
+                for (i in 0 until NativeLibrary.SAVESTATE_SLOT_COUNT) {
+                    val slot = i
+                    var enableClick = isSaving
+                    val text = if (slot == NativeLibrary.QUICKSAVE_SLOT) {
+                        getString(R.string.emulation_quicksave_slot)
                     } else {
-                        NativeLibrary.loadState(slot)
-                        binding.drawerLayout.close()
-                        Toast.makeText(
-                            context,
-                            getString(R.string.quickload_loading),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        getString(R.string.emulation_empty_state_slot, slot)
                     }
-                    true
+
+                    add(text).setEnabled(enableClick).setOnMenuItemClickListener {
+                        if (isSaving) {
+                            NativeLibrary.saveState(slot)
+                            activity?.applicationContext?.let { appContext ->
+                                Toast.makeText(
+                                    appContext,
+                                    getString(R.string.quicksave_saving),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } else {
+                            NativeLibrary.loadState(slot)
+                            binding.drawerLayout.close()
+                            activity?.applicationContext?.let { appContext ->
+                                Toast.makeText(
+                                    appContext,
+                                    getString(R.string.quickload_loading),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                        true
+                    }
                 }
             }
-        }
 
-        savestates?.forEach {
-            val text = if (it.slot == NativeLibrary.QUICKSAVE_SLOT) {
-                getString(R.string.emulation_occupied_quicksave_slot, it.time)
-            } else {
-                getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
+            savestates?.forEach {
+                val text = if (it.slot == NativeLibrary.QUICKSAVE_SLOT) {
+                    getString(R.string.emulation_occupied_quicksave_slot, it.time)
+                } else {
+                    getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
+                }
+                popupMenu.menu.getItem(it.slot).setTitle(text).isEnabled = true
             }
-            popupMenu.menu.getItem(it.slot).setTitle(text).isEnabled = true
-        }
 
-        popupMenu.show()
+            popupMenu.show()
+        }
     }
 
     private fun showLoadStateSubmenu() {
         val savestates = NativeLibrary.getSavestateInfo()
 
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_emulation_savestates)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_emulation_savestates)
+            )
 
-        popupMenu.menu.apply {
-            for (i in 0 until NativeLibrary.SAVESTATE_SLOT_COUNT) {
-                val slot = i + 1
-                val text = getString(R.string.emulation_empty_state_slot, slot)
-                add(text).setEnabled(false).setOnMenuItemClickListener {
-                    NativeLibrary.loadState(slot)
-                    true
+            popupMenu.menu.apply {
+                for (i in 0 until NativeLibrary.SAVESTATE_SLOT_COUNT) {
+                    val slot = i + 1
+                    val text = getString(R.string.emulation_empty_state_slot, slot)
+                    add(text).setEnabled(false).setOnMenuItemClickListener {
+                        NativeLibrary.loadState(slot)
+                        true
+                    }
                 }
             }
-        }
 
-        savestates?.forEach {
-            val text = getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
-            popupMenu.menu.getItem(it.slot - 1).setTitle(text).isEnabled = true
-        }
+            savestates?.forEach {
+                val text = getString(R.string.emulation_occupied_state_slot, it.slot, it.time)
+                popupMenu.menu.getItem(it.slot - 1).setTitle(text).isEnabled = true
+            }
 
-        popupMenu.show()
+            popupMenu.show()
+        }
     }
 
     private fun displaySavestateWarning() {
@@ -678,325 +719,326 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         val dialogCheckboxBinding = DialogCheckboxBinding.inflate(layoutInflater)
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.savestates)
-            .setMessage(R.string.savestate_warning_message)
-            .setView(dialogCheckboxBinding.root)
-            .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
-                preferences.edit()
-                    .putBoolean("savestateWarningShown", dialogCheckboxBinding.checkBox.isChecked)
-                    .apply()
-            }
-            .show()
+        context?.let { safeContext ->
+            MaterialAlertDialogBuilder(safeContext)
+                .setTitle(R.string.savestates)
+                .setMessage(R.string.savestate_warning_message)
+                .setView(dialogCheckboxBinding.root)
+                .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
+                    preferences.edit()
+                        .putBoolean(
+                            "savestateWarningShown",
+                            dialogCheckboxBinding.checkBox.isChecked
+                        )
+                        .apply()
+                }
+                .show()
+        }
     }
 
     private fun showOverlayMenu() {
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_overlay_options)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_overlay_options)
+            )
 
-        popupMenu.menuInflater.inflate(R.menu.menu_overlay_options, popupMenu.menu)
+            popupMenu.menuInflater.inflate(R.menu.menu_overlay_options, popupMenu.menu)
 
-        popupMenu.menu.apply {
-            findItem(R.id.menu_show_overlay).isChecked = EmulationMenuSettings.showOverlay
-            findItem(R.id.menu_show_perf_overlay).isChecked =
-                EmulationMenuSettings.showPerfStatsOvelray
-            findItem(R.id.menu_haptic_feedback).isChecked = EmulationMenuSettings.hapticFeedback
-            findItem(R.id.menu_emulation_joystick_rel_center).isChecked =
-                EmulationMenuSettings.joystickRelCenter
-            findItem(R.id.menu_emulation_dpad_slide_enable).isChecked =
-                EmulationMenuSettings.dpadSlide
-        }
-
-        popupMenu.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.menu_show_overlay -> {
-                    EmulationMenuSettings.showOverlay = !EmulationMenuSettings.showOverlay
-                    binding.surfaceInputOverlay.refreshControls()
-                    true
-                }
-
-                R.id.menu_show_perf_overlay -> {
-                    EmulationMenuSettings.showPerfStatsOvelray =
-                        !EmulationMenuSettings.showPerfStatsOvelray
-                    updateshowPerfStatsOvelrayOverlay()
-                    true
-                }
-
-                R.id.menu_haptic_feedback -> {
-                    EmulationMenuSettings.hapticFeedback = !EmulationMenuSettings.hapticFeedback
-                    updateshowPerfStatsOvelrayOverlay()
-                    true
-                }
-
-                R.id.menu_emulation_edit_layout -> {
-                    editControlsPlacement()
-                    binding.drawerLayout.close()
-                    true
-                }
-
-                R.id.menu_emulation_toggle_controls -> {
-                    showToggleControlsDialog()
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_reset_all -> {
-                    resetAllScales()
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale -> {
-                    showAdjustScaleDialog("controlScale")
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_a -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_A)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_b -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_B)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_x -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_X)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_y -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_Y)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_l -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.TRIGGER_L)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_r -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.TRIGGER_R)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_zl -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_ZL)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_zr -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_ZR)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_start -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_START)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_select -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_SELECT)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_controller_dpad -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.DPAD)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_controller_circlepad -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.STICK_LEFT)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_controller_c -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.STICK_C)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_home -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_HOME)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_scale_button_swap -> {
-                    showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_SWAP)
-                    true
-                }
-
-                R.id.menu_emulation_adjust_opacity -> {
-                    showAdjustOpacityDialog()
-                    true
-                }
-
-                R.id.menu_emulation_joystick_rel_center -> {
-                    EmulationMenuSettings.joystickRelCenter =
-                        !EmulationMenuSettings.joystickRelCenter
-                    true
-                }
-
-                R.id.menu_emulation_dpad_slide_enable -> {
-                    EmulationMenuSettings.dpadSlide = !EmulationMenuSettings.dpadSlide
-                    true
-                }
-
-                R.id.menu_emulation_reset_overlay -> {
-                    showResetOverlayDialog()
-                    true
-                }
-
-                else -> true
+            popupMenu.menu.apply {
+                findItem(R.id.menu_show_overlay).isChecked = EmulationMenuSettings.showOverlay
+                findItem(R.id.menu_show_perf_overlay).isChecked =
+                    EmulationMenuSettings.showPerfStatsOverlay
+                findItem(R.id.menu_haptic_feedback).isChecked = EmulationMenuSettings.hapticFeedback
+                findItem(R.id.menu_emulation_joystick_rel_center).isChecked =
+                    EmulationMenuSettings.joystickRelCenter
+                findItem(R.id.menu_emulation_dpad_slide_enable).isChecked =
+                    EmulationMenuSettings.dpadSlide
             }
-        }
 
-        popupMenu.show()
+            popupMenu.setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_show_overlay -> {
+                        EmulationMenuSettings.showOverlay = !EmulationMenuSettings.showOverlay
+                        binding.surfaceInputOverlay.refreshControls()
+                        true
+                    }
+
+                    R.id.menu_show_perf_overlay -> {
+                        EmulationMenuSettings.showPerfStatsOverlay =
+                            !EmulationMenuSettings.showPerfStatsOverlay
+                        updateShowPerfStatsOverlay()
+                        true
+                    }
+
+                    R.id.menu_haptic_feedback -> {
+                        EmulationMenuSettings.hapticFeedback = !EmulationMenuSettings.hapticFeedback
+                        updateShowPerfStatsOverlay()
+                        true
+                    }
+
+                    R.id.menu_emulation_edit_layout -> {
+                        editControlsPlacement()
+                        binding.drawerLayout.close()
+                        true
+                    }
+
+                    R.id.menu_emulation_toggle_controls -> {
+                        showToggleControlsDialog()
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_reset_all -> {
+                        resetAllScales()
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale -> {
+                        showAdjustScaleDialog("controlScale")
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_a -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_A)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_b -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_B)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_x -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_X)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_y -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_Y)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_l -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.TRIGGER_L)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_r -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.TRIGGER_R)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_zl -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_ZL)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_zr -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_ZR)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_start -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_START)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_select -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_SELECT)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_controller_dpad -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.DPAD)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_controller_circlepad -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.STICK_LEFT)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_controller_c -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.STICK_C)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_home -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_HOME)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_scale_button_swap -> {
+                        showAdjustScaleDialog("controlScale-" + NativeLibrary.ButtonType.BUTTON_SWAP)
+                        true
+                    }
+
+                    R.id.menu_emulation_adjust_opacity -> {
+                        showAdjustOpacityDialog()
+                        true
+                    }
+
+                    R.id.menu_emulation_joystick_rel_center -> {
+                        EmulationMenuSettings.joystickRelCenter =
+                            !EmulationMenuSettings.joystickRelCenter
+                        true
+                    }
+
+                    R.id.menu_emulation_dpad_slide_enable -> {
+                        EmulationMenuSettings.dpadSlide = !EmulationMenuSettings.dpadSlide
+                        true
+                    }
+
+                    R.id.menu_emulation_reset_overlay -> {
+                        showResetOverlayDialog()
+                        true
+                    }
+
+                    else -> true
+                }
+            }
+
+            popupMenu.show()
+        }
     }
 
     private fun showAmiiboMenu() {
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_amiibo)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_amiibo)
+            )
 
-        popupMenu.menuInflater.inflate(R.menu.menu_amiibo_options, popupMenu.menu)
+            popupMenu.menuInflater.inflate(R.menu.menu_amiibo_options, popupMenu.menu)
 
-        popupMenu.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.menu_emulation_amiibo_load -> {
-                    emulationActivity.openFileLauncher.launch(false)
-                    true
+            popupMenu.setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_emulation_amiibo_load -> {
+                        emulationActivity.openFileLauncher.launch(false)
+                        true
+                    }
+
+                    R.id.menu_emulation_amiibo_remove -> {
+                        NativeLibrary.removeAmiibo()
+                        true
+                    }
+
+                    else -> true
                 }
-
-                R.id.menu_emulation_amiibo_remove -> {
-                    NativeLibrary.removeAmiibo()
-                    true
-                }
-
-                else -> true
             }
-        }
 
-        popupMenu.show()
+            popupMenu.show()
+        }
     }
 
     private fun showLandscapeScreenLayoutMenu() {
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_landscape_screen_layout)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_landscape_screen_layout)
+            )
 
-        popupMenu.menuInflater.inflate(R.menu.menu_landscape_screen_layout, popupMenu.menu)
+            popupMenu.menuInflater.inflate(R.menu.menu_landscape_screen_layout, popupMenu.menu)
 
-        val layoutOptionMenuItem = when (IntSetting.SCREEN_LAYOUT.int) {
-            ScreenLayout.ORIGINAL.int ->
-                R.id.menu_screen_layout_original
-
-            ScreenLayout.SINGLE_SCREEN.int ->
-                R.id.menu_screen_layout_single
-
-            ScreenLayout.SIDE_SCREEN.int ->
-                R.id.menu_screen_layout_sidebyside
-
-            ScreenLayout.HYBRID_SCREEN.int ->
-                R.id.menu_screen_layout_hybrid
-
-            ScreenLayout.CUSTOM_LAYOUT.int ->
-                R.id.menu_screen_layout_custom
-
-            else -> R.id.menu_screen_layout_largescreen
-        }
-        popupMenu.menu.findItem(layoutOptionMenuItem).isChecked = true
-
-        popupMenu.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.menu_screen_layout_largescreen -> {
-                    screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.LARGE_SCREEN.int)
-                    true
-                }
-
-                R.id.menu_screen_layout_single -> {
-                    screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.SINGLE_SCREEN.int)
-                    true
-                }
-
-                R.id.menu_screen_layout_sidebyside -> {
-                    screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.SIDE_SCREEN.int)
-                    true
-                }
-
-                R.id.menu_screen_layout_hybrid -> {
-                    screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.HYBRID_SCREEN.int)
-                    true
-                }
-
-                R.id.menu_screen_layout_original -> {
-                    screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.ORIGINAL.int)
-                    true
-                }
-
-                R.id.menu_screen_layout_custom -> {
-                    Toast.makeText(
-                        requireContext(),
-                        R.string.emulation_adjust_custom_layout,
-                        Toast.LENGTH_LONG
-                    ).show()
-                    screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.CUSTOM_LAYOUT.int)
-                    true
-                }
-
-                else -> true
+            val layoutOptionMenuItem = when (IntSetting.SCREEN_LAYOUT.int) {
+                ScreenLayout.ORIGINAL.int -> R.id.menu_screen_layout_original
+                ScreenLayout.SINGLE_SCREEN.int -> R.id.menu_screen_layout_single
+                ScreenLayout.SIDE_SCREEN.int -> R.id.menu_screen_layout_sidebyside
+                ScreenLayout.HYBRID_SCREEN.int -> R.id.menu_screen_layout_hybrid
+                ScreenLayout.CUSTOM_LAYOUT.int -> R.id.menu_screen_layout_custom
+                else -> R.id.menu_screen_layout_largescreen
             }
-        }
+            popupMenu.menu.findItem(layoutOptionMenuItem).isChecked = true
 
-        popupMenu.show()
+            popupMenu.setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_screen_layout_largescreen -> {
+                        screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.LARGE_SCREEN.int)
+                        true
+                    }
+
+                    R.id.menu_screen_layout_single -> {
+                        screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.SINGLE_SCREEN.int)
+                        true
+                    }
+
+                    R.id.menu_screen_layout_sidebyside -> {
+                        screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.SIDE_SCREEN.int)
+                        true
+                    }
+
+                    R.id.menu_screen_layout_hybrid -> {
+                        screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.HYBRID_SCREEN.int)
+                        true
+                    }
+
+                    R.id.menu_screen_layout_original -> {
+                        screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.ORIGINAL.int)
+                        true
+                    }
+
+                    R.id.menu_screen_layout_custom -> {
+                        activity?.applicationContext?.let { appContext ->
+                            Toast.makeText(
+                                appContext,
+                                R.string.emulation_adjust_custom_layout,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        screenAdjustmentUtil.changeScreenOrientation(ScreenLayout.CUSTOM_LAYOUT.int)
+                        true
+                    }
+
+                    else -> true
+                }
+            }
+
+            popupMenu.show()
+        }
     }
 
     private fun showPortraitScreenLayoutMenu() {
-        val popupMenu = PopupMenu(
-            requireContext(),
-            binding.inGameMenu.findViewById(R.id.menu_portrait_screen_layout)
-        )
+        context?.let { safeContext ->
+            val popupMenu = PopupMenu(
+                safeContext,
+                binding.inGameMenu.findViewById(R.id.menu_portrait_screen_layout)
+            )
 
-        popupMenu.menuInflater.inflate(R.menu.menu_portrait_screen_layout, popupMenu.menu)
+            popupMenu.menuInflater.inflate(R.menu.menu_portrait_screen_layout, popupMenu.menu)
 
-        val layoutOptionMenuItem = when (IntSetting.PORTRAIT_SCREEN_LAYOUT.int) {
-            PortraitScreenLayout.TOP_FULL_WIDTH.int ->
-                R.id.menu_portrait_layout_top_full
-
-            PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int ->
-                R.id.menu_portrait_layout_custom
-
-            else ->
-                R.id.menu_portrait_layout_top_full
-
-        }
-
-        popupMenu.menu.findItem(layoutOptionMenuItem).isChecked = true
-
-        popupMenu.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.menu_portrait_layout_top_full -> {
-                    screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.TOP_FULL_WIDTH.int)
-                    true
-                }
-
-                R.id.menu_portrait_layout_custom -> {
-                    Toast.makeText(
-                        requireContext(),
-                        R.string.emulation_adjust_custom_layout,
-                        Toast.LENGTH_LONG
-                    ).show()
-                    screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int)
-                    true
-                }
-
-                else -> true
+            val layoutOptionMenuItem = when (IntSetting.PORTRAIT_SCREEN_LAYOUT.int) {
+                PortraitScreenLayout.TOP_FULL_WIDTH.int -> R.id.menu_portrait_layout_top_full
+                PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int -> R.id.menu_portrait_layout_custom
+                else -> R.id.menu_portrait_layout_top_full
             }
-        }
 
-        popupMenu.show()
+            popupMenu.menu.findItem(layoutOptionMenuItem).isChecked = true
+
+            popupMenu.setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_portrait_layout_top_full -> {
+                        screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.TOP_FULL_WIDTH.int)
+                        true
+                    }
+
+                    R.id.menu_portrait_layout_custom -> {
+                        activity?.applicationContext?.let { appContext ->
+                            Toast.makeText(
+                                appContext,
+                                R.string.emulation_adjust_custom_layout,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        screenAdjustmentUtil.changePortraitOrientation(PortraitScreenLayout.CUSTOM_PORTRAIT_LAYOUT.int)
+                        true
+                    }
+
+                    else -> true
+                }
+            }
+
+            popupMenu.show()
+        }
     }
 
     private fun editControlsPlacement() {
@@ -1021,18 +1063,20 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
             enabledButtons[i] = preferences.getBoolean("buttonToggle$i", defaultValue)
         }
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.emulation_toggle_controls)
-            .setMultiChoiceItems(
-                R.array.n3dsButtons, enabledButtons
-            ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
-                editor.putBoolean("buttonToggle$indexSelected", isChecked)
-            }
-            .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
-                editor.apply()
-                binding.surfaceInputOverlay.refreshControls()
-            }
-            .show()
+        context?.let { safeContext ->
+            MaterialAlertDialogBuilder(safeContext)
+                .setTitle(R.string.emulation_toggle_controls)
+                .setMultiChoiceItems(
+                    R.array.n3dsButtons, enabledButtons
+                ) { _: DialogInterface?, indexSelected: Int, isChecked: Boolean ->
+                    editor.putBoolean("buttonToggle$indexSelected", isChecked)
+                }
+                .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
+                    editor.apply()
+                    binding.surfaceInputOverlay.refreshControls()
+                }
+                .show()
+        }
     }
 
     private fun showAdjustScaleDialog(target: String) {
@@ -1070,25 +1114,26 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         textValue.setSelection(textValue.length())
                         setControlScale(slider.value.toInt(), target)
                     }
-
                 })
             textInput.suffixText = "%"
         }
         val previousProgress = sliderBinding.slider.value.toInt()
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.emulation_control_scale)
-            .setView(sliderBinding.root)
-            .setNegativeButton(android.R.string.cancel) { _: DialogInterface?, _: Int ->
-                setControlScale(previousProgress, target)
-            }
-            .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
-                setControlScale(sliderBinding.slider.value.toInt(), target)
-            }
-            .setNeutralButton(R.string.slider_default) { _: DialogInterface?, _: Int ->
-                setControlScale(50, target)
-            }
-            .show()
+        context?.let { safeContext ->
+            MaterialAlertDialogBuilder(safeContext)
+                .setTitle(R.string.emulation_control_scale)
+                .setView(sliderBinding.root)
+                .setNegativeButton(android.R.string.cancel) { _: DialogInterface?, _: Int ->
+                    setControlScale(previousProgress, target)
+                }
+                .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
+                    setControlScale(sliderBinding.slider.value.toInt(), target)
+                }
+                .setNeutralButton(R.string.slider_default) { _: DialogInterface?, _: Int ->
+                    setControlScale(50, target)
+                }
+                .show()
+        }
     }
 
     private fun showAdjustOpacityDialog() {
@@ -1115,9 +1160,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
             })
 
-
             slider.addOnChangeListener { _: Slider, value: Float, _: Boolean ->
-
                 if (textValue.text.toString() != slider.value.toInt().toString()) {
                     textValue.setText(String.format(Locale.ROOT, "%d", slider.value.toInt()))
                     textValue.setSelection(textValue.length())
@@ -1129,19 +1172,21 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
         val previousProgress = sliderBinding.slider.value.toInt()
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.emulation_control_opacity)
-            .setView(sliderBinding.root)
-            .setNegativeButton(android.R.string.cancel) { _: DialogInterface?, _: Int ->
-                setControlOpacity(previousProgress)
-            }
-            .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
-                setControlOpacity(sliderBinding.slider.value.toInt())
-            }
-            .setNeutralButton(R.string.slider_default) { _: DialogInterface?, _: Int ->
-                setControlOpacity(50)
-            }
-            .show()
+        context?.let { safeContext ->
+            MaterialAlertDialogBuilder(safeContext)
+                .setTitle(R.string.emulation_control_opacity)
+                .setView(sliderBinding.root)
+                .setNegativeButton(android.R.string.cancel) { _: DialogInterface?, _: Int ->
+                    setControlOpacity(previousProgress)
+                }
+                .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
+                    setControlOpacity(sliderBinding.slider.value.toInt())
+                }
+                .setNeutralButton(R.string.slider_default) { _: DialogInterface?, _: Int ->
+                    setControlOpacity(50)
+                }
+                .show()
+        }
     }
 
     private fun setControlScale(scale: Int, target: String) {
@@ -1186,13 +1231,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun showResetOverlayDialog() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.emulation_touch_overlay_reset))
-            .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
-                resetInputOverlay()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        context?.let { safeContext ->
+            MaterialAlertDialogBuilder(safeContext)
+                .setTitle(getString(R.string.emulation_touch_overlay_reset))
+                .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
+                    resetInputOverlay()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
     }
 
     private fun resetInputOverlay() {
@@ -1214,8 +1261,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         binding.surfaceInputOverlay.resetButtonPlacement()
     }
 
-    fun updateshowPerfStatsOvelrayOverlay() {
-        if (EmulationMenuSettings.showPerfStatsOvelray) {
+    private fun updateShowPerfStatsOverlay() {
+        if (EmulationMenuSettings.showPerfStatsOverlay) {
             val FPS = 1
             val SPEED = 3
             perfStatsUpdater = Runnable {
@@ -1262,13 +1309,15 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                         sb.append(String.format("%.1f°C/%.1f°F", batteryTemp, tempF))
                     }
 
-                    if (BooleanSetting.OVERLAY_BACKGROUND.boolean) {
+                    if (isAdded && BooleanSetting.OVERLAY_BACKGROUND.boolean) {
                         binding.showPerfOverlayText.setBackgroundResource(R.color.borked3ds_transparent_black_50)
                     } else {
                         binding.showPerfOverlayText.setBackgroundResource(0)
                     }
 
-                    binding.showPerfOverlayText.text = sb.toString()
+                    if (isAdded) {
+                        binding.showPerfOverlayText.text = sb.toString()
+                    }
                 }
                 perfStatsUpdateHandler.postDelayed(perfStatsUpdater!!, 3000)
             }
@@ -1319,36 +1368,35 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     }
 
     private fun getBatteryTemperature(): Float {
-        try {
+        return try {
+            val context = context ?: return 0f
             val batteryIntent =
-                requireContext().registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             // Temperature in tenths of a degree Celsius
             val temperature = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
             // Convert to degrees Celsius
-            return temperature / 10.0f
+            temperature / 10.0f
         } catch (e: Exception) {
             Log.error("[EmulationFragment] Failed to get battery temperature: ${e.message}")
-            return 0.0f
+            0.0f
         }
     }
-
 
     private fun celsiusToFahrenheit(celsius: Float): Float {
         return (celsius * 9 / 5) + 32
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        // We purposely don't do anything here.
-        // All work is done in surfaceChanged, which we are guaranteed to get even for surface creation.
+        emulationViewModel.onSurfaceChanged(holder.surface)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        Log.debug("[EmulationFragment] Surface changed. Resolution: " + width + "x" + height)
-        emulationState.newSurface(holder.surface)
+        Log.debug("[EmulationFragment] Surface changed. Resolution: $width x $height")
+        emulationViewModel.onSurfaceChanged(holder.surface)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
-        emulationState.clearSurface()
+        emulationState?.clearSurface()
     }
 
     override fun doFrame(frameTimeNanos: Long) {
@@ -1356,149 +1404,11 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         NativeLibrary.doFrame()
     }
 
-    private class EmulationState(private val gamePath: String) {
-        private var state: State
-        private var surface: Surface? = null
-
-        init {
-            // Starting state is stopped.
-            state = State.STOPPED
-        }
-
-        @get:Synchronized
-        val isStopped: Boolean
-            get() = state == State.STOPPED
-
-        @get:Synchronized
-        val isPaused: Boolean
-            // Getters for the current state
-            get() = state == State.PAUSED
-
-        @get:Synchronized
-        val isRunning: Boolean
-            get() = state == State.RUNNING
-
-        @Synchronized
-        fun stop() {
-            if (state != State.STOPPED) {
-                Log.debug("[EmulationFragment] Stopping emulation.")
-                state = State.STOPPED
-                NativeLibrary.stopEmulation()
-            } else {
-                Log.warning("[EmulationFragment] Stop called while already stopped.")
-            }
-        }
-
-        // State changing methods
-        @Synchronized
-        fun pause() {
-            if (state != State.PAUSED) {
-                state = State.PAUSED
-                Log.debug("[EmulationFragment] Pausing emulation.")
-
-                // Release the surface before pausing, since emulation has to be running for that.
-                NativeLibrary.surfaceDestroyed()
-                NativeLibrary.pauseEmulation()
-            } else {
-                Log.warning("[EmulationFragment] Pause called while already paused.")
-            }
-        }
-
-        @Synchronized
-        fun unpause() {
-            if (state != State.RUNNING) {
-                state = State.RUNNING
-                Log.debug("[EmulationFragment] Unpausing emulation.")
-
-                NativeLibrary.unPauseEmulation()
-            } else {
-                Log.warning("[EmulationFragment] Unpause called while already running.")
-            }
-        }
-
-        @Synchronized
-        fun run(isActivityRecreated: Boolean) {
-            if (isActivityRecreated) {
-                if (NativeLibrary.isRunning()) {
-                    state = State.PAUSED
-                }
-            } else {
-                Log.debug("[EmulationFragment] activity resumed or fresh start")
-            }
-
-            // If the surface is set, run now. Otherwise, wait for it to get set.
-            if (surface != null) {
-                runWithValidSurface()
-            }
-        }
-
-        // Surface callbacks
-        @Synchronized
-        fun newSurface(surface: Surface?) {
-            this.surface = surface
-            if (this.surface != null) {
-                runWithValidSurface()
-            }
-        }
-
-        @Synchronized
-        fun clearSurface() {
-            if (surface == null) {
-                Log.warning("[EmulationFragment] clearSurface called, but surface already null.")
-            } else {
-                surface = null
-                Log.debug("[EmulationFragment] Surface destroyed.")
-                when (state) {
-                    State.RUNNING -> {
-                        NativeLibrary.surfaceDestroyed()
-                        state = State.PAUSED
-                    }
-
-                    State.PAUSED -> {
-                        Log.warning("[EmulationFragment] Surface cleared while emulation paused.")
-                    }
-
-                    else -> {
-                        Log.warning("[EmulationFragment] Surface cleared while emulation stopped.")
-                    }
-                }
-            }
-        }
-
-        private fun runWithValidSurface() {
-            NativeLibrary.surfaceChanged(surface!!)
-            when (state) {
-                State.STOPPED -> {
-                    Thread({
-                        Log.debug("[EmulationFragment] Starting emulation thread.")
-                        NativeLibrary.run(gamePath)
-                    }, "NativeEmulation").start()
-                }
-
-                State.PAUSED -> {
-                    Log.debug("[EmulationFragment] Resuming emulation.")
-                    NativeLibrary.unPauseEmulation()
-                }
-
-                else -> {
-                    Log.debug("[EmulationFragment] Bug, run called while already running.")
-                }
-            }
-            state = State.RUNNING
-        }
-
-        private enum class State {
-            STOPPED,
-            RUNNING,
-            PAUSED
-        }
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         perfStatsUpdater?.let {
             // Cleanup perfStatsUpdater
-            Choreographer.getInstance().removeFrameCallback(this)
+            perfStatsUpdateHandler.removeCallbacks(it)
         }
         _binding = null
     }

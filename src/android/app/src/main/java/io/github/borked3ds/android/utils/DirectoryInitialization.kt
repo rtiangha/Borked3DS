@@ -27,8 +27,9 @@ object DirectoryInitialization {
     @Volatile
     private var directoryState: DirectoryInitializationState? = null
     var userPath: String? = null
-    val internalUserPath
-        get() = Borked3DSApplication.appContext.getExternalFilesDir(null)!!.canonicalPath
+    val internalUserPath: String
+        get() = Borked3DSApplication.appContext.getExternalFilesDir(null)?.canonicalPath
+            ?: throw IllegalStateException("External files directory is not available")
     private val isBorked3DSDirectoryInitializationRunning = AtomicBoolean(false)
 
     val context: Context get() = Borked3DSApplication.appContext
@@ -61,7 +62,7 @@ object DirectoryInitialization {
 
     private fun deleteDirectoryRecursively(file: File) {
         if (file.isDirectory) {
-            for (child in file.listFiles()!!) {
+            file.listFiles()?.forEach { child ->
                 deleteDirectoryRecursively(child)
             }
         }
@@ -126,7 +127,7 @@ object DirectoryInitialization {
         Log.debug("[DirectoryInitialization] Copying Folder $assetFolder to $outputFolder")
         try {
             var createdFolder = false
-            for (file in context.assets.list(assetFolder)!!) {
+            context.assets.list(assetFolder)?.forEach { file ->
                 if (!createdFolder) {
                     outputFolder.mkdir()
                     createdFolder = true

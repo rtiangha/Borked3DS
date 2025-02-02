@@ -12,8 +12,10 @@ import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.model.view.SwitchSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class SwitchSettingViewHolder(val binding: ListItemSettingSwitchBinding, adapter: SettingsAdapter) :
-    SettingViewHolder(binding.root, adapter) {
+class SwitchSettingViewHolder(
+    val binding: ListItemSettingSwitchBinding,
+    adapter: SettingsAdapter
+) : SettingViewHolder(binding.root, adapter) {
 
     private lateinit var setting: SwitchSetting
 

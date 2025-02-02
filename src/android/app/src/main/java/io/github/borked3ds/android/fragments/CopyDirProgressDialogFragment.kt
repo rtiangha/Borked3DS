@@ -80,7 +80,7 @@ class CopyDirProgressDialog : DialogFragment() {
                         if (it) {
                             homeViewModel.setUserDir(
                                 requireActivity(),
-                                PermissionsHandler.borked3dsDirectory.path!!
+                                PermissionsHandler.borked3dsDirectory?.path ?: return@collect
                             )
                             homeViewModel.copyInProgress = false
                             homeViewModel.setPickingUserDir(false)
