@@ -8,7 +8,10 @@ package io.github.borked3ds.android.utils
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
+import android.view.View
 import androidx.annotation.ColorInt
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.WindowCompat
@@ -63,41 +66,103 @@ object ThemeUtil {
     }
 
     fun setThemeMode(activity: AppCompatActivity) {
-        val themeMode = PreferenceManager.getDefaultSharedPreferences(activity.applicationContext)
-            .getInt(Settings.PREF_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        val themeMode = getThemeMode(activity)
         activity.delegate.localNightMode = themeMode
-        val windowController = WindowCompat.getInsetsController(
-            activity.window,
-            activity.window.decorView
-        )
-        when (themeMode) {
-            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> when (isNightMode(activity)) {
-                false -> setLightModeSystemBars(windowController)
-                true -> setDarkModeSystemBars(windowController)
-            }
 
-            AppCompatDelegate.MODE_NIGHT_NO -> setLightModeSystemBars(windowController)
-            AppCompatDelegate.MODE_NIGHT_YES -> setDarkModeSystemBars(windowController)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            handleModernSystemBars(activity, themeMode)
+        } else {
+            handleLegacySystemBars(activity, themeMode)
         }
+    }
+
+    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+    private fun handleModernSystemBars(activity: AppCompatActivity, themeMode: Int) {
+        try {
+            // Use reflection to avoid direct class references on Android 9
+            val window = activity.window
+            val decorView = window.decorView
+            
+            // Equivalent to WindowCompat.getInsetsController()
+            val getInsetsControllerMethod = Window::class.java
+                .getDeclaredMethod("getInsetsController")
+            val controller = getInsetsControllerMethod.invoke(window)
+
+            // Equivalent to controller.isAppearanceLightStatusBars = true
+            val lightStatusBarsMethod = controller!!.javaClass
+                .getMethod("setSystemBarsAppearance", Int::class.java, Int::class.java)
+            
+            // Equivalent to controller.isAppearanceLightNavigationBars = true
+            val lightNavBarsMethod = controller.javaClass
+                .getMethod("setSystemBarsAppearance", Int::class.java, Int::class.java)
+
+            when (themeMode) {
+                AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> {
+                    if (isNightMode(activity)) {
+                        lightStatusBarsMethod.invoke(controller, 0, 0x00000008) // Light status bars OFF
+                        lightNavBarsMethod.invoke(controller, 0, 0x00000010) // Light nav bars OFF
+                    } else {
+                        lightStatusBarsMethod.invoke(controller, 0x00000008, 0x00000008)
+                        lightNavBarsMethod.invoke(controller, 0x00000010, 0x00000010)
+                    }
+                }
+                AppCompatDelegate.MODE_NIGHT_NO -> {
+                    lightStatusBarsMethod.invoke(controller, 0x00000008, 0x00000008)
+                    lightNavBarsMethod.invoke(controller, 0x00000010, 0x00000010)
+                }
+                AppCompatDelegate.MODE_NIGHT_YES -> {
+                    lightStatusBarsMethod.invoke(controller, 0, 0x00000008)
+                    lightNavBarsMethod.invoke(controller, 0, 0x00000010)
+                }
+            }
+        } catch (e: Exception) {
+            // Fallback to legacy method if reflection fails
+            handleLegacySystemBars(activity, themeMode)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun handleLegacySystemBars(activity: AppCompatActivity, themeMode: Int) {
+        val nightMode = when (themeMode) {
+            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> isNightMode(activity)
+            AppCompatDelegate.MODE_NIGHT_YES -> true
+            else -> false
+        }
+
+        val decorView = activity.window.decorView
+        var flags = decorView.systemUiVisibility
+
+        // Status bar (available since API 23)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags = if (nightMode) {
+                flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            } else {
+                flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            }
+        }
+
+        // Navigation bar (available since API 26)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            flags = if (nightMode) {
+                flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+            } else {
+                flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            }
+        }
+
+        decorView.systemUiVisibility = flags
+    }
+
+    private fun getThemeMode(activity: AppCompatActivity): Int {
+        return PreferenceManager.getDefaultSharedPreferences(activity.applicationContext)
+            .getInt(Settings.PREF_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
     }
 
     private fun isNightMode(activity: AppCompatActivity): Boolean {
-        return when (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
-            Configuration.UI_MODE_NIGHT_NO -> false
-            Configuration.UI_MODE_NIGHT_YES -> true
-            else -> false
-        }
+        return (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
     }
-
-    private fun setLightModeSystemBars(windowController: WindowInsetsControllerCompat) {
-        windowController.isAppearanceLightStatusBars = true
-        windowController.isAppearanceLightNavigationBars = true
-    }
-
-    private fun setDarkModeSystemBars(windowController: WindowInsetsControllerCompat) {
-        windowController.isAppearanceLightStatusBars = false
-        windowController.isAppearanceLightNavigationBars = false
-    }
+}
 
     fun setCorrectTheme(activity: AppCompatActivity) {
         val currentTheme = (activity as ThemeProvider).themeId
@@ -132,5 +197,34 @@ object ThemeUtil {
             }
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.R)
+private object Api30PlusSystemBars {
+    fun configure(activity: AppCompatActivity, themeMode: Int) {
+        val windowController = WindowCompat.getInsetsController(
+            activity.window,
+            activity.window.decorView
+        )
+        when (themeMode) {
+            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM -> {
+                if (ThemeUtil.isNightMode(activity)) {
+                    windowController.isAppearanceLightStatusBars = false
+                    windowController.isAppearanceLightNavigationBars = false
+                } else {
+                    windowController.isAppearanceLightStatusBars = true
+                    windowController.isAppearanceLightNavigationBars = true
+                }
+            }
+            AppCompatDelegate.MODE_NIGHT_NO -> {
+                windowController.isAppearanceLightStatusBars = true
+                windowController.isAppearanceLightNavigationBars = true
+            }
+            AppCompatDelegate.MODE_NIGHT_YES -> {
+                windowController.isAppearanceLightStatusBars = false
+                windowController.isAppearanceLightNavigationBars = false
+            }
+        }
     }
 }
