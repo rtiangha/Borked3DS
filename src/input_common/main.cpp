@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <thread>
+#include <SDL3/SDL.h>
 #include "common/param_package.h"
 #include "input_common/analog_from_button.h"
 #ifdef ENABLE_GCADAPTER
@@ -20,7 +21,6 @@
 #include "input_common/udp/udp.h"
 
 namespace InputCommon {
-
 #ifdef ENABLE_GCADAPTER
 std::shared_ptr<GCButtonFactory> gcbuttons;
 std::shared_ptr<GCAnalogFactory> gcanalog;
