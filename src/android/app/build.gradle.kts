@@ -31,7 +31,7 @@ android {
     namespace = "io.github.borked3ds.android"
 
     compileSdk = 35
-    ndkVersion = "27.2.12479018"
+    ndkVersion = "28.0.13004108"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_23
