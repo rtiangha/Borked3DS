@@ -190,15 +190,15 @@ else() # use older teakra for arm builds for now
     add_subdirectory(teakra-old teakra EXCLUDE_FROM_ALL)
 endif()
 
-# SDL2
-if (ENABLE_SDL2 AND NOT USE_SYSTEM_SDL2)
+# SDL3
+if (ENABLE_SDL3 AND NOT USE_SYSTEM_SDL3)
     if (MSVC)
         set (SDL_LIBC ON)
     endif()
     if (APPLE)
         enable_language(OBJC)
     endif()
-    add_subdirectory(sdl2)
+    add_subdirectory(sdl3)
 endif()
 
 # libusb

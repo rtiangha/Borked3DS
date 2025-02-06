@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <SDL3/SDL_video.h>
-#include "borked3ds/emu_window/emu_window_sdl2.h"
+#include "borked3ds/emu_window/emu_window_sdl3.h"
 
 struct SDL_Window;
 
@@ -15,10 +15,10 @@ namespace Core {
 class System;
 }
 
-class EmuWindow_SDL2_GL : public EmuWindow_SDL2 {
+class EmuWindow_SDL3_GL : public EmuWindow_SDL3 {
 public:
-    explicit EmuWindow_SDL2_GL(Core::System& system_, bool fullscreen, bool is_secondary);
-    ~EmuWindow_SDL2_GL();
+    explicit EmuWindow_SDL3_GL(Core::System& system_, bool fullscreen, bool is_secondary);
+    ~EmuWindow_SDL3_GL();
 
     void Present() override;
     std::unique_ptr<Frontend::GraphicsContext> CreateSharedContext() const override;

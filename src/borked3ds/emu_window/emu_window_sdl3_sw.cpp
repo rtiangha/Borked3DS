@@ -9,7 +9,7 @@
 #define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_rect.h>
-#include "borked3ds/emu_window/emu_window_sdl2_sw.h"
+#include "borked3ds/emu_window/emu_window_sdl3_sw.h"
 #include "common/scm_rev.h"
 #include "common/settings.h"
 #include "core/core.h"
@@ -19,8 +19,8 @@
 
 class DummyContext : public Frontend::GraphicsContext {};
 
-EmuWindow_SDL2_SW::EmuWindow_SDL2_SW(Core::System& system_, bool fullscreen, bool is_secondary)
-    : EmuWindow_SDL2{system_, is_secondary}, system{system_} {
+EmuWindow_SDL3_SW::EmuWindow_SDL3_SW(Core::System& system_, bool fullscreen, bool is_secondary)
+    : EmuWindow_SDL3{system_, is_secondary}, system{system_} {
     std::string window_title = fmt::format("Borked3DS {} | {}-{}", Common::g_build_fullname,
                                            Common::g_scm_branch, Common::g_scm_desc);
     render_window = SDL_CreateWindow(window_title.c_str(), Core::kScreenTopWidth,
@@ -52,16 +52,16 @@ EmuWindow_SDL2_SW::EmuWindow_SDL2_SW(Core::System& system_, bool fullscreen, boo
     SDL_PumpEvents();
 }
 
-EmuWindow_SDL2_SW::~EmuWindow_SDL2_SW() {
+EmuWindow_SDL3_SW::~EmuWindow_SDL3_SW() {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(render_window);
 }
 
-std::unique_ptr<Frontend::GraphicsContext> EmuWindow_SDL2_SW::CreateSharedContext() const {
+std::unique_ptr<Frontend::GraphicsContext> EmuWindow_SDL3_SW::CreateSharedContext() const {
     return std::make_unique<DummyContext>();
 }
 
-void EmuWindow_SDL2_SW::Present() {
+void EmuWindow_SDL3_SW::Present() {
     const auto layout{Layout::DefaultFrameLayout(
         Core::kScreenTopWidth, Core::kScreenTopHeight + Core::kScreenBottomHeight, false, false)};
 
@@ -93,7 +93,7 @@ void EmuWindow_SDL2_SW::Present() {
     }
 }
 
-SDL_Surface* EmuWindow_SDL2_SW::LoadFramebuffer(VideoCore::ScreenId screen_id) {
+SDL_Surface* EmuWindow_SDL3_SW::LoadFramebuffer(VideoCore::ScreenId screen_id) {
     const auto& renderer = static_cast<SwRenderer::RendererSoftware&>(system.GPU().Renderer());
     const auto& info = renderer.Screen(screen_id);
     const int width = static_cast<int>(info.width);

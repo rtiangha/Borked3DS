@@ -16,7 +16,7 @@ if(COMMAND CMAKE_POLICY)
     if(POLICY CMP0075)
         cmake_policy(SET CMP0075 NEW)
     endif(POLICY CMP0075)
-    # Needed to compile sdl2 2.30.5+ on MSVC
+    # Needed to compile sdl3 2.30.5+ on MSVC
     if(POLICY CMP0077)
         set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
     endif(POLICY CMP0077)
@@ -139,9 +139,9 @@ else()
     set(DEFAULT_ENABLE_LTO OFF)
 endif()
 
-option(ENABLE_SDL2 "Enable using SDL2" ON)
-CMAKE_DEPENDENT_OPTION(ENABLE_SDL2_FRONTEND "Enable the SDL2 frontend" ON "ENABLE_SDL2;NOT ANDROID AND NOT IOS" OFF)
-option(USE_SYSTEM_SDL2 "Use the system SDL2 lib (instead of the bundled one)" OFF)
+option(ENABLE_SDL3 "Enable using SDL3" ON)
+CMAKE_DEPENDENT_OPTION(ENABLE_SDL3_FRONTEND "Enable the SDL3 frontend" ON "ENABLE_SDL3;NOT ANDROID AND NOT IOS" OFF)
+option(USE_SYSTEM_SDL3 "Use the system SDL3 lib (instead of the bundled one)" OFF)
 
 # Set bundled qt as dependent options.
 option(ENABLE_QT "Enable the Qt frontend" ON)
@@ -502,13 +502,13 @@ if (NOT USE_SYSTEM_BOOST)
     add_library(Boost::iostreams ALIAS boost_iostreams)
 endif()
 
-# SDL2
-if (ENABLE_SDL2 AND USE_SYSTEM_SDL2)
-    find_package(SDL2 REQUIRED)
-    add_library(SDL2 INTERFACE)
-    target_link_libraries(SDL2 INTERFACE "${SDL2_LIBRARY}")
-    target_include_directories(SDL2 INTERFACE "${SDL2_INCLUDE_DIR}")
-    add_library(SDL2::SDL2 ALIAS SDL2)
+# SDL3
+if (ENABLE_SDL3 AND USE_SYSTEM_SDL3)
+    find_package(SDL3 REQUIRED)
+    add_library(SDL3 INTERFACE)
+    target_link_libraries(SDL3 INTERFACE "${SDL3_LIBRARY}")
+    target_include_directories(SDL3 INTERFACE "${SDL3_INCLUDE_DIR}")
+    add_library(SDL3::SDL3 ALIAS SDL3)
 endif()
 
 if (ENABLE_LIBUSB AND USE_SYSTEM_LIBUSB)
@@ -538,7 +538,7 @@ endif()
 # Not supported for mobile platforms as distributables are built differently.
 if (NOT ANDROID AND NOT IOS)
     include(BundleTarget)
-    if (ENABLE_SDL2_FRONTEND)
+    if (ENABLE_SDL3_FRONTEND)
         bundle_target(borked3ds)
     endif()
     if (ENABLE_QT)
@@ -566,7 +566,7 @@ if(ENABLE_QT AND UNIX AND NOT APPLE)
 endif()
 
 if(UNIX)
-    if(ENABLE_SDL2)
+    if(ENABLE_SDL3)
         install(FILES "${PROJECT_SOURCE_DIR}/dist/borked3ds.6"
                 DESTINATION "${CMAKE_INSTALL_PREFIX}/share/man/man6")
     endif()

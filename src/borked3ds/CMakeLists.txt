@@ -6,8 +6,8 @@ add_executable(borked3ds
     config.cpp
     config.h
     default_ini.h
-    emu_window/emu_window_sdl2.cpp
-    emu_window/emu_window_sdl2.h
+    emu_window/emu_window_sdl3.cpp
+    emu_window/emu_window_sdl3.h
     precompiled_headers.h
     resource.h
 )
@@ -16,20 +16,20 @@ set_target_properties(borked3ds PROPERTIES OUTPUT_NAME "borked3ds-cli")
 
 if (ENABLE_SOFTWARE_RENDERER)
     target_sources(borked3ds PRIVATE
-        emu_window/emu_window_sdl2_sw.cpp
-        emu_window/emu_window_sdl2_sw.h
+        emu_window/emu_window_sdl3_sw.cpp
+        emu_window/emu_window_sdl3_sw.h
     )
 endif()
 if (ENABLE_OPENGL)
     target_sources(borked3ds PRIVATE
-        emu_window/emu_window_sdl2_gl.cpp
-        emu_window/emu_window_sdl2_gl.h
+        emu_window/emu_window_sdl3_gl.cpp
+        emu_window/emu_window_sdl3_gl.h
     )
 endif()
 if (ENABLE_VULKAN)
     target_sources(borked3ds PRIVATE
-        emu_window/emu_window_sdl2_vk.cpp
-        emu_window/emu_window_sdl2_vk.h
+        emu_window/emu_window_sdl3_vk.cpp
+        emu_window/emu_window_sdl3_vk.h
     )
 endif()
 

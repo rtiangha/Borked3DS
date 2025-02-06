@@ -79,7 +79,7 @@ android {
             cmake {
                 arguments(
                     "-DENABLE_QT=0", // Don't use QT
-                    "-DENABLE_SDL2=0", // Don't use SDL
+                    "-DENABLE_SDL3=0", // Don't use SDL
                     "-DCMAKE_CXX_FLAGS=-O2",
                     "-DCMAKE_C_FLAGS=-O2",
                     "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",    // Enable Thin LTO

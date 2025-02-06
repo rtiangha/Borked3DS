@@ -8,7 +8,7 @@
 #include <string>
 #define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
-#include "borked3ds/emu_window/emu_window_sdl2.h"
+#include "borked3ds/emu_window/emu_window_sdl3.h"
 #include "common/logging/log.h"
 #include "common/scm_rev.h"
 #include "core/core.h"
@@ -17,12 +17,12 @@
 #include "input_common/motion_emu.h"
 #include "network/network.h"
 
-void EmuWindow_SDL2::OnMouseMotion(s32 x, s32 y) {
+void EmuWindow_SDL3::OnMouseMotion(s32 x, s32 y) {
     TouchMoved((unsigned)std::max(x, 0), (unsigned)std::max(y, 0));
     InputCommon::GetMotionEmu()->Tilt(x, y);
 }
 
-void EmuWindow_SDL2::OnMouseButton(u32 button, u8 state, s32 x, s32 y) {
+void EmuWindow_SDL3::OnMouseButton(u32 button, u8 state, s32 x, s32 y) {
     if (button == SDL_BUTTON_LEFT) {
         if (state) { // SDL_EVENT_PRESSED is 1 in SDL3
             TouchPressed((unsigned)std::max(x, 0), (unsigned)std::max(y, 0));
@@ -38,7 +38,7 @@ void EmuWindow_SDL2::OnMouseButton(u32 button, u8 state, s32 x, s32 y) {
     }
 }
 
-std::pair<unsigned, unsigned> EmuWindow_SDL2::TouchToPixelPos(float touch_x, float touch_y) const {
+std::pair<unsigned, unsigned> EmuWindow_SDL3::TouchToPixelPos(float touch_x, float touch_y) const {
     int w, h;
     SDL_GetWindowSize(render_window, &w, &h);
 
@@ -49,21 +49,21 @@ std::pair<unsigned, unsigned> EmuWindow_SDL2::TouchToPixelPos(float touch_x, flo
             static_cast<unsigned>(std::max(std::round(touch_y), 0.0f))};
 }
 
-void EmuWindow_SDL2::OnFingerDown(float x, float y) {
+void EmuWindow_SDL3::OnFingerDown(float x, float y) {
     const auto [px, py] = TouchToPixelPos(x, y);
     TouchPressed(px, py);
 }
 
-void EmuWindow_SDL2::OnFingerMotion(float x, float y) {
+void EmuWindow_SDL3::OnFingerMotion(float x, float y) {
     const auto [px, py] = TouchToPixelPos(x, y);
     TouchMoved(px, py);
 }
 
-void EmuWindow_SDL2::OnFingerUp() {
+void EmuWindow_SDL3::OnFingerUp() {
     TouchReleased();
 }
 
-void EmuWindow_SDL2::OnKeyEvent(int key, u8 state) {
+void EmuWindow_SDL3::OnKeyEvent(int key, u8 state) {
     if (state) {
         InputCommon::GetKeyboard()->PressKey(key);
     } else {
@@ -71,21 +71,21 @@ void EmuWindow_SDL2::OnKeyEvent(int key, u8 state) {
     }
 }
 
-bool EmuWindow_SDL2::IsOpen() const {
+bool EmuWindow_SDL3::IsOpen() const {
     return is_open;
 }
 
-void EmuWindow_SDL2::RequestClose() {
+void EmuWindow_SDL3::RequestClose() {
     is_open = false;
 }
 
-void EmuWindow_SDL2::OnResize() {
+void EmuWindow_SDL3::OnResize() {
     int width, height;
     SDL_GetWindowSizeInPixels(render_window, &width, &height);
     UpdateCurrentFramebufferLayout(width, height);
 }
 
-void EmuWindow_SDL2::Fullscreen() {
+void EmuWindow_SDL3::Fullscreen() {
     // Attempt borderless fullscreen first
     if (SDL_SetWindowFullscreenMode(render_window, nullptr) &&
         SDL_SetWindowFullscreen(render_window, true)) {
@@ -98,14 +98,14 @@ void EmuWindow_SDL2::Fullscreen() {
     SDL_MaximizeWindow(render_window);
 }
 
-EmuWindow_SDL2::EmuWindow_SDL2(Core::System& system_, bool is_secondary)
+EmuWindow_SDL3::EmuWindow_SDL3(Core::System& system_, bool is_secondary)
     : EmuWindow(is_secondary), system(system_) {}
 
-EmuWindow_SDL2::~EmuWindow_SDL2() {
+EmuWindow_SDL3::~EmuWindow_SDL3() {
     SDL_Quit();
 }
 
-void EmuWindow_SDL2::InitializeSDL2() {
+void EmuWindow_SDL3::InitializeSDL3() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) != 0) {
         LOG_CRITICAL(Frontend, "Failed to initialize SDL: {}! Exiting...", SDL_GetError());
         exit(1);
@@ -115,7 +115,7 @@ void EmuWindow_SDL2::InitializeSDL2() {
     Network::Init();
 }
 
-u32 EmuWindow_SDL2::GetEventWindowId(const SDL_Event& event) const {
+u32 EmuWindow_SDL3::GetEventWindowId(const SDL_Event& event) const {
     switch (event.type) {
     case SDL_EVENT_WINDOW_RESIZED:
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
@@ -152,7 +152,7 @@ u32 EmuWindow_SDL2::GetEventWindowId(const SDL_Event& event) const {
     }
 }
 
-void EmuWindow_SDL2::PollEvents() {
+void EmuWindow_SDL3::PollEvents() {
     SDL_Event event;
     std::vector<SDL_Event> other_window_events;
 
@@ -216,11 +216,11 @@ void EmuWindow_SDL2::PollEvents() {
     }
 }
 
-void EmuWindow_SDL2::OnMinimalClientAreaChangeRequest(std::pair<u32, u32> minimal_size) {
+void EmuWindow_SDL3::OnMinimalClientAreaChangeRequest(std::pair<u32, u32> minimal_size) {
     SDL_SetWindowMinimumSize(render_window, minimal_size.first, minimal_size.second);
 }
 
-void EmuWindow_SDL2::UpdateFramerateCounter() {
+void EmuWindow_SDL3::UpdateFramerateCounter() {
     const u32 current_time = static_cast<u32>(SDL_GetTicks());
     if (current_time > last_time + 2000) {
         const auto results = system.GetAndResetPerfStats();

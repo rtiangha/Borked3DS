@@ -18,13 +18,13 @@ namespace Core {
 class System;
 }
 
-class EmuWindow_SDL2 : public Frontend::EmuWindow {
+class EmuWindow_SDL3 : public Frontend::EmuWindow {
 public:
-    explicit EmuWindow_SDL2(Core::System& system_, bool is_secondary);
-    ~EmuWindow_SDL2();
+    explicit EmuWindow_SDL3(Core::System& system_, bool is_secondary);
+    ~EmuWindow_SDL3();
     virtual void Present() {}
 
-    static void InitializeSDL2();
+    static void InitializeSDL3();
 
     void PollEvents() override;
 

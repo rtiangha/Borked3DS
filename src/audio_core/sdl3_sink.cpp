@@ -7,13 +7,13 @@
 #include <vector>
 #include <SDL3/SDL.h>
 #include "audio_core/audio_types.h"
-#include "audio_core/sdl2_sink.h"
+#include "audio_core/sdl3_sink.h"
 #include "common/assert.h"
 #include "common/logging/log.h"
 
 namespace AudioCore {
 
-struct SDL2Sink::Impl {
+struct SDL3Sink::Impl {
     SDL_AudioStream* stream = nullptr;
     unsigned int sample_rate = 0;
     std::function<void(s16*, std::size_t)> cb;
@@ -22,7 +22,7 @@ struct SDL2Sink::Impl {
                          int total_amount);
 };
 
-SDL2Sink::SDL2Sink(std::string device_name) : impl(std::make_unique<Impl>()) {
+SDL3Sink::SDL3Sink(std::string device_name) : impl(std::make_unique<Impl>()) {
     if (SDL_Init(SDL_INIT_AUDIO) != 0) {
         LOG_CRITICAL(Audio_Sink, "SDL_Init(SDL_INIT_AUDIO) failed with: {}", SDL_GetError());
         return;
@@ -67,22 +67,22 @@ SDL2Sink::SDL2Sink(std::string device_name) : impl(std::make_unique<Impl>()) {
     }
 }
 
-SDL2Sink::~SDL2Sink() {
+SDL3Sink::~SDL3Sink() {
     if (impl->stream) {
         SDL_DestroyAudioStream(impl->stream);
     }
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
-unsigned int SDL2Sink::GetNativeSampleRate() const {
+unsigned int SDL3Sink::GetNativeSampleRate() const {
     return impl->sample_rate;
 }
 
-void SDL2Sink::SetCallback(std::function<void(s16*, std::size_t)> cb) {
+void SDL3Sink::SetCallback(std::function<void(s16*, std::size_t)> cb) {
     impl->cb = cb;
 }
 
-void SDL2Sink::Impl::Callback(void* userdata, SDL_AudioStream* stream, int additional_amount,
+void SDL3Sink::Impl::Callback(void* userdata, SDL_AudioStream* stream, int additional_amount,
                               int total_amount) {
     Impl* impl = static_cast<Impl*>(userdata);
     if (!impl || !impl->cb)
@@ -101,7 +101,7 @@ void SDL2Sink::Impl::Callback(void* userdata, SDL_AudioStream* stream, int addit
     }
 }
 
-std::vector<std::string> ListSDL2SinkDevices() {
+std::vector<std::string> ListSDL3SinkDevices() {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
         LOG_CRITICAL(Audio_Sink, "SDL_InitSubSystem failed with: {}", SDL_GetError());
         return {};

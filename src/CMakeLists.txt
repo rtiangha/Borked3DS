@@ -184,7 +184,7 @@ if (ENABLE_TESTS)
     add_subdirectory(tests)
 endif()
 
-if (ENABLE_SDL2 AND ENABLE_SDL2_FRONTEND)
+if (ENABLE_SDL3 AND ENABLE_SDL3_FRONTEND)
     add_subdirectory(borked3ds)
 endif()
 

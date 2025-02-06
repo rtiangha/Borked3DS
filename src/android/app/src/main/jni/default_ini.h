@@ -7,7 +7,7 @@
 
 namespace DefaultINI {
 
-const char* sdl2_config_file = R"(
+const char* sdl3_config_file = R"(
 [Controls]
 # The input devices and parameters for each 3DS native input
 # It should be in the format of "engine:[engine_name],[param1]:[value1],[param2]:[value2]..."
@@ -403,7 +403,7 @@ enable_realtime_audio =
 volume =
 
 # Which audio output type to use.
-# 0 (default): Auto-select, 1: No audio output, 2: Cubeb (if available), 3: OpenAL (if available), 4: SDL2 (NOT available in Android), 5: Oboe (if available)
+# 0 (default): Auto-select, 1: No audio output, 2: Cubeb (if available), 3: OpenAL (if available), 4: SDL3 (NOT available in Android), 5: Oboe (if available)
 output_type =
 
 # Which audio output device to use.

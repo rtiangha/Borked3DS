@@ -299,9 +299,9 @@ elseif(WIN32)
     endif()
 endif()
 
-if(ENABLE_SDL2)
+if(ENABLE_SDL3)
     target_link_libraries(borked3ds-qt PRIVATE SDL3::SDL3)
-    target_compile_definitions(borked3ds-qt PRIVATE HAVE_SDL2)
+    target_compile_definitions(borked3ds-qt PRIVATE HAVE_SDL3)
 endif()
 
 if (MSVC AND ENABLE_LTO)
