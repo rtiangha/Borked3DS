@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <vector>
+#include <SDL3/SDL.h>
 #include "core/frontend/input.h"
 #include "input_common/main.h"
 
