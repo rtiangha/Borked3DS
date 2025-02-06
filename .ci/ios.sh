@@ -7,9 +7,12 @@ xcodebuild build -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK P
 cd ../..
 mkdir -p build/externals/MoltenVK/MoltenVK
 mv externals/MoltenVK/Package/Release/MoltenVK/dynamic build/externals/MoltenVK/MoltenVK/
+cd build/externals
+tar cf MoltenVK.tar MoltenVK
+rm -rf MoltenVK
+cd ..
 
 # Build Borked3DS
-cd build
 cmake .. -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_SYSTEM_NAME=iOS \

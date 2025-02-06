@@ -6,10 +6,13 @@ cd externals/MoltenVK
 xcodebuild build -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)" -configuration "Release"
 cd ../..
 mkdir -p build/externals/MoltenVK/MoltenVK
-mv externals/MoltenVK/Package/Release/MoltenVK/dynamic build/externals/MoltenVK/MoltenVK/
+mv externals/MoltenVK/Package/Release/MoltenVK/dynamic/dylib build/externals/MoltenVK/MoltenVK/
+cd build/externals
+tar cf MoltenVK.tar MoltenVK
+rm -rf MoltenVK
+cd ..
 
 # Build Borked3DS
-cd build
 cmake .. -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_ARCHITECTURES="$TARGET" \
