@@ -180,14 +180,14 @@ void EmuWindow_SDL2::PollEvents() {
             break;
         case SDL_EVENT_MOUSE_MOTION:
             if (event.motion.which != SDL_TOUCH_MOUSEID)
-                OnMouseMotion(event.motion.x, event.motion.y);
+                OnMouseMotion(static_cast<s32>(event.motion.x), static_cast<s32>(event.motion.y));
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
             if (event.button.which != SDL_TOUCH_MOUSEID) {
                 OnMouseButton(event.button.button,
                               event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? 1 : 0, // Use event type
-                              event.button.x, event.button.y);
+                              static_cast<s32>(event.button.x), static_cast<s32>(event.button.y));
             }
             break;
         case SDL_EVENT_FINGER_DOWN:
@@ -221,7 +221,7 @@ void EmuWindow_SDL2::OnMinimalClientAreaChangeRequest(std::pair<u32, u32> minima
 }
 
 void EmuWindow_SDL2::UpdateFramerateCounter() {
-    const u32 current_time = SDL_GetTicks();
+    const u32 current_time = static_cast<u32>(SDL_GetTicks());
     if (current_time > last_time + 2000) {
         const auto results = system.GetAndResetPerfStats();
         const auto title =
