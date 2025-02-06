@@ -17,6 +17,7 @@ import io.github.borked3ds.android.R
 import io.github.borked3ds.android.databinding.ActivityCheatsBinding
 import io.github.borked3ds.android.utils.InsetsHelper
 import io.github.borked3ds.android.utils.ThemeUtil
+import io.github.borked3ds.android.utils.ThemeUtil.getColorWithOpacity
 
 class CheatsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCheatsBinding

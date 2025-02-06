@@ -28,7 +28,7 @@ import kotlin.math.roundToInt
 object ThemeUtil {
     const val SYSTEM_BAR_ALPHA = 0.9f
 
-    private val preferences: SharedPreferences
+    internal val preferences: SharedPreferences
         get() =
             PreferenceManager.getDefaultSharedPreferences(Borked3DSApplication.appContext)
 
@@ -160,11 +160,13 @@ object ThemeUtil {
             .getInt(Settings.PREF_THEME_MODE, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
     }
 
-    private fun isNightMode(activity: AppCompatActivity): Boolean {
-        return (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
+    internal fun isNightMode(activity: AppCompatActivity): Boolean {
+        return when (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
+            Configuration.UI_MODE_NIGHT_NO -> false
+            Configuration.UI_MODE_NIGHT_YES -> true
+            else -> false
+        }
     }
-}
 
     fun setCorrectTheme(activity: AppCompatActivity) {
         val currentTheme = (activity as ThemeProvider).themeId
@@ -187,7 +189,7 @@ object ThemeUtil {
     // Listener that detects if the theme keys are being changed from the setting menu and recreates the activity
     private var listener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
-    fun ThemeChangeListener(activity: AppCompatActivity) {
+    fun registerThemeChangeListener(activity: AppCompatActivity) {
         listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             val relevantKeys = listOf(
                 Settings.PREF_STATIC_THEME_COLOR,
@@ -200,7 +202,6 @@ object ThemeUtil {
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
     }
-}
 
 @RequiresApi(Build.VERSION_CODES.R)
 private object Api30PlusSystemBars {

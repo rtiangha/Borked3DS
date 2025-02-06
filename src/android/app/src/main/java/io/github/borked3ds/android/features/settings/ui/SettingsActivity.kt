@@ -38,6 +38,7 @@ import io.github.borked3ds.android.utils.DirectoryInitialization
 import io.github.borked3ds.android.utils.InsetsHelper
 import io.github.borked3ds.android.utils.SystemSaveGame
 import io.github.borked3ds.android.utils.ThemeUtil
+import io.github.borked3ds.android.utils.ThemeUtil.getColorWithOpacity
 import java.io.IOException
 
 class SettingsActivity : AppCompatActivity(), SettingsActivityView {

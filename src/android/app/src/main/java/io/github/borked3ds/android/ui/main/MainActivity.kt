@@ -54,6 +54,7 @@ import io.github.borked3ds.android.utils.InsetsHelper
 import io.github.borked3ds.android.utils.Log
 import io.github.borked3ds.android.utils.PermissionsHandler
 import io.github.borked3ds.android.utils.ThemeUtil
+import io.github.borked3ds.android.utils.ThemeUtil.getColorWithOpacity
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import io.github.borked3ds.android.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
@@ -81,7 +82,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
             settingsViewModel.settings.loadSettings()
         }
 
-        ThemeUtil.ThemeChangeListener(this)
+        ThemeUtil.registerThemeChangeListener(this)
         ThemeUtil.setTheme(this)
         super.onCreate(savedInstanceState)
 
