@@ -54,10 +54,6 @@
 [submodule "libyuv"]
     path = externals/libyuv
     url = https://chromium.googlesource.com/libyuv/libyuv.git 
-[submodule "sdl2"]
-    path = externals/sdl2/SDL
-    url = https://github.com/libsdl-org/SDL
-    branch = release-2.30.x 
 [submodule "cryptopp-cmake"]
     path = externals/cryptopp-cmake
     url = https://github.com/abdes/cryptopp-cmake.git
@@ -110,3 +106,6 @@
 [submodule "Vulkan-ValidationLayers"]
     path = externals/Vulkan-ValidationLayers
     url = https://github.com/KhronosGroup/Vulkan-ValidationLayers.git
+[submodule "externals/sdl3/SDL"]
+    path = externals/sdl3/SDL
+    url = https://github.com/libsdl-org/SDL.git
