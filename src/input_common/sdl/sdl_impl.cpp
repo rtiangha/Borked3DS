@@ -40,6 +40,7 @@ static std::string GetGUID(SDL_Joystick* joystick) {
     return guid_str;
 }
 
+/// Creates a ParamPackage from an SDL_Event that can directly be used to create a ButtonDevice
 std::string GetHatDirectionString(Uint8 hat_mask) {
     switch (hat_mask) {
     case SDL_HAT_UP:
@@ -180,9 +181,16 @@ public:
         return {state.accel, state.gyro};
     }
 
+    /**
+     * The guid of the joystick
+     */
     const std::string& GetGUID() const {
         return guid;
     }
+
+    /**
+     * The number of joystick from the same type that were connected before this joystick
+     */
     int GetPort() const {
         return port;
     }
@@ -239,6 +247,9 @@ private:
     Uint8 direction;
 };
 
+/**
+ * Get the nth joystick with the corresponding GUID
+ */
 std::shared_ptr<SDLJoystick> SDLState::GetSDLJoystickByGUID(const std::string& guid, int port) {
     std::lock_guard lock{joystick_map_mutex};
     auto& list = joystick_map[guid];

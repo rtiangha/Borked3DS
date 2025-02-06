@@ -65,9 +65,12 @@ EmuWindow_SDL3_GL::EmuWindow_SDL3_GL(Core::System& system_, bool fullscreen, boo
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
+    // Enable context sharing for the shared context
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+    // Enable vsync
     SDL_GL_SetSwapInterval(1);
 
+    // Enable debug context
     if (Settings::values.renderer_debug) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     }
@@ -75,8 +78,10 @@ EmuWindow_SDL3_GL::EmuWindow_SDL3_GL(Core::System& system_, bool fullscreen, boo
     std::string window_title = fmt::format("Borked3DS {} | {}-{}", Common::g_build_fullname,
                                            Common::g_scm_branch, Common::g_scm_desc);
 
+    // First, try to create a context with the requested type.
     render_window = CreateGLWindow(window_title, Settings::values.use_gles.GetValue());
     if (!render_window) {
+        // On failure, fall back to context with flipped type.
         render_window = CreateGLWindow(window_title, !Settings::values.use_gles.GetValue());
         if (!render_window) {
             LOG_CRITICAL(Frontend, "Failed to create SDL window: {}", SDL_GetError());

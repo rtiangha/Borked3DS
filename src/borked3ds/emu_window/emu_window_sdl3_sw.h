@@ -30,9 +30,15 @@ public:
     void DoneCurrent() override {}
 
 private:
+    /// Loads a framebuffer to an SDL surface
     SDL_Surface* LoadFramebuffer(VideoCore::ScreenId screen_id);
 
+    /// The system class.
     Core::System& system;
+
+    /// The SDL software renderer
     SDL_Renderer* renderer;
+
+    /// The window surface
     SDL_Surface* window_surface;
 };

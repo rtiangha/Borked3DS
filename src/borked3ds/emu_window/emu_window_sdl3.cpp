@@ -50,6 +50,10 @@ std::pair<unsigned, unsigned> EmuWindow_SDL3::TouchToPixelPos(float touch_x, flo
 }
 
 void EmuWindow_SDL3::OnFingerDown(float x, float y) {
+    // TODO(NeatNit): keep track of multitouch using the fingerID and a dictionary of some kind
+    // This isn't critical because the best we can do when we have that is to average them, like the
+    // 3DS does
+
     const auto [px, py] = TouchToPixelPos(x, y);
     TouchPressed(px, py);
 }
@@ -156,6 +160,7 @@ void EmuWindow_SDL3::PollEvents() {
     SDL_Event event;
     std::vector<SDL_Event> other_window_events;
 
+    // SDL_PollEvent returns 0 when there are no more events in the event queue
     while (SDL_PollEvent(&event)) {
         if (GetEventWindowId(event) != render_window_id) {
             other_window_events.push_back(event);
@@ -208,6 +213,8 @@ void EmuWindow_SDL3::PollEvents() {
     }
 
     for (auto& e : other_window_events) {
+        // This is a somewhat hacky workaround to re-emit window events meant for another window
+        // since SDL_PollEvent() is global but we poll events per window.
         SDL_PushEvent(&e);
     }
 
