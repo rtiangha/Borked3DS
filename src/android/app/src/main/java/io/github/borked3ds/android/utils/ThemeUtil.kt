@@ -202,6 +202,7 @@ object ThemeUtil {
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
     }
+}
 
 @RequiresApi(Build.VERSION_CODES.R)
 private object Api30PlusSystemBars {
