@@ -53,7 +53,7 @@ target_link_libraries(audio_core PUBLIC borked3ds_common borked3ds_core)
 target_link_libraries(audio_core PRIVATE faad2 SoundTouch teakra)
 
 if(ENABLE_SDL2)
-    target_link_libraries(audio_core PRIVATE SDL2::SDL2)
+    target_link_libraries(audio_core PRIVATE SDL3::SDL3)
     target_compile_definitions(audio_core PRIVATE HAVE_SDL2)
 endif()
 

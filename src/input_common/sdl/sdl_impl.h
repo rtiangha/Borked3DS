@@ -14,17 +14,25 @@
 #include "input_common/sdl/sdl.h"
 
 union SDL_Event;
-using SDL_Joystick = struct _SDL_Joystick;
-using SDL_JoystickID = s32;
-using SDL_GameController = struct _SDL_GameController;
+using SDL_Joystick = struct SDL_Joystick;
+using SDL_JoystickID = u32;
+using SDL_Gamepad = struct SDL_Gamepad;
 
 namespace InputCommon::SDL {
 
 class SDLJoystick;
-class SDLGameController;
-class SDLButtonFactory;
 class SDLAnalogFactory;
 class SDLMotionFactory;
+class SDLState;
+
+class SDLButtonFactory : public Input::Factory<Input::ButtonDevice> {
+public:
+    explicit SDLButtonFactory(SDLState& state_);
+    std::unique_ptr<Input::ButtonDevice> Create(const Common::ParamPackage& params) override;
+
+private:
+    SDLState& state;
+};
 
 class SDLState : public State {
 public:
@@ -35,15 +43,15 @@ public:
     ~SDLState() override;
 
     /// Handle SDL_Events for joysticks from SDL_PollEvent
-    void HandleGameControllerEvent(const SDL_Event& event);
+    void HandleGamepadEvent(const SDL_Event& event);
 
     std::shared_ptr<SDLJoystick> GetSDLJoystickBySDLID(SDL_JoystickID sdl_id);
     std::shared_ptr<SDLJoystick> GetSDLJoystickByGUID(const std::string& guid, int port);
 
-    Common::ParamPackage GetSDLControllerButtonBindByGUID(const std::string& guid, int port,
-                                                          Settings::NativeButton::Values button);
-    Common::ParamPackage GetSDLControllerAnalogBindByGUID(const std::string& guid, int port,
-                                                          Settings::NativeAnalog::Values analog);
+    Common::ParamPackage GetSDLGamepadButtonBindByGUID(const std::string& guid, int port,
+                                                       Settings::NativeButton::Values button);
+    Common::ParamPackage GetSDLGamepadAnalogBindByGUID(const std::string& guid, int port,
+                                                       Settings::NativeAnalog::Values analog);
 
     /// Get all DevicePoller that use the SDL backend for a specific device type
     Pollers GetPollers(Polling::DeviceType type) override;
@@ -53,11 +61,11 @@ public:
     Common::SPSCQueue<SDL_Event> event_queue;
 
 private:
-    void InitJoystick(int joystick_index);
-    void CloseJoystick(SDL_Joystick* sdl_joystick);
+    void InitGamepad(SDL_JoystickID instance_id);
+    void CloseGamepad(SDL_JoystickID instance_id);
 
     /// Needs to be called before SDL_QuitSubSystem.
-    void CloseJoysticks();
+    void CloseGamepads();
 
     /// Map of GUID of a list of corresponding virtual Joysticks
     std::unordered_map<std::string, std::vector<std::shared_ptr<SDLJoystick>>> joystick_map;

@@ -7,8 +7,8 @@
 #include <cstdlib>
 #include <string>
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
-#include <SDL_rect.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_rect.h>
 #include "borked3ds/emu_window/emu_window_sdl2_sw.h"
 #include "common/scm_rev.h"
 #include "common/settings.h"
@@ -23,23 +23,20 @@ EmuWindow_SDL2_SW::EmuWindow_SDL2_SW(Core::System& system_, bool fullscreen, boo
     : EmuWindow_SDL2{system_, is_secondary}, system{system_} {
     std::string window_title = fmt::format("Borked3DS {} | {}-{}", Common::g_build_fullname,
                                            Common::g_scm_branch, Common::g_scm_desc);
-    render_window =
-        SDL_CreateWindow(window_title.c_str(),
-                         SDL_WINDOWPOS_UNDEFINED, // x position
-                         SDL_WINDOWPOS_UNDEFINED, // y position
-                         Core::kScreenTopWidth, Core::kScreenTopHeight + Core::kScreenBottomHeight,
-                         SDL_WINDOW_SHOWN);
+    render_window = SDL_CreateWindow(window_title.c_str(), Core::kScreenTopWidth,
+                                     Core::kScreenTopHeight + Core::kScreenBottomHeight,
+                                     SDL_WINDOW_HIDDEN); // Window initially hidden
 
-    if (render_window == nullptr) {
-        LOG_CRITICAL(Frontend, "Failed to create SDL2 window: {}", SDL_GetError());
+    if (!render_window) {
+        LOG_CRITICAL(Frontend, "Failed to create SDL window: {}", SDL_GetError());
         exit(1);
     }
 
     window_surface = SDL_GetWindowSurface(render_window);
     renderer = SDL_CreateSoftwareRenderer(window_surface);
 
-    if (renderer == nullptr) {
-        LOG_CRITICAL(Frontend, "Failed to create SDL2 software renderer: {}", SDL_GetError());
+    if (!renderer) {
+        LOG_CRITICAL(Frontend, "Failed to create software renderer: {}", SDL_GetError());
         exit(1);
     }
 
@@ -47,6 +44,7 @@ EmuWindow_SDL2_SW::EmuWindow_SDL2_SW(Core::System& system_, bool fullscreen, boo
         Fullscreen();
     }
 
+    SDL_ShowWindow(render_window); // Explicitly show after creation
     render_window_id = SDL_GetWindowID(render_window);
 
     OnResize();
@@ -84,14 +82,14 @@ void EmuWindow_SDL2_SW::Present() {
                               static_cast<int>(dst_rect.GetHeight())};
             SDL_Surface* screen = LoadFramebuffer(screen_id);
             SDL_BlitSurface(screen, nullptr, window_surface, &sdl_rect);
-            SDL_FreeSurface(screen);
+            SDL_DestroySurface(screen);
         };
 
         draw_screen(ScreenId::TopLeft);
         draw_screen(ScreenId::Bottom);
 
         SDL_RenderPresent(renderer);
-        SDL_UpdateWindowSurface(render_window);
+        SDL_UpdateWindowSurface(render_window); // Still valid in SDL3 for software updates
     }
 }
 
@@ -101,7 +99,7 @@ SDL_Surface* EmuWindow_SDL2_SW::LoadFramebuffer(VideoCore::ScreenId screen_id) {
     const int width = static_cast<int>(info.width);
     const int height = static_cast<int>(info.height);
     SDL_Surface* surface =
-        SDL_CreateRGBSurfaceWithFormat(0, width, height, 0, SDL_PIXELFORMAT_ABGR8888);
+        SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ABGR8888); // Updated surface creation
     SDL_LockSurface(surface);
     std::memcpy(surface->pixels, info.pixels.data(), info.pixels.size());
     SDL_UnlockSurface(surface);

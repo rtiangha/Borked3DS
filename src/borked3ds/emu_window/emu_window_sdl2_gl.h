@@ -6,6 +6,7 @@
 #pragma once
 
 #include <memory>
+#include <SDL3/SDL_video.h>
 #include "borked3ds/emu_window/emu_window_sdl2.h"
 
 struct SDL_Window;
@@ -20,21 +21,14 @@ public:
     ~EmuWindow_SDL2_GL();
 
     void Present() override;
-    std::unique_ptr<GraphicsContext> CreateSharedContext() const override;
+    std::unique_ptr<Frontend::GraphicsContext> CreateSharedContext() const override;
     void MakeCurrent() override;
     void DoneCurrent() override;
     void SaveContext() override;
     void RestoreContext() override;
 
 private:
-    using SDL_GLContext = void*;
-
-    /// The OpenGL context associated with the window
-    SDL_GLContext window_context;
-
-    /// Used by SaveContext and RestoreContext
-    SDL_GLContext last_saved_context;
-
-    /// The OpenGL context associated with the core
-    std::unique_ptr<Frontend::GraphicsContext> core_context;
+    SDL_GLContext window_context;                            ///< Primary OpenGL context
+    SDL_GLContext last_saved_context;                        ///< Context state for Save/Restore
+    std::unique_ptr<Frontend::GraphicsContext> core_context; ///< Shared context for core operations
 };

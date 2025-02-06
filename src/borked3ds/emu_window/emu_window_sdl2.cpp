@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <string>
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "borked3ds/emu_window/emu_window_sdl2.h"
 #include "common/logging/log.h"
 #include "common/scm_rev.h"
@@ -24,13 +24,13 @@ void EmuWindow_SDL2::OnMouseMotion(s32 x, s32 y) {
 
 void EmuWindow_SDL2::OnMouseButton(u32 button, u8 state, s32 x, s32 y) {
     if (button == SDL_BUTTON_LEFT) {
-        if (state == SDL_PRESSED) {
+        if (state) { // SDL_EVENT_PRESSED is 1 in SDL3
             TouchPressed((unsigned)std::max(x, 0), (unsigned)std::max(y, 0));
         } else {
             TouchReleased();
         }
     } else if (button == SDL_BUTTON_RIGHT) {
-        if (state == SDL_PRESSED) {
+        if (state) {
             InputCommon::GetMotionEmu()->BeginTilt(x, y);
         } else {
             InputCommon::GetMotionEmu()->EndTilt();
@@ -50,10 +50,6 @@ std::pair<unsigned, unsigned> EmuWindow_SDL2::TouchToPixelPos(float touch_x, flo
 }
 
 void EmuWindow_SDL2::OnFingerDown(float x, float y) {
-    // TODO(NeatNit): keep track of multitouch using the fingerID and a dictionary of some kind
-    // This isn't critical because the best we can do when we have that is to average them, like the
-    // 3DS does
-
     const auto [px, py] = TouchToPixelPos(x, y);
     TouchPressed(px, py);
 }
@@ -68,9 +64,9 @@ void EmuWindow_SDL2::OnFingerUp() {
 }
 
 void EmuWindow_SDL2::OnKeyEvent(int key, u8 state) {
-    if (state == SDL_PRESSED) {
+    if (state) {
         InputCommon::GetKeyboard()->PressKey(key);
-    } else if (state == SDL_RELEASED) {
+    } else {
         InputCommon::GetKeyboard()->ReleaseKey(key);
     }
 }
@@ -85,28 +81,20 @@ void EmuWindow_SDL2::RequestClose() {
 
 void EmuWindow_SDL2::OnResize() {
     int width, height;
-    SDL_GL_GetDrawableSize(render_window, &width, &height);
+    SDL_GetWindowSizeInPixels(render_window, &width, &height);
     UpdateCurrentFramebufferLayout(width, height);
 }
 
 void EmuWindow_SDL2::Fullscreen() {
-    if (SDL_SetWindowFullscreen(render_window, SDL_WINDOW_FULLSCREEN) == 0) {
+    // Attempt borderless fullscreen first
+    if (SDL_SetWindowFullscreenMode(render_window, nullptr) &&
+        SDL_SetWindowFullscreen(render_window, true)) {
         return;
     }
 
     LOG_ERROR(Frontend, "Fullscreening failed: {}", SDL_GetError());
 
-    // Try a different fullscreening method
-    LOG_INFO(Frontend, "Attempting to use borderless fullscreen...");
-    if (SDL_SetWindowFullscreen(render_window, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
-        return;
-    }
-
-    LOG_ERROR(Frontend, "Borderless fullscreening failed: {}", SDL_GetError());
-
-    // Fallback algorithm: Maximise window.
-    // Works on all systems (unless something is seriously wrong), so no fallback for this one.
-    LOG_INFO(Frontend, "Falling back on a maximised window...");
+    // Fallback to maximize window
     SDL_MaximizeWindow(render_window);
 }
 
@@ -118,50 +106,48 @@ EmuWindow_SDL2::~EmuWindow_SDL2() {
 }
 
 void EmuWindow_SDL2::InitializeSDL2() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
-        LOG_CRITICAL(Frontend, "Failed to initialize SDL2: {}! Exiting...", SDL_GetError());
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) != 0) {
+        LOG_CRITICAL(Frontend, "Failed to initialize SDL: {}! Exiting...", SDL_GetError());
         exit(1);
     }
 
     InputCommon::Init();
     Network::Init();
-
-    SDL_SetMainReady();
 }
 
 u32 EmuWindow_SDL2::GetEventWindowId(const SDL_Event& event) const {
     switch (event.type) {
-    case SDL_WINDOWEVENT:
+    case SDL_EVENT_WINDOW_RESIZED:
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+    case SDL_EVENT_WINDOW_MAXIMIZED:
+    case SDL_EVENT_WINDOW_RESTORED:
+    case SDL_EVENT_WINDOW_MINIMIZED:
+    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
         return event.window.windowID;
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
         return event.key.windowID;
-    case SDL_MOUSEMOTION:
+    case SDL_EVENT_MOUSE_MOTION:
         return event.motion.windowID;
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
         return event.button.windowID;
-    case SDL_MOUSEWHEEL:
+    case SDL_EVENT_MOUSE_WHEEL:
         return event.wheel.windowID;
-    case SDL_FINGERDOWN:
-    case SDL_FINGERMOTION:
-    case SDL_FINGERUP:
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_MOTION:
+    case SDL_EVENT_FINGER_UP:
         return event.tfinger.windowID;
-    case SDL_TEXTEDITING:
+    case SDL_EVENT_TEXT_EDITING:
         return event.edit.windowID;
-    case SDL_TEXTEDITING_EXT:
-        return event.editExt.windowID;
-    case SDL_TEXTINPUT:
+    case SDL_EVENT_TEXT_INPUT:
         return event.text.windowID;
-    case SDL_DROPBEGIN:
-    case SDL_DROPFILE:
-    case SDL_DROPTEXT:
-    case SDL_DROPCOMPLETE:
+    case SDL_EVENT_DROP_BEGIN:
+    case SDL_EVENT_DROP_FILE:
+    case SDL_EVENT_DROP_TEXT:
+    case SDL_EVENT_DROP_COMPLETE:
         return event.drop.windowID;
-    case SDL_USEREVENT:
-        return event.user.windowID;
     default:
-        // Event is not for any particular window, so we can just pretend it's for this one.
         return render_window_id;
     }
 }
@@ -170,7 +156,6 @@ void EmuWindow_SDL2::PollEvents() {
     SDL_Event event;
     std::vector<SDL_Event> other_window_events;
 
-    // SDL_PollEvent returns 0 when there are no more events in the event queue
     while (SDL_PollEvent(&event)) {
         if (GetEventWindowId(event) != render_window_id) {
             other_window_events.push_back(event);
@@ -178,58 +163,54 @@ void EmuWindow_SDL2::PollEvents() {
         }
 
         switch (event.type) {
-        case SDL_WINDOWEVENT:
-            switch (event.window.event) {
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-            case SDL_WINDOWEVENT_RESIZED:
-            case SDL_WINDOWEVENT_MAXIMIZED:
-            case SDL_WINDOWEVENT_RESTORED:
-            case SDL_WINDOWEVENT_MINIMIZED:
-                OnResize();
-                break;
-            case SDL_WINDOWEVENT_CLOSE:
-                RequestClose();
-                break;
-            }
+        case SDL_EVENT_WINDOW_RESIZED:
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        case SDL_EVENT_WINDOW_MAXIMIZED:
+        case SDL_EVENT_WINDOW_RESTORED:
+        case SDL_EVENT_WINDOW_MINIMIZED:
+            OnResize();
             break;
-        case SDL_KEYDOWN:
-        case SDL_KEYUP:
-            OnKeyEvent(static_cast<int>(event.key.keysym.scancode), event.key.state);
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            RequestClose();
             break;
-        case SDL_MOUSEMOTION:
-            // ignore if it came from touch
-            if (event.button.which != SDL_TOUCH_MOUSEID)
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            OnKeyEvent(event.key.scancode, // Direct scancode access
+                       (event.type == SDL_EVENT_KEY_DOWN) ? 1 : 0);
+            break;
+        case SDL_EVENT_MOUSE_MOTION:
+            if (event.motion.which != SDL_TOUCH_MOUSEID)
                 OnMouseMotion(event.motion.x, event.motion.y);
             break;
-        case SDL_MOUSEBUTTONDOWN:
-        case SDL_MOUSEBUTTONUP:
-            // ignore if it came from touch
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
             if (event.button.which != SDL_TOUCH_MOUSEID) {
-                OnMouseButton(event.button.button, event.button.state, event.button.x,
-                              event.button.y);
+                OnMouseButton(event.button.button,
+                              event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? 1 : 0, // Use event type
+                              event.button.x, event.button.y);
             }
             break;
-        case SDL_FINGERDOWN:
+        case SDL_EVENT_FINGER_DOWN:
             OnFingerDown(event.tfinger.x, event.tfinger.y);
             break;
-        case SDL_FINGERMOTION:
+        case SDL_EVENT_FINGER_MOTION:
             OnFingerMotion(event.tfinger.x, event.tfinger.y);
             break;
-        case SDL_FINGERUP:
+        case SDL_EVENT_FINGER_UP:
             OnFingerUp();
             break;
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
             RequestClose();
             break;
         default:
             break;
         }
     }
+
     for (auto& e : other_window_events) {
-        // This is a somewhat hacky workaround to re-emit window events meant for another window
-        // since SDL_PollEvent() is global but we poll events per window.
         SDL_PushEvent(&e);
     }
+
     if (!is_secondary) {
         UpdateFramerateCounter();
     }

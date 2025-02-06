@@ -105,7 +105,7 @@ Common::ParamPackage GetControllerButtonBinds(const Common::ParamPackage& params
     const auto native_button{static_cast<Settings::NativeButton::Values>(button)};
     const auto engine{params.Get("engine", "")};
     if (engine == "sdl") {
-        return dynamic_cast<SDL::SDLState*>(sdl.get())->GetSDLControllerButtonBindByGUID(
+        return dynamic_cast<SDL::SDLState*>(sdl.get())->GetSDLGamepadButtonBindByGUID(
             params.Get("guid", "0"), params.Get("port", 0), native_button);
     }
 #ifdef ENABLE_GCADAPTER
@@ -120,7 +120,7 @@ Common::ParamPackage GetControllerAnalogBinds(const Common::ParamPackage& params
     const auto native_analog{static_cast<Settings::NativeAnalog::Values>(analog)};
     const auto engine{params.Get("engine", "")};
     if (engine == "sdl") {
-        return dynamic_cast<SDL::SDLState*>(sdl.get())->GetSDLControllerAnalogBindByGUID(
+        return dynamic_cast<SDL::SDLState*>(sdl.get())->GetSDLGamepadAnalogBindByGUID(
             params.Get("guid", "0"), params.Get("port", 0), native_analog);
     }
 #ifdef ENABLE_GCADAPTER
