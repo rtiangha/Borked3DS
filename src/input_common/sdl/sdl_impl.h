@@ -27,7 +27,6 @@ class SDLState;
 
 class SDLButtonFactory : public Input::Factory<Input::ButtonDevice> {
 public:
-    SDLState();
     explicit SDLButtonFactory(SDLState& state_);
     std::unique_ptr<Input::ButtonDevice> Create(const Common::ParamPackage& params) override;
 
