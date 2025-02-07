@@ -64,13 +64,13 @@ public:
 
     void SyncFixedState() override;
 
-private:
     void ApplySecondLayerOpacity();
     void ResetSecondLayerOpacity();
 
     Pica::FramebufferRegs::BlendingState original_blending{};
     Common::ColorRGBA8 original_blend_color{};
 
+private:
     void NotifyFixedFunctionPicaRegisterChanged(u32 id) override;
 
     /// Syncs the cull mode to match the PICA register
