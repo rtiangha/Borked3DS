@@ -825,12 +825,14 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
     draw_info.layer = 0;
     if (!Settings::values.swap_screen.GetValue()) {
         DrawTopScreen(layout, top_screen);
-        draw_info.layer = 0;
+        ApplySecondLayerOpacity();
         DrawBottomScreen(layout, bottom_screen);
+        ResetSecondLayerOpacity();
     } else {
         DrawBottomScreen(layout, bottom_screen);
-        draw_info.layer = 0;
+        ApplySecondLayerOpacity();
         DrawTopScreen(layout, top_screen);
+        ResetSecondLayerOpacity();
     }
 
     if (layout.additional_screen_enabled) {

@@ -136,6 +136,40 @@ RasterizerVulkan::RasterizerVulkan(Memory::MemorySystem& memory, Pica::PicaCore&
 
 RasterizerVulkan::~RasterizerVulkan() = default;
 
+void RasterizerVulkan::ApplySecondLayerOpacity() {
+    if (Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout &&
+        Settings::values.custom_second_layer_opacity.GetValue() < 100) {
+
+        // Save original state
+        original_blending = pipeline_info.blending;
+        original_blend_color = pipeline_info.dynamic.blend_color;
+
+        // Modify blend factors for RGB
+        pipeline_info.blending.src_color_blend_factor =
+            Pica::FramebufferRegs::BlendFactor::ConstantAlpha;
+        pipeline_info.blending.dst_color_blend_factor =
+            Pica::FramebufferRegs::BlendFactor::OneMinusConstantAlpha;
+
+        // Keep alpha blending unchanged
+        pipeline_info.blending.src_alpha_blend_factor = original_blending.src_alpha_blend_factor;
+        pipeline_info.blending.dst_alpha_blend_factor = original_blending.dst_alpha_blend_factor;
+
+        // Set blend constant alpha
+        const float opacity = Settings::values.custom_second_layer_opacity.GetValue() / 100.0f;
+        pipeline_info.dynamic.blend_color = Common::ColorRGBA8(1.0f, 1.0f, 1.0f, opacity);
+    }
+}
+
+void RasterizerVulkan::ResetSecondLayerOpacity() {
+    if (Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout &&
+        Settings::values.custom_second_layer_opacity.GetValue() < 100) {
+
+        // Restore original state
+        pipeline_info.blending = original_blending;
+        pipeline_info.dynamic.blend_color = original_blend_color;
+    }
+}
+
 void RasterizerVulkan::TickFrame() {
     res_cache.TickFrame();
 }
