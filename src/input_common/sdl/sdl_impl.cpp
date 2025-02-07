@@ -31,6 +31,21 @@ SDLState::SDLState() {
     SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK);
 }
 
+SDLState::~SDLState() {
+    CloseGamepads(); // Cleanup gamepads
+}
+
+SDLState::Pollers SDLState::GetPollers(Polling::DeviceType type) {
+    Pollers pollers;
+    // Add relevant pollers based on the device type
+    // Example:
+    if (type == Polling::DeviceType::Button) {
+        pollers.push_back(std::make_unique<SDLButtonFactory>(*button_factory));
+    }
+    // Include analog and motion pollers if applicable
+    return pollers;
+}
+
 static std::string GetGUID(SDL_Joystick* joystick) {
     SDL_GUID guid = SDL_GetJoystickGUID(joystick);
     char guid_str[33];
