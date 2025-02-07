@@ -25,13 +25,6 @@
 #include "input_common/sdl/sdl_impl.h"
 
 namespace InputCommon::SDL {
-// Define the constructor
-SDLState::SDLState() {
-    // Initialize SDL input subsystems here
-    // Example:
-    SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK);
-}
-
 static std::string GetGUID(SDL_Joystick* joystick) {
     SDL_GUID guid = SDL_GetJoystickGUID(joystick);
     char guid_str[33];
@@ -252,6 +245,12 @@ private:
     int hat;
     Uint8 direction;
 };
+
+// Constructor implementation
+SDLState::SDLState() {
+    // Initialize SDL input subsystems
+    SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK);
+}
 
 /**
  * Get the nth joystick with the corresponding GUID
