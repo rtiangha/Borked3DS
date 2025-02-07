@@ -434,13 +434,9 @@ private:
 };
 
 Common::ParamPackage SDLState::GetSDLGamepadAnalogBindByGUID(
-    const std::string& guid,
-    int port,
-    Settings::NativeAnalog::Values analog
-) {
-    // Your implementation here
-    // Example:
-    return &config->GetAnalogInputForDevice(guid, port, analog);
+    const std::string& guid, int port, Settings::NativeAnalog::Values analog) {
+    Common::ParamPackage params({{"engine", "sdl"}});
+    return params;
 }
 
 Common::ParamPackage SDLState::GetSDLGamepadButtonBindByGUID(
