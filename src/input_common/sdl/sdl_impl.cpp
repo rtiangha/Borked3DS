@@ -26,7 +26,7 @@
 
 namespace InputCommon::SDL {
 // Constructor implementation
-SDLState::SDLState() {
+SDLState() {
     // Initialize SDL input subsystems
     SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK);
 }
