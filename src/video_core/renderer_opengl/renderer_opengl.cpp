@@ -676,12 +676,12 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout, bool f
     if (!Settings::values.swap_screen.GetValue()) {
         DrawTopScreen(layout, top_screen);
         glUniform1i(uniform_layer, 0);
-        ApplySecondLayerOpacity(layout.is_portrait);
+        ApplySecondLayerOpacity();
         DrawBottomScreen(layout, bottom_screen);
     } else {
         DrawBottomScreen(layout, bottom_screen);
         glUniform1i(uniform_layer, 0);
-        ApplySecondLayerOpacity(layout.is_portrait);
+        ApplySecondLayerOpacity();
         DrawTopScreen(layout, top_screen);
     }
 
@@ -693,10 +693,10 @@ void RendererOpenGL::DrawScreens(const Layout::FramebufferLayout& layout, bool f
             DrawBottomScreen(layout, additional_screen);
         }
     }
-    ResetSecondLayerOpacity(layout.is_portrait);
+    ResetSecondLayerOpacity();
 }
 
-void RendererOpenGL::ApplySecondLayerOpacity(bool isPortrait) {
+void RendererOpenGL::ApplySecondLayerOpacity() {
     // TODO: Allow for second layer opacity in portrait mode android
 
     if (!isPortrait &&
@@ -710,7 +710,7 @@ void RendererOpenGL::ApplySecondLayerOpacity(bool isPortrait) {
     }
 }
 
-void RendererOpenGL::ResetSecondLayerOpacity(bool isPortrait) {
+void RendererOpenGL::ResetSecondLayerOpacity() {
     if (!isPortrait &&
         (Settings::values.layout_option.GetValue() == Settings::LayoutOption::CustomLayout) &&
         Settings::values.custom_second_layer_opacity.GetValue() < 100) {
