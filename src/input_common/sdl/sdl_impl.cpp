@@ -31,16 +31,6 @@ SDLState::SDLState() {
     SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK);
 }
 
-Settings::AnalogInput* SDLState::GetSDLGamepadAnalogBindByGUID(
-    const std::string& guid,
-    int port,
-    Settings::NativeAnalog::Values analog
-) {
-    // Your implementation here
-    // Example:
-    return &config->GetAnalogInputForDevice(guid, port, analog);
-}
-
 static std::string GetGUID(SDL_Joystick* joystick) {
     SDL_GUID guid = SDL_GetJoystickGUID(joystick);
     char guid_str[33];
@@ -442,6 +432,16 @@ private:
     SDL_GamepadAxis axis_x;
     SDL_GamepadAxis axis_y;
 };
+
+Common::ParamPackage SDLState::GetSDLGamepadAnalogBindByGUID(
+    const std::string& guid,
+    int port,
+    Settings::NativeAnalog::Values analog
+) {
+    // Your implementation here
+    // Example:
+    return &config->GetAnalogInputForDevice(guid, port, analog);
+}
 
 Common::ParamPackage SDLState::GetSDLGamepadButtonBindByGUID(
     const std::string& guid, int port, Settings::NativeButton::Values button) {
