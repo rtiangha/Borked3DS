@@ -42,8 +42,6 @@ public:
     /// Unregisters SDL device factories and shut them down.
     ~SDLState() override;
 
-    Pollers GetPollers(Polling::DeviceType type) override;
-
     /// Handle SDL_Events for joysticks from SDL_PollEvent
     void HandleGamepadEvent(const SDL_Event& event);
 
