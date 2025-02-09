@@ -72,6 +72,9 @@ void OboeInput::StartSampling(const InputParameters& params) {
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Input)
+        ->setSharingMode(oboe::SharingMode::Exclusive)
+        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ->setAudioApi(oboe::AudioApi::Unspecified)
         ->setFormat(oboe::AudioFormat::I16)
         ->setChannelCount(oboe::ChannelCount::Mono)
         ->setSampleRate(params.sample_rate)
