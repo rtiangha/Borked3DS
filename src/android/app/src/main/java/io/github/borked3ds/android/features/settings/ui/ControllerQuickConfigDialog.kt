@@ -20,19 +20,20 @@ import io.github.borked3ds.android.databinding.DialogControllerQuickConfigBindin
 import io.github.borked3ds.android.features.settings.model.view.InputBindingSetting
 import kotlin.math.abs
 
+
 class ControllerQuickConfigDialog(
-    private val context: Context,
+    private var context: Context,
     buttons: ArrayList<List<String>>,
     titles: ArrayList<List<Int>>,
-    private val preferences: SharedPreferences
+    private var preferences: SharedPreferences
 ) {
     private var index = 0
-    private val inflater = LayoutInflater.from(context)
-    private val quickConfigBinding = DialogControllerQuickConfigBinding.inflate(inflater)
-    private var dialog: AlertDialog? = null
+    val inflater = LayoutInflater.from(context)
+    val quickConfigBinding = DialogControllerQuickConfigBinding.inflate(inflater)
+    var dialog: AlertDialog? = null
 
-    private val allButtons = arrayListOf<String>()
-    private val allTitles = arrayListOf<Int>()
+    var allButtons = arrayListOf<String>()
+    var allTitles = arrayListOf<Int>()
 
     init {
         buttons.forEach { group ->
@@ -53,7 +54,7 @@ class ControllerQuickConfigDialog(
             .setView(quickConfigBinding.root)
             .setTitle(context.getString(R.string.controller_quick_config))
             .setPositiveButton(context.getString(R.string.controller_quick_config_next)) { _, _ -> }
-            .setNegativeButton(context.getString(R.string.controller_quick_config_close)) { dialog, _ ->
+            .setNegativeButton(context.getString(R.string.controller_quick_config_close)) { dialog, which ->
                 dialog.dismiss()
             }
 
@@ -111,10 +112,10 @@ class ControllerQuickConfigDialog(
 
     private fun calculateTitle(): String {
         val inputTypeId = when {
-            setting?.isCirclePad() == true -> R.string.controller_circlepad
-            setting?.isCStick() == true -> R.string.controller_c
-            setting?.isDPad() == true -> R.string.controller_dpad
-            setting?.isTrigger() == true -> R.string.controller_trigger
+            setting!!.isCirclePad() -> R.string.controller_circlepad
+            setting!!.isCStick() -> R.string.controller_c
+            setting!!.isDPad() -> R.string.controller_dpad
+            setting!!.isTrigger() -> R.string.controller_trigger
             else -> R.string.button
         }
 
@@ -129,18 +130,15 @@ class ControllerQuickConfigDialog(
 
     private fun getIcon(): Drawable? {
         val id = when {
-            setting?.isCirclePad() == true -> R.drawable.stick_main
-            setting?.isCStick() == true -> R.drawable.stick_c
-            setting?.isDPad() == true -> R.drawable.dpad
+            setting!!.isCirclePad() -> R.drawable.stick_main
+            setting!!.isCStick() -> R.drawable.stick_c
+            setting!!.isDPad() -> R.drawable.dpad
             else -> {
-                val resourceTitle =
-                    setting?.nameId?.let { context.resources.getResourceEntryName(it) }
-                if (resourceTitle?.startsWith("direction") == true) {
+                val resourceTitle = context.resources.getResourceEntryName(setting!!.nameId)
+                if (resourceTitle.startsWith("direction")) {
                     R.drawable.dpad
                 } else {
-                    resourceTitle?.let {
-                        context.resources.getIdentifier(it, "drawable", context.packageName)
-                    } ?: R.drawable.ic_borked3ds
+                    context.resources.getIdentifier(resourceTitle, "drawable", context.packageName)
                 }
             }
         }
@@ -153,7 +151,7 @@ class ControllerQuickConfigDialog(
     private var setting: InputBindingSetting? = null
     private var debounceTimestamp = System.currentTimeMillis()
 
-    private val settingsList = arrayListOf<InputBindingSetting>()
+    private var settingsList = arrayListOf<InputBindingSetting>()
 
     private fun onKeyEvent(event: KeyEvent): Boolean {
         return when (event.action) {
@@ -234,9 +232,7 @@ class ControllerQuickConfigDialog(
             // If only one axis moved, that's the winner.
             if (numMovedAxis == 1) {
                 waitingForEvent = false
-                lastMovedRange?.let { range ->
-                    setting?.onMotionInput(input, range, lastMovedDir)
-                }
+                setting?.onMotionInput(input, lastMovedRange!!, lastMovedDir)
             }
         }
         return true

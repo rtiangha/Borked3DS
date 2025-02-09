@@ -65,7 +65,7 @@ class Settings {
         for ((key, updatedSection) in updatedSections) {
             if (sections.containsKey(key)) {
                 val originalSection = sections[key]
-                originalSection?.mergeSection(updatedSection!!)
+                originalSection!!.mergeSection(updatedSection!!)
             } else {
                 sections[key] = updatedSection
             }

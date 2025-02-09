@@ -20,9 +20,8 @@ open class BaseSheetDialog(context: Context) :
     private val binding = DialogBottomSheetBinding.inflate(layoutInflater)
 
     init {
-        val activity = CompatUtils.findActivity(context)
-        val width = activity.window.decorView.measuredWidth
-        val height = activity.window.decorView.measuredHeight
+        val width = CompatUtils.findActivity(context).window.decorView.measuredWidth
+        val height = CompatUtils.findActivity(context).window.decorView.measuredHeight
         val heightScale = 0.87f // What percentage of the screen's height to use up
 
         behavior.peekHeight = (height * heightScale).toInt()
@@ -42,7 +41,7 @@ open class BaseSheetDialog(context: Context) :
         setContentView(LayoutInflater.from(context).inflate(layoutResID, null, false))
     }
 
-    override fun <T : View?> findViewById(id: Int): T? {
-        return contentView.findViewById<T>(id)
+    override fun <T : View?> findViewById(id: Int): T {
+        return contentView.findViewById<T>(id)!!
     }
 }

@@ -11,11 +11,8 @@ import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.model.view.StringInputSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class StringInputViewHolder(
-    val binding: ListItemSettingBinding,
-    adapter: SettingsAdapter
-) : SettingViewHolder(binding.root, adapter) {
-
+class StringInputViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
+    SettingViewHolder(binding.root, adapter) {
     private lateinit var setting: SettingsItem
 
     override fun bind(item: SettingsItem) {
@@ -28,7 +25,7 @@ class StringInputViewHolder(
             binding.textSettingDescription.visibility = View.GONE
         }
         binding.textSettingValue.visibility = View.VISIBLE
-        binding.textSettingValue.text = setting.setting?.valueAsString ?: ""
+        binding.textSettingValue.text = setting.setting?.valueAsString
     }
 
     override fun onClick(clicked: View) {

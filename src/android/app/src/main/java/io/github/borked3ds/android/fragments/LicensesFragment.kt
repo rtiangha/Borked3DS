@@ -304,9 +304,4 @@ class LicensesFragment : Fragment() {
 
             windowInsets
         }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
 }

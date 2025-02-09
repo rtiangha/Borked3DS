@@ -29,17 +29,15 @@ object StillImageCameraHelper {
 
         // At this point, we are assuming that we already have permissions as they are
         // needed to launch a game
-        emulationActivity?.runOnUiThread {
+        emulationActivity!!.runOnUiThread {
             val request = PickVisualMediaRequest.Builder()
                 .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly).build()
             emulationActivity.openImageLauncher.launch(request)
-        } ?: return null
-
+        }
         synchronized(filePickerLock) {
             try {
                 filePickerLock.wait()
             } catch (ignored: InterruptedException) {
-                // Ignore the interruption and continue
             }
         }
         return filePickerPath

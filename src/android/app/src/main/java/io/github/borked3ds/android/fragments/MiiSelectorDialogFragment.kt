@@ -27,7 +27,7 @@ class MiiSelectorDialogFragment : DialogFragment() {
             if (config.initiallySelectedMiiIndex < list.size) config.initiallySelectedMiiIndex.toInt() else 0
         MiiSelector.data.index = initialIndex
         val builder = MaterialAlertDialogBuilder(requireActivity())
-            .setTitle(config.title?.takeIf { it.isNotEmpty() } ?: getString(R.string.mii_selector))
+            .setTitle(if (config.title!!.isEmpty()) getString(R.string.mii_selector) else config.title)
             .setSingleChoiceItems(
                 list.toTypedArray(),
                 initialIndex

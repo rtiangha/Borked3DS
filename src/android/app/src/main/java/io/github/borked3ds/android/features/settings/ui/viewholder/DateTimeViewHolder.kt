@@ -18,11 +18,8 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-class DateTimeViewHolder(
-    val binding: ListItemSettingBinding,
-    adapter: SettingsAdapter
-) : SettingViewHolder(binding.root, adapter) {
-
+class DateTimeViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
+    SettingViewHolder(binding.root, adapter) {
     private lateinit var setting: DateTimeSetting
 
     @SuppressLint("SimpleDateFormat")
@@ -36,7 +33,6 @@ class DateTimeViewHolder(
             binding.textSettingDescription.visibility = View.GONE
         }
         binding.textSettingValue.visibility = View.VISIBLE
-
         val epochTime = try {
             setting.value.toLong()
         } catch (e: NumberFormatException) {
@@ -45,18 +41,22 @@ class DateTimeViewHolder(
 
             val formatter = SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ssZZZZ")
             val gmt = formatter.parse("${date}T${time}+0000")
-            gmt?.time?.div(1000) ?: 0L
+            gmt!!.time / 1000
         }
-
-        val instant = Instant.ofEpochSecond(epochTime)
+        val instant = Instant.ofEpochMilli(epochTime * 1000)
         val zonedTime = ZonedDateTime.ofInstant(instant, ZoneId.of("UTC"))
         val dateFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
         binding.textSettingValue.text = dateFormatter.format(zonedTime)
 
-        val textAlpha = if (setting.isEditable) 1f else 0.5f
-        binding.textSettingName.alpha = textAlpha
-        binding.textSettingDescription.alpha = textAlpha
-        binding.textSettingValue.alpha = textAlpha
+        if (setting.isEditable) {
+            binding.textSettingName.alpha = 1f
+            binding.textSettingDescription.alpha = 1f
+            binding.textSettingValue.alpha = 1f
+        } else {
+            binding.textSettingName.alpha = 0.5f
+            binding.textSettingDescription.alpha = 0.5f
+            binding.textSettingValue.alpha = 0.5f
+        }
     }
 
     override fun onClick(clicked: View) {

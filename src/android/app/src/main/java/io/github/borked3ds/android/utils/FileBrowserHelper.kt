@@ -18,32 +18,27 @@ object FileBrowserHelper {
         val clipData = result.clipData
         val files: MutableList<DocumentFile?> = ArrayList()
         if (clipData == null) {
-            result.data?.let { uri ->
-                files.add(DocumentFile.fromSingleUri(context, uri))
-            }
+            files.add(DocumentFile.fromSingleUri(context, result.data!!))
         } else {
             for (i in 0 until clipData.itemCount) {
                 val item = clipData.getItemAt(i)
-                item.uri?.let { uri ->
-                    files.add(DocumentFile.fromSingleUri(context, uri))
-                }
+                files.add(DocumentFile.fromSingleUri(context, item.uri))
             }
         }
         if (files.isNotEmpty()) {
             val filePaths: MutableList<String> = ArrayList()
-            for (file in files) {
+            for (i in files.indices) {
+                val file = files[i]
                 val filename = file?.name
                 val extensionStart = filename?.lastIndexOf('.') ?: 0
                 if (extensionStart > 0) {
                     val fileExtension = filename?.substring(extensionStart + 1)
                     if (extension.contains(fileExtension)) {
-                        file?.uri?.let { uri ->
-                            filePaths.add(uri.toString())
-                        }
+                        filePaths.add(file?.uri.toString())
                     }
                 }
             }
-            return if (filePaths.isEmpty()) null else filePaths.toTypedArray()
+            return if (filePaths.isEmpty()) null else filePaths.toTypedArray<String>()
         }
         return null
     }

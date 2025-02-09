@@ -29,7 +29,7 @@ class InputBindingSetting(
         get() = PreferenceManager.getDefaultSharedPreferences(context)
 
     var value: String
-        get() = preferences.getString(abstractSetting.key, "") ?: ""
+        get() = preferences.getString(abstractSetting.key, "")!!
         set(string) {
             preferences.edit()
                 .putString(abstractSetting.key, string)
@@ -165,8 +165,8 @@ class InputBindingSetting(
      */
     fun removeOldMapping() {
         // Try remove all possible keys we wrote for this setting
-        val oldKey = preferences.getString(reverseKey, "") ?: ""
-        if (oldKey.isNotEmpty()) {
+        val oldKey = preferences.getString(reverseKey, "")
+        if (oldKey != "") {
             preferences.edit()
                 .remove(abstractSetting.key) // Used for ui text
                 .remove(oldKey) // Used for button mapping
@@ -231,7 +231,7 @@ class InputBindingSetting(
 
         val code = translateEventToKeyId(keyEvent)
         writeButtonMapping(getInputButtonKey(keyEvent))
-        val uiString = "${keyEvent.device?.name ?: "Unknown Device"}: Button $code"
+        val uiString = "${keyEvent.device.name}: Button $code"
         value = uiString
     }
 
@@ -247,7 +247,7 @@ class InputBindingSetting(
             return
         }
         key = getInputButtonKey(keyEvent)
-        val uiString = "${keyEvent.device?.name ?: "Unknown Device"}: Button ${keyEvent.keyCode}"
+        val uiString = "${keyEvent.device.name}: Button ${keyEvent.keyCode}"
         value = uiString
     }
 
@@ -314,6 +314,7 @@ class InputBindingSetting(
 
         /**
          * Helper function to get the settings key for an gamepad button.
+         *
          */
         fun getInputButtonKey(event: KeyEvent): String =
             "${INPUT_MAPPING_PREFIX}_HostAxis_${translateEventToKeyId(event)}"
@@ -333,6 +334,7 @@ class InputBindingSetting(
          */
         fun getInputAxisOrientationKey(axis: Int): String =
             "${getInputAxisKey(axis)}_GuestOrientation"
+
 
         /**
          * This function translates a keyEvent into an "keyid"
@@ -354,7 +356,7 @@ class InputBindingSetting(
         fun getInputObject(key: String, preferences: SharedPreferences): AbstractStringSetting {
             return object : AbstractStringSetting {
                 override var string: String
-                    get() = preferences.getString(key, "") ?: ""
+                    get() = preferences.getString(key, "")!!
                     set(value) {
                         preferences.edit()
                             .putString(key, value)
@@ -363,7 +365,7 @@ class InputBindingSetting(
                 override val key = key
                 override val section = Settings.SECTION_CONTROLS
                 override val isRuntimeEditable = true
-                override val valueAsString = preferences.getString(key, "") ?: ""
+                override val valueAsString = preferences.getString(key, "")!!
                 override val defaultValue = ""
             }
         }

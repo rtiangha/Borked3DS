@@ -30,10 +30,10 @@ class LicenseBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val parentView = view.parent as? View ?: return
-        BottomSheetBehavior.from(parentView).state = BottomSheetBehavior.STATE_HALF_EXPANDED
+        BottomSheetBehavior.from<View>(view.parent as View).state =
+            BottomSheetBehavior.STATE_HALF_EXPANDED
 
-        val license = requireArguments().parcelable<License>(LICENSE) ?: return
+        val license = requireArguments().parcelable<License>(LICENSE)!!
 
         binding.apply {
             textTitle.setText(license.titleId)
@@ -47,14 +47,10 @@ class LicenseBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 textLicense.setText(license.licenseId)
             } else {
                 textLicense.setText(license.licenseLinkId)
-                BottomSheetBehavior.from(parentView).state = BottomSheetBehavior.STATE_COLLAPSED
+                BottomSheetBehavior.from<View>(view.parent as View).state =
+                    BottomSheetBehavior.STATE_COLLAPSED
             }
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 
     companion object {

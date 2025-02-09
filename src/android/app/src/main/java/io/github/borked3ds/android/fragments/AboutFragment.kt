@@ -72,18 +72,16 @@ class AboutFragment : Fragment() {
         binding.textBuildHash.text = BuildConfig.VERSION_NAME
         binding.buttonBuildHash.setOnClickListener {
             val clipBoard =
-                requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-            clipBoard?.let { cb ->
-                val clip = ClipData.newPlainText(getString(R.string.build), BuildConfig.GIT_HASH)
-                cb.setPrimaryClip(clip)
+                requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText(getString(R.string.build), BuildConfig.GIT_HASH)
+            clipBoard.setPrimaryClip(clip)
 
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    Toast.makeText(
-                        requireContext(),
-                        R.string.copied_to_clipboard,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.copied_to_clipboard,
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -92,11 +90,6 @@ class AboutFragment : Fragment() {
         binding.buttonGithub.setOnClickListener { openLink(getString(R.string.github_link)) }
 
         setInsets()
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 
     private fun openLink(link: String) {

@@ -7,6 +7,7 @@ package io.github.borked3ds.android.features.settings.ui.viewholder
 
 import android.view.View
 import io.github.borked3ds.android.databinding.ListItemSettingBinding
+import io.github.borked3ds.android.features.settings.model.AbstractFloatSetting
 import io.github.borked3ds.android.features.settings.model.AbstractIntSetting
 import io.github.borked3ds.android.features.settings.model.FloatSetting
 import io.github.borked3ds.android.features.settings.model.ScaledFloatSetting
@@ -14,11 +15,8 @@ import io.github.borked3ds.android.features.settings.model.view.SettingsItem
 import io.github.borked3ds.android.features.settings.model.view.SliderSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class SliderViewHolder(
-    val binding: ListItemSettingBinding,
-    adapter: SettingsAdapter
-) : SettingViewHolder(binding.root, adapter) {
-
+class SliderViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
+    SettingViewHolder(binding.root, adapter) {
     private lateinit var setting: SliderSetting
 
     override fun bind(item: SettingsItem) {
@@ -31,17 +29,23 @@ class SliderViewHolder(
             binding.textSettingDescription.visibility = View.GONE
         }
         binding.textSettingValue.visibility = View.VISIBLE
-        binding.textSettingValue.text = when (val settingValue = setting.setting) {
-            is ScaledFloatSetting -> "${settingValue.float.toInt()}${setting.units}"
-            is FloatSetting -> "${settingValue.float}${setting.units}"
-            is AbstractIntSetting -> "${settingValue.int}${setting.units}"
-            else -> ""
+        binding.textSettingValue.text = when (setting.setting) {
+            is ScaledFloatSetting ->
+                "${(setting.setting as ScaledFloatSetting).float.toInt()}${setting.units}"
+
+            is FloatSetting -> "${(setting.setting as AbstractFloatSetting).float}${setting.units}"
+            else -> "${(setting.setting as AbstractIntSetting).int}${setting.units}"
         }
 
-        val textAlpha = if (setting.isEditable) 1f else 0.5f
-        binding.textSettingName.alpha = textAlpha
-        binding.textSettingDescription.alpha = textAlpha
-        binding.textSettingValue.alpha = textAlpha
+        if (setting.isEditable) {
+            binding.textSettingName.alpha = 1f
+            binding.textSettingDescription.alpha = 1f
+            binding.textSettingValue.alpha = 1f
+        } else {
+            binding.textSettingName.alpha = 0.5f
+            binding.textSettingDescription.alpha = 0.5f
+            binding.textSettingValue.alpha = 0.5f
+        }
     }
 
     override fun onClick(clicked: View) {

@@ -33,13 +33,12 @@ object GpuDriverHelper {
             val root = DocumentFile.fromTreeUri(
                 Borked3DSApplication.appContext,
                 Uri.parse(DirectoryInitialization.userPath)
-            ) ?: throw IllegalStateException("Failed to get root directory")
+            )!!
             var driverDirectory = root.findFile("gpu_drivers")
             if (driverDirectory == null) {
                 driverDirectory = FileUtil.createDir(root.uri.toString(), "gpu_drivers")
             }
-            return driverDirectory
-                ?: throw IllegalStateException("Failed to create driver directory")
+            return driverDirectory!!
         }
 
     fun initializeDriverParameters() {
@@ -50,7 +49,7 @@ object GpuDriverHelper {
 
             // Initialize the driver installation directory.
             driverInstallationPath = Borked3DSApplication.appContext
-                .filesDir?.canonicalPath + "/gpu_driver/"
+                .filesDir.canonicalPath + "/gpu_driver/"
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
@@ -71,7 +70,7 @@ object GpuDriverHelper {
     }
 
     fun getDrivers(): MutableList<Pair<Uri, GpuDriverMetadata>> {
-        val driverZips = driverStoragePath.listFiles() ?: return mutableListOf()
+        val driverZips = driverStoragePath.listFiles()
         val drivers: MutableList<Pair<Uri, GpuDriverMetadata>> =
             driverZips
                 .mapNotNull {
@@ -89,9 +88,7 @@ object GpuDriverHelper {
 
     fun installDefaultDriver() {
         // Removing the installed driver will result in the backend using the default system driver.
-        driverInstallationPath?.let { path ->
-            File(path).deleteRecursively()
-        }
+        File(driverInstallationPath!!).deleteRecursively()
         initializeDriverParameters()
     }
 
@@ -146,12 +143,10 @@ object GpuDriverHelper {
 
         // Unzip the driver.
         try {
-            driverInstallationPath?.let { path ->
-                FileUtil.unzipToInternalStorage(
-                    BufferedInputStream(copiedFile.inputStream()),
-                    File(path)
-                )
-            } ?: return false
+            FileUtil.unzipToInternalStorage(
+                BufferedInputStream(copiedFile.inputStream()),
+                File(driverInstallationPath!!)
+            )
         } catch (e: SecurityException) {
             return false
         }
@@ -181,12 +176,10 @@ object GpuDriverHelper {
 
         // Unzip the driver to the private installation directory
         try {
-            driverInstallationPath?.let { path ->
-                FileUtil.unzipToInternalStorage(
-                    BufferedInputStream(driver.inputStream()),
-                    File(path)
-                )
-            } ?: return false
+            FileUtil.unzipToInternalStorage(
+                BufferedInputStream(driver.inputStream()),
+                File(driverInstallationPath!!)
+            )
         } catch (e: SecurityException) {
             return false
         }
@@ -228,21 +221,15 @@ object GpuDriverHelper {
 
     fun initializeDirectories() {
         // Ensure the file redirection directory exists.
-        fileRedirectionPath?.let { path ->
-            val fileRedirectionDir = File(path)
-            if (!fileRedirectionDir.exists()) {
-                fileRedirectionDir.mkdirs()
-            }
+        val fileRedirectionDir = File(fileRedirectionPath!!)
+        if (!fileRedirectionDir.exists()) {
+            fileRedirectionDir.mkdirs()
         }
-
         // Ensure the driver installation directory exists.
-        driverInstallationPath?.let { path ->
-            val driverInstallationDir = File(path)
-            if (!driverInstallationDir.exists()) {
-                driverInstallationDir.mkdirs()
-            }
+        val driverInstallationDir = File(driverInstallationPath!!)
+        if (!driverInstallationDir.exists()) {
+            driverInstallationDir.mkdirs()
         }
-
         // Ensure the driver storage directory exists
         if (!driverStoragePath.exists()) {
             throw IllegalStateException("Driver storage directory couldn't be created!")

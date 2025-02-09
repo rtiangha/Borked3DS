@@ -14,8 +14,7 @@ class CustomViewHolder<out V : ViewBinding>(val binding: V) : RecyclerView.ViewH
 /**
  * Extension function to get the LayoutInflater from a View.
  */
-fun View.getInflater(): LayoutInflater =
-    LayoutInflater.from(context) ?: throw IllegalStateException("Context is null.")
+fun View.getInflater() = LayoutInflater.from(context)!!
 
 /**
  * Interface for creating ViewBinding instances.
@@ -66,6 +65,5 @@ abstract class CustomListItem<V : ViewBinding> {
  * Abstract base class for list items in a selectable adapter.
  */
 abstract class SelectableCustomListItem<V : ViewBinding> : CustomListItem<V>() {
-    val selectableAdapter: SelectableAdapter?
-        get() = super.adapter as? SelectableAdapter
+    val selectableAdapter get() = super.adapter as? SelectableAdapter
 }

@@ -86,6 +86,7 @@ class CheatDetailsFragment : Fragment() {
     }
 
     private fun onDeleteClicked() {
+        binding.editNameInput.text.toString()
         MaterialAlertDialogBuilder(requireContext())
             .setMessage(getString(R.string.cheats_delete_confirmation))
             .setPositiveButton(
@@ -109,9 +110,9 @@ class CheatDetailsFragment : Fragment() {
 
     private fun onOkClicked() {
         clearEditErrors()
-        val name = binding.editNameInput.text?.toString() ?: ""
-        val notes = binding.editNotesInput.text?.toString() ?: ""
-        val code = binding.editCodeInput.text?.toString() ?: ""
+        val name = binding.editNameInput.text.toString()
+        val notes = binding.editNotesInput.text.toString()
+        val code = binding.editCodeInput.text.toString()
         if (name.isEmpty()) {
             binding.editName.error = getString(R.string.cheats_error_no_name)
             binding.scrollView.smoothScrollTo(0, binding.editNameInput.top)
@@ -179,13 +180,10 @@ class CheatDetailsFragment : Fragment() {
             val leftInsets = barInsets.left + cutoutInsets.left
             val rightInsets = barInsets.right + cutoutInsets.right
 
-            val mlpAppBar =
-                binding.toolbarCheatDetails.layoutParams as? ViewGroup.MarginLayoutParams
-            mlpAppBar?.let {
-                it.leftMargin = leftInsets
-                it.rightMargin = rightInsets
-                binding.toolbarCheatDetails.layoutParams = it
-            }
+            val mlpAppBar = binding.toolbarCheatDetails.layoutParams as ViewGroup.MarginLayoutParams
+            mlpAppBar.leftMargin = leftInsets
+            mlpAppBar.rightMargin = rightInsets
+            binding.toolbarCheatDetails.layoutParams = mlpAppBar
 
             binding.scrollView.updatePadding(left = leftInsets, right = rightInsets)
             binding.buttonContainer.updatePadding(left = leftInsets, right = rightInsets)

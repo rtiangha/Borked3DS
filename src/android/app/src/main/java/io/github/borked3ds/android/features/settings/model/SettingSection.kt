@@ -18,9 +18,7 @@ class SettingSection(val name: String) {
      * @param setting The Setting to be inserted.
      */
     fun putSetting(setting: AbstractSetting) {
-        setting.key?.let { key ->
-            settings[key] = setting
-        } ?: throw IllegalArgumentException("Setting key cannot be null.")
+        settings[setting.key!!] = setting
     }
 
     /**

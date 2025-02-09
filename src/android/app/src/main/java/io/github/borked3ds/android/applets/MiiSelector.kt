@@ -17,25 +17,18 @@ object MiiSelector {
 
     private fun ExecuteImpl(config: MiiSelectorConfig) {
         val emulationActivity = NativeLibrary.sEmulationActivity.get()
-        if (emulationActivity == null) {
-            throw IllegalStateException("Emulation activity is not available.")
-        }
         data = MiiSelectorData(0, 0)
         val fragment = MiiSelectorDialogFragment.newInstance(config)
-        fragment.show(emulationActivity.supportFragmentManager, "mii_selector")
+        fragment.show(emulationActivity!!.supportFragmentManager, "mii_selector")
     }
 
     @JvmStatic
     fun Execute(config: MiiSelectorConfig): MiiSelectorData {
-        val emulationActivity = NativeLibrary.sEmulationActivity.get()
-        emulationActivity?.runOnUiThread { ExecuteImpl(config) }
-            ?: throw IllegalStateException("Emulation activity is not available.")
-
+        NativeLibrary.sEmulationActivity.get()!!.runOnUiThread { ExecuteImpl(config) }
         synchronized(finishLock) {
             try {
                 finishLock.wait()
             } catch (ignored: Exception) {
-                // Ignore the interruption and continue
             }
         }
         return data

@@ -12,11 +12,8 @@ import io.github.borked3ds.android.features.settings.model.view.SingleChoiceSett
 import io.github.borked3ds.android.features.settings.model.view.StringSingleChoiceSetting
 import io.github.borked3ds.android.features.settings.ui.SettingsAdapter
 
-class SingleChoiceViewHolder(
-    val binding: ListItemSettingBinding,
-    adapter: SettingsAdapter
-) : SettingViewHolder(binding.root, adapter) {
-
+class SingleChoiceViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
+    SettingViewHolder(binding.root, adapter) {
     private lateinit var setting: SettingsItem
 
     override fun bind(item: SettingsItem) {
@@ -31,35 +28,40 @@ class SingleChoiceViewHolder(
         binding.textSettingValue.visibility = View.VISIBLE
         binding.textSettingValue.text = getTextSetting()
 
-        val textAlpha = if (setting.isEditable) 1f else 0.5f
-        binding.textSettingName.alpha = textAlpha
-        binding.textSettingDescription.alpha = textAlpha
-        binding.textSettingValue.alpha = textAlpha
+        if (setting.isEditable) {
+            binding.textSettingName.alpha = 1f
+            binding.textSettingDescription.alpha = 1f
+            binding.textSettingValue.alpha = 1f
+        } else {
+            binding.textSettingName.alpha = 0.5f
+            binding.textSettingDescription.alpha = 0.5f
+            binding.textSettingValue.alpha = 0.5f
+        }
     }
 
     private fun getTextSetting(): String {
-        return when (val item = setting) {
+        when (val item = setting) {
             is SingleChoiceSetting -> {
                 val resMgr = binding.textSettingDescription.context.resources
                 val values = resMgr.getIntArray(item.valuesId)
                 values.forEachIndexed { i: Int, value: Int ->
-                    if (value == item.selectedValue) {
-                        return resMgr.getStringArray(item.choicesId).getOrNull(i) ?: ""
+                    if (value == (setting as SingleChoiceSetting).selectedValue) {
+                        return resMgr.getStringArray(item.choicesId)[i]
                     }
                 }
-                ""
+                return ""
             }
 
             is StringSingleChoiceSetting -> {
                 item.values?.forEachIndexed { i: Int, value: String ->
                     if (value == item.selectedValue) {
-                        return item.choices.getOrNull(i) ?: ""
+                        return item.choices[i]
                     }
                 }
-                ""
+                return ""
             }
 
-            else -> ""
+            else -> return ""
         }
     }
 
@@ -69,20 +71,16 @@ class SingleChoiceViewHolder(
             return
         }
 
-        when (setting) {
-            is SingleChoiceSetting -> {
-                adapter.onSingleChoiceClick(
-                    setting as SingleChoiceSetting,
-                    bindingAdapterPosition
-                )
-            }
-
-            is StringSingleChoiceSetting -> {
-                adapter.onStringSingleChoiceClick(
-                    setting as StringSingleChoiceSetting,
-                    bindingAdapterPosition
-                )
-            }
+        if (setting is SingleChoiceSetting) {
+            adapter.onSingleChoiceClick(
+                (setting as SingleChoiceSetting),
+                bindingAdapterPosition
+            )
+        } else if (setting is StringSingleChoiceSetting) {
+            adapter.onStringSingleChoiceClick(
+                (setting as StringSingleChoiceSetting),
+                bindingAdapterPosition
+            )
         }
     }
 

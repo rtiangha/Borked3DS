@@ -69,34 +69,35 @@ class KeyboardDialogFragment : DialogFragment() {
         // dialog while we show an error message
         val alertDialog = builder.create()
         alertDialog.create()
-        alertDialog.getButton(DialogInterface.BUTTON_POSITIVE)?.setOnClickListener {
-            SoftwareKeyboard.data.button = config.buttonConfig
-            SoftwareKeyboard.data.text = binding.editTextInput.text.toString()
-            val error = SoftwareKeyboard.ValidateInput(SoftwareKeyboard.data.text)
-            if (error != SoftwareKeyboard.ValidationError.None) {
-                SoftwareKeyboard.HandleValidationError(config, error)
-                return@setOnClickListener
+        if (alertDialog.getButton(DialogInterface.BUTTON_POSITIVE) != null) {
+            alertDialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                SoftwareKeyboard.data.button = config.buttonConfig
+                SoftwareKeyboard.data.text = binding.editTextInput.text.toString()
+                val error = SoftwareKeyboard.ValidateInput(SoftwareKeyboard.data.text)
+                if (error != SoftwareKeyboard.ValidationError.None) {
+                    SoftwareKeyboard.HandleValidationError(config, error)
+                    return@setOnClickListener
+                }
+                dismiss()
+                synchronized(SoftwareKeyboard.finishLock) { SoftwareKeyboard.finishLock.notifyAll() }
             }
-            dismiss()
-            synchronized(SoftwareKeyboard.finishLock) { SoftwareKeyboard.finishLock.notifyAll() }
         }
-        alertDialog.getButton(DialogInterface.BUTTON_NEUTRAL)?.setOnClickListener {
-            SoftwareKeyboard.data.button = 1
-            dismiss()
-            synchronized(SoftwareKeyboard.finishLock) { SoftwareKeyboard.finishLock.notifyAll() }
+        if (alertDialog.getButton(DialogInterface.BUTTON_NEUTRAL) != null) {
+            alertDialog.getButton(DialogInterface.BUTTON_NEUTRAL).setOnClickListener {
+                SoftwareKeyboard.data.button = 1
+                dismiss()
+                synchronized(SoftwareKeyboard.finishLock) { SoftwareKeyboard.finishLock.notifyAll() }
+            }
         }
-        alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE)?.setOnClickListener {
-            SoftwareKeyboard.data.button = 0
-            dismiss()
-            synchronized(SoftwareKeyboard.finishLock) { SoftwareKeyboard.finishLock.notifyAll() }
+        if (alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE) != null) {
+            alertDialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener {
+                SoftwareKeyboard.data.button = 0
+                dismiss()
+                synchronized(SoftwareKeyboard.finishLock) { SoftwareKeyboard.finishLock.notifyAll() }
+            }
         }
 
         return alertDialog
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 
     companion object {

@@ -28,17 +28,14 @@ class GameIconFetcher(
     private val options: Options
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
-        val icon = getGameIcon(game.icon)
         return DrawableResult(
-            drawable = icon?.toDrawable(options.context.resources)
-                ?: throw IllegalStateException("Failed to load game icon"),
+            drawable = getGameIcon(game.icon)!!.toDrawable(options.context.resources),
             isSampled = false,
             dataSource = DataSource.DISK
         )
     }
 
     private fun getGameIcon(vector: IntArray?): Bitmap? {
-        vector ?: return null
         val bitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.RGB_565)
         bitmap.copyPixelsFromBuffer(IntBuffer.wrap(vector))
         return bitmap

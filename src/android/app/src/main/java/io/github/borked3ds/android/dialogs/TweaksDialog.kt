@@ -1,8 +1,3 @@
-// Copyright 2024 Citra-Enhanced Emulator Project
-// Copyright 2024 Borked3DS Emulator Project
-// Licensed under GPLv2 or any later version
-// Refer to the license.txt file included.
-
 package io.github.borked3ds.android.dialogs
 
 import android.content.Context
@@ -42,7 +37,7 @@ class TweaksDialog(context: Context) : BaseSheetDialog(context) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.dialog_tweaks)
 
-        val recyclerView: RecyclerView = findViewById(R.id.list_settings) ?: return
+        val recyclerView: RecyclerView = findViewById(R.id.list_settings)
         recyclerView.layoutManager = LinearLayoutManager(context)
         adapter = SettingsAdapter(context)
         recyclerView.adapter = adapter

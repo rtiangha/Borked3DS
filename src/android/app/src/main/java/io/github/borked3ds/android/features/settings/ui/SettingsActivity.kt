@@ -62,11 +62,11 @@ class SettingsActivity : AppCompatActivity(), SettingsActivityView {
         val launcher = intent
         val gameID = launcher.getStringExtra(ARG_GAME_ID)
         val menuTag = launcher.getStringExtra(ARG_MENU_TAG)
-        presenter.onCreate(savedInstanceState, menuTag ?: "", gameID ?: "")
+        presenter.onCreate(savedInstanceState, menuTag!!, gameID!!)
 
         // Show "Back" button in the action bar for navigation
         setSupportActionBar(binding.toolbarSettings)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar!!.setDisplayHomeAsUpEnabled(true)
 
         if (InsetsHelper.getSystemGestureType(applicationContext) !=
             InsetsHelper.GESTURE_NAVIGATION
@@ -166,11 +166,13 @@ class SettingsActivity : AppCompatActivity(), SettingsActivityView {
     }
 
     override fun onSettingsFileLoaded() {
-        settingsFragment?.loadSettingsList()
+        val fragment: SettingsFragmentView? = settingsFragment
+        fragment?.loadSettingsList()
     }
 
     override fun onSettingsFileNotFound() {
-        settingsFragment?.loadSettingsList()
+        val fragment: SettingsFragmentView? = settingsFragment
+        fragment?.loadSettingsList()
     }
 
     override fun showToastMessage(message: String, isLong: Boolean) {
@@ -237,7 +239,7 @@ class SettingsActivity : AppCompatActivity(), SettingsActivityView {
     }
 
     private val settingsFragment: SettingsFragment?
-        get() = supportFragmentManager.findFragmentByTag(FRAGMENT_TAG) as? SettingsFragment
+        get() = supportFragmentManager.findFragmentByTag(FRAGMENT_TAG) as SettingsFragment?
 
     private fun setInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(
@@ -250,18 +252,14 @@ class SettingsActivity : AppCompatActivity(), SettingsActivityView {
                 right = barInsets.right + cutoutInsets.right
             )
 
-            val mlpAppBar = binding.appbarSettings.layoutParams as? MarginLayoutParams
-            mlpAppBar?.let {
-                it.leftMargin = barInsets.left + cutoutInsets.left
-                it.rightMargin = barInsets.right + cutoutInsets.right
-                binding.appbarSettings.layoutParams = it
-            }
+            val mlpAppBar = binding.appbarSettings.layoutParams as MarginLayoutParams
+            mlpAppBar.leftMargin = barInsets.left + cutoutInsets.left
+            mlpAppBar.rightMargin = barInsets.right + cutoutInsets.right
+            binding.appbarSettings.layoutParams = mlpAppBar
 
-            val mlpShade = binding.navigationBarShade.layoutParams as? MarginLayoutParams
-            mlpShade?.let {
-                it.height = barInsets.bottom
-                binding.navigationBarShade.layoutParams = it
-            }
+            val mlpShade = binding.navigationBarShade.layoutParams as MarginLayoutParams
+            mlpShade.height = barInsets.bottom
+            binding.navigationBarShade.layoutParams = mlpShade
 
             windowInsets
         }

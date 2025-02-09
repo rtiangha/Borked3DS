@@ -26,10 +26,10 @@ class DocumentsTree {
     private val context get() = Borked3DSApplication.appContext
 
     fun setRoot(rootUri: Uri?) {
-        root = DocumentsNode().apply {
-            uri = rootUri
-            isDirectory = true
-        }
+        root = null
+        root = DocumentsNode()
+        root!!.uri = rootUri
+        root!!.isDirectory = true
     }
 
     @Synchronized
@@ -37,18 +37,16 @@ class DocumentsTree {
         val node = resolvePath(filepath) ?: return false
         if (!node.isDirectory) return false
         if (!node.loaded) structTree(node)
-        return try {
+        try {
             val filename = URLDecoder.decode(name, FileUtil.DECODE_METHOD)
             if (node.findChild(filename) != null) return true
             val createdFile = FileUtil.createFile(node.uri.toString(), name) ?: return false
-            val document = DocumentsNode(createdFile, false).apply {
-                parent = node
-            }
+            val document = DocumentsNode(createdFile, false)
+            document.parent = node
             node.addChild(document)
-            true
+            return true
         } catch (e: Exception) {
-            error("[DocumentsTree]: Cannot create file, error: ${e.message}")
-            false
+            error("[DocumentsTree]: Cannot create file, error: " + e.message)
         }
     }
 
@@ -57,18 +55,16 @@ class DocumentsTree {
         val node = resolvePath(filepath) ?: return false
         if (!node.isDirectory) return false
         if (!node.loaded) structTree(node)
-        return try {
+        try {
             val filename = URLDecoder.decode(name, FileUtil.DECODE_METHOD)
             if (node.findChild(filename) != null) return true
             val createdDirectory = FileUtil.createDir(node.uri.toString(), name) ?: return false
-            val document = DocumentsNode(createdDirectory, true).apply {
-                parent = node
-            }
+            val document = DocumentsNode(createdDirectory, true)
+            document.parent = node
             node.addChild(document)
-            true
+            return true
         } catch (e: Exception) {
-            error("[DocumentsTree]: Cannot create directory, error: ${e.message}")
-            false
+            error("[DocumentsTree]: Cannot create file, error: " + e.message)
         }
     }
 
@@ -86,23 +82,29 @@ class DocumentsTree {
 
     @Synchronized
     fun getFilesName(filepath: String): Array<String?> {
+        val node = resolvePath(filepath)
+        if (node == null || !node.isDirectory) {
+            return arrayOfNulls(0)
+        }
         // If this directory has not been iterated, struct it.
-        val node = resolvePath(filepath) ?: return arrayOfNulls(0)
-        if (!node.isDirectory) return arrayOfNulls(0)
         if (!node.loaded) structTree(node)
         return node.getChildNames()
     }
 
     @Synchronized
     fun getFileSize(filepath: String): Long {
-        val node = resolvePath(filepath) ?: return 0
-        return if (node.isDirectory) 0 else FileUtil.getFileSize(node.uri.toString())
+        val node = resolvePath(filepath)
+        return if (node == null || node.isDirectory) {
+            0
+        } else {
+            FileUtil.getFileSize(node.uri.toString())
+        }
     }
 
     @Synchronized
     fun getUri(filepath: String): Uri {
         val node = resolvePath(filepath) ?: return Uri.EMPTY
-        return node.uri ?: Uri.EMPTY
+        return node.uri ?: return Uri.EMPTY
     }
 
     @Synchronized
@@ -112,8 +114,9 @@ class DocumentsTree {
         var current = root
 
         for (component in components) {
-            if (current == null) return null
-            if (!current.loaded) structTree(current)
+            if (!current!!.loaded) {
+                structTree(current)
+            }
 
             var child = current.findChild(component)
 
@@ -127,7 +130,7 @@ class DocumentsTree {
                     }
                     current.addChild(child)
                 } catch (e: Exception) {
-                    error("[DocumentsTree]: Cannot create directory, error: ${e.message}")
+                    error("[DocumentsTree]: Cannot create directory, error: " + e.message)
                     return null
                 }
             } else if (child == null) {
@@ -158,22 +161,22 @@ class DocumentsTree {
     ): Boolean {
         val sourceNode = resolvePath(sourcePath) ?: return false
         val destinationNode = resolvePath(destinationParentPath) ?: return false
-        return try {
+        try {
             val destinationParent =
                 DocumentFile.fromTreeUri(context, destinationNode.uri!!) ?: return false
             val filename = URLDecoder.decode(destinationFilename, "UTF-8")
-            val destination =
-                destinationParent.createFile("application/octet-stream", filename) ?: return false
-            val document = DocumentsNode().apply {
-                uri = destination.uri
-                parent = destinationNode
-                name = destination.name ?: return false
-                isDirectory = destination.isDirectory
-                loaded = true
-            }
-            val input = context.contentResolver.openInputStream(sourceNode.uri!!) ?: return false
-            val output =
-                context.contentResolver.openOutputStream(destination.uri, "wt") ?: return false
+            val destination = destinationParent.createFile(
+                "application/octet-stream",
+                filename
+            ) ?: return false
+            val document = DocumentsNode()
+            document.uri = destination.uri
+            document.parent = destinationNode
+            document.name = destination.name!!
+            document.isDirectory = destination.isDirectory
+            document.loaded = true
+            val input = context.contentResolver.openInputStream(sourceNode.uri!!)!!
+            val output = context.contentResolver.openOutputStream(destination.uri, "wt")!!
             val buffer = ByteArray(1024)
             var len: Int
             while (input.read(buffer).also { len = it } != -1) {
@@ -183,39 +186,38 @@ class DocumentsTree {
             output.flush()
             output.close()
             destinationNode.addChild(document)
-            true
+            return true
         } catch (e: Exception) {
-            error("[DocumentsTree]: Cannot copy file, error: ${e.message}")
-            false
+            error("[DocumentsTree]: Cannot copy file, error: " + e.message)
         }
     }
 
     @Synchronized
     fun renameFile(filepath: String, destinationFilename: String?): Boolean {
         val node = resolvePath(filepath) ?: return false
-        return try {
+        try {
             val filename = URLDecoder.decode(destinationFilename, FileUtil.DECODE_METHOD)
             DocumentsContract.renameDocument(context.contentResolver, node.uri!!, filename)
             node.rename(filename)
-            true
+            return true
         } catch (e: Exception) {
-            error("[DocumentsTree]: Cannot rename file, error: ${e.message}")
-            false
+            error("[DocumentsTree]: Cannot rename file, error: " + e.message)
         }
     }
 
     @Synchronized
     fun deleteDocument(filepath: String): Boolean {
         val node = resolvePath(filepath) ?: return false
-        return try {
+        try {
             if (!DocumentsContract.deleteDocument(context.contentResolver, node.uri!!)) {
                 return false
             }
-            node.parent?.removeChild(node)
-            true
+            if (node.parent != null) {
+                node.parent!!.removeChild(node)
+            }
+            return true
         } catch (e: Exception) {
-            error("[DocumentsTree]: Cannot delete file, error: ${e.message}")
-            false
+            error("[DocumentsTree]: Cannot rename file, error: " + e.message)
         }
     }
 
@@ -250,9 +252,8 @@ class DocumentsTree {
     private fun structTree(parent: DocumentsNode) {
         val documents = FileUtil.listFiles(parent.uri!!)
         for (document in documents) {
-            val node = DocumentsNode(document).apply {
-                this.parent = parent
-            }
+            val node = DocumentsNode(document)
+            node.parent = parent
             parent.addChild(node)
         }
         parent.loaded = true
@@ -283,7 +284,7 @@ class DocumentsTree {
         }
 
         constructor(document: DocumentFile, isCreateDir: Boolean) {
-            name = document.name ?: throw IllegalArgumentException("Document name cannot be null")
+            name = document.name!!
             uri = document.uri
             isDirectory = isCreateDir
             loaded = true
@@ -307,7 +308,7 @@ class DocumentsTree {
 
         @Synchronized
         fun getChildNames(): Array<String?> =
-            children.mapNotNull { it.value?.name }.toTypedArray()
+            children.mapNotNull { it.value!!.name }.toTypedArray()
     }
 
     companion object {
