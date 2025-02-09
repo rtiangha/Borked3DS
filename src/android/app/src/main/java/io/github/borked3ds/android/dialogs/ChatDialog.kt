@@ -1,6 +1,5 @@
 package io.github.borked3ds.android.dialogs
 
-import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
@@ -69,7 +68,7 @@ class ChatDialog(context: Context) : BaseSheetDialog(context) {
     }
 
     private fun sendMessage(message: String) {
-        val username = NetPlayManager.getUsername(context as Activity)
+        val username = NetPlayManager.getUsername(context)
         NetPlayManager.netPlaySendMessage(message)
 
         val chatMessage = ChatMessage(

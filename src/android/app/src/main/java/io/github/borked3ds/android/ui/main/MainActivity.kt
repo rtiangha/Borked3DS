@@ -351,7 +351,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
             "installCiaWork", ExistingWorkPolicy.APPEND_OR_REPLACE,
             OneTimeWorkRequest.Builder(CiaInstallWorker::class.java)
                 .setInputData(
-                    Data.Builder().putStringArray("CIA_FILES", selectedFiles as Array<String?>)
+                    Data.Builder().putStringArray("CIA_FILES", selectedFiles)
                         .build()
                 )
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
