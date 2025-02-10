@@ -399,34 +399,40 @@ void JitShader::Compile_SanitizedMul(Xmm src1, Xmm src2, Xmm scratch) {
 }
 
 void JitShader::Compile_EvaluateCondition(Instruction instr) {
-    // Note: NXOR is used below to check for equality
     switch (instr.flow_control.op) {
     case Instruction::FlowControlType::Or:
-        mov(al, COND0.cvt8());
-        mov(bl, COND1.cvt8());
-        xor_(al, (instr.flow_control.refx.Value() ^ 1));
-        xor_(bl, (instr.flow_control.refy.Value() ^ 1));
-        or_(al, bl);
+        // Note: NXOR is used below to check for equality
+        // Move lower 16 bits of COND0/COND1 into ax/bx
+        mov(ax, COND0.cvt16()); // Access lower 16 bits of COND0 (e.g., r13w)
+        mov(bx, COND1.cvt16()); // Access lower 16 bits of COND1 (e.g., r14w)
+        xor_(ax, (instr.flow_control.refx.Value() ^ 1));
+        xor_(bx, (instr.flow_control.refy.Value() ^ 1));
+        or_(ax, bx);
+        test(ax, ax); // Check 16-bit result
         break;
 
     case Instruction::FlowControlType::And:
-        mov(al, COND0.cvt8());
-        mov(bl, COND1.cvt8());
-        xor_(al, (instr.flow_control.refx.Value() ^ 1));
-        xor_(bl, (instr.flow_control.refy.Value() ^ 1));
-        and_(al, bl);
+        mov(ax, COND0.cvt16());
+        mov(bx, COND1.cvt16());
+        xor_(ax, (instr.flow_control.refx.Value() ^ 1));
+        xor_(bx, (instr.flow_control.refy.Value() ^ 1));
+        and_(ax, bx);
+        test(ax, ax);
         break;
 
     case Instruction::FlowControlType::JustX:
-        mov(al, COND0.cvt8());
-        xor_(al, (instr.flow_control.refx.Value() ^ 1));
+        mov(ax, COND0.cvt16());
+        xor_(ax, (instr.flow_control.refx.Value() ^ 1));
+        test(ax, ax);
         break;
 
     case Instruction::FlowControlType::JustY:
-        mov(al, COND1.cvt8());
-        xor_(al, (instr.flow_control.refy.Value() ^ 1));
+        mov(ax, COND1.cvt16());
+        xor_(ax, (instr.flow_control.refy.Value() ^ 1));
+        test(ax, ax);
         break;
     }
+    // Use `jnz`/`jz` based on 16-bit result
 }
 
 void JitShader::Compile_UniformCondition(Instruction instr) {
