@@ -402,37 +402,36 @@ void JitShader::Compile_EvaluateCondition(Instruction instr) {
     switch (instr.flow_control.op) {
     case Instruction::FlowControlType::Or:
         // Note: NXOR is used below to check for equality
-        // Move lower 16 bits of COND0/COND1 into ax/bx
-        mov(ax, COND0.cvt16()); // Access lower 16 bits of COND0 (e.g., r13w)
-        mov(bx, COND1.cvt16()); // Access lower 16 bits of COND1 (e.g., r14w)
-        xor_(ax, (instr.flow_control.refx.Value() ^ 1));
-        xor_(bx, (instr.flow_control.refy.Value() ^ 1));
-        or_(ax, bx);
-        test(ax, ax); // Check 16-bit result
+        mov(eax, COND0.cvt32()); // Access lower 32 bits of COND0
+        mov(ebx, COND1.cvt32()); // Access lower 32 bits of COND1
+        xor_(eax, (instr.flow_control.refx.Value() ^ 1));
+        xor_(ebx, (instr.flow_control.refy.Value() ^ 1));
+        or_(eax, ebx);
+        test(eax, eax);
         break;
 
     case Instruction::FlowControlType::And:
-        mov(ax, COND0.cvt16());
-        mov(bx, COND1.cvt16());
-        xor_(ax, (instr.flow_control.refx.Value() ^ 1));
-        xor_(bx, (instr.flow_control.refy.Value() ^ 1));
-        and_(ax, bx);
-        test(ax, ax);
+        mov(eax, COND0.cvt32());
+        mov(ebx, COND1.cvt32());
+        xor_(eax, (instr.flow_control.refx.Value() ^ 1));
+        xor_(ebx, (instr.flow_control.refy.Value() ^ 1));
+        and_(eax, ebx);
+        test(eax, eax);
         break;
 
     case Instruction::FlowControlType::JustX:
-        mov(ax, COND0.cvt16());
-        xor_(ax, (instr.flow_control.refx.Value() ^ 1));
-        test(ax, ax);
+        mov(eax, COND0.cvt32());
+        xor_(eax, (instr.flow_control.refx.Value() ^ 1));
+        test(eax, eax);
         break;
 
     case Instruction::FlowControlType::JustY:
-        mov(ax, COND1.cvt16());
-        xor_(ax, (instr.flow_control.refy.Value() ^ 1));
-        test(ax, ax);
+        mov(eax, COND1.cvt32());
+        xor_(eax, (instr.flow_control.refy.Value() ^ 1));
+        test(eax, eax);
         break;
     }
-    // Use `jnz`/`jz` based on 16-bit result
+    // Use `jnz`/`jz` based on 32-bit result
 }
 
 void JitShader::Compile_UniformCondition(Instruction instr) {
