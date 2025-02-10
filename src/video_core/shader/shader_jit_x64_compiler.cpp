@@ -399,34 +399,40 @@ void JitShader::Compile_SanitizedMul(Xmm src1, Xmm src2, Xmm scratch) {
 }
 
 void JitShader::Compile_EvaluateCondition(Instruction instr) {
-    // Note: NXOR is used below to check for equality
     switch (instr.flow_control.op) {
     case Instruction::FlowControlType::Or:
-        mov(al, COND0.cvt8());
-        mov(bl, COND1.cvt8());
-        xor_(al, (instr.flow_control.refx.Value() ^ 1));
-        xor_(bl, (instr.flow_control.refy.Value() ^ 1));
-        or_(al, bl);
+        // Note: NXOR is used below to check for equality
+        // Use 64-bit registers (rax/rbx) instead of 8-bit (al/bl)
+        mov(rax, COND0); // Move entire 64-bit COND0 to rax
+        mov(rbx, COND1); // Move entire 64-bit COND1 to rbx
+        xor_(rax, (instr.flow_control.refx.Value() ^ 1));
+        xor_(rbx, (instr.flow_control.refy.Value() ^ 1));
+        or_(rax, rbx);
+        test(rax, rax); // Check if result is non-zero
         break;
 
     case Instruction::FlowControlType::And:
-        mov(al, COND0.cvt8());
-        mov(bl, COND1.cvt8());
-        xor_(al, (instr.flow_control.refx.Value() ^ 1));
-        xor_(bl, (instr.flow_control.refy.Value() ^ 1));
-        and_(al, bl);
+        mov(rax, COND0);
+        mov(rbx, COND1);
+        xor_(rax, (instr.flow_control.refx.Value() ^ 1));
+        xor_(rbx, (instr.flow_control.refy.Value() ^ 1));
+        and_(rax, rbx);
+        test(rax, rax);
         break;
 
     case Instruction::FlowControlType::JustX:
-        mov(al, COND0.cvt8());
-        xor_(al, (instr.flow_control.refx.Value() ^ 1));
+        mov(rax, COND0);
+        xor_(rax, (instr.flow_control.refx.Value() ^ 1));
+        test(rax, rax);
         break;
 
     case Instruction::FlowControlType::JustY:
-        mov(al, COND1.cvt8());
-        xor_(al, (instr.flow_control.refy.Value() ^ 1));
+        mov(rax, COND1);
+        xor_(rax, (instr.flow_control.refy.Value() ^ 1));
+        test(rax, rax);
         break;
     }
+    // Use `jnz`/`jz` based on 64-bit result
 }
 
 void JitShader::Compile_UniformCondition(Instruction instr) {
