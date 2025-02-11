@@ -125,19 +125,19 @@ constexpr Reg64 COND1 = r14;
 /// Pointer to the ShaderUnit instance for the current VS unit
 constexpr Reg64 STATE = r15;
 /// SIMD scratch register
-constexpr Xmm SCRATCH = xmm0;
+constexpr Xbyak::Xmm SCRATCH = xmm0;
 /// Loaded with the first swizzled source register, otherwise can be used as a scratch register
-constexpr Xmm SRC1 = xmm1;
+constexpr Xbyak::Xmm SRC1 = xmm1;
 /// Loaded with the second swizzled source register, otherwise can be used as a scratch register
-constexpr Xmm SRC2 = xmm2;
+constexpr Xbyak::Xmm SRC2 = xmm2;
 /// Loaded with the third swizzled source register, otherwise can be used as a scratch register
-constexpr Xmm SRC3 = xmm3;
+constexpr Xbyak::Xmm SRC3 = xmm3;
 /// Additional scratch register
-constexpr Xmm SCRATCH2 = xmm4;
+constexpr Xbyak::Xmm SCRATCH2 = xmm4;
 /// Constant vector of [1.0f, 1.0f, 1.0f, 1.0f], used to efficiently set a vector to one
-constexpr Xmm ONE = xmm14;
+constexpr Xbyak::Xmm ONE = xmm14;
 /// Constant vector of [-0.f, -0.f, -0.f, -0.f], used to efficiently negate a vector with XOR
-constexpr Xmm NEGBIT = xmm15;
+constexpr Xbyak::Xmm NEGBIT = xmm15;
 
 // State registers that must not be modified by external functions calls
 // Scratch registers, e.g., SRC1 and SCRATCH, have to be saved on the side if needed
@@ -270,7 +270,7 @@ void JitShader::Compile_SwizzleSrc(Instruction instr, u32 src_num, SourceRegiste
         L(load_end);
     } else {
         // Load the source
-        movaps(dest, xword[src_ptr + src_offset_disp]);
+        movaps(xmm(dest.getIdx()), xword[src_ptr + src_offset_disp]);
     }
 
     SwizzlePattern swiz((*swizzle_data)[operand_desc_id]);
@@ -323,12 +323,12 @@ void JitShader::Compile_DestEnable(Instruction instr, Xmm src) {
     // If all components are enabled, write the result to the destination register
     if (swiz.dest_mask == NO_DEST_REG_MASK) {
         // Store dest back to memory
-        movaps(xword[STATE + dest_offset_disp], src);
+        movaps(ptr[STATE + dest_offset_disp], xmm(src.getIdx()));
 
     } else {
         // Not all components are enabled, so mask the result when storing to the destination
         // register...
-        movaps(SCRATCH, xword[STATE + dest_offset_disp]);
+        movaps(xmm(SCRATCH.getIdx()), ptr[STATE + dest_offset_disp]);
 
         if (host_caps.has(Cpu::tSSE41)) {
             u8 mask = ((swiz.dest_mask & 1) << 3) | ((swiz.dest_mask & 8) >> 3) |
@@ -360,14 +360,14 @@ void JitShader::Compile_SanitizedMul(Xmm src1, Xmm src2, Xmm scratch) {
     // result should be transformed to 0 to match PICA fp rules.
 
     if (host_caps.has(Cpu::tAVX512F | Cpu::tAVX512VL | Cpu::tAVX512DQ)) {
-        vmulps(scratch, src1, src2);
+        vmulps(xmm(scratch.getIdx()), xmm(src1.getIdx()), xmm(src2.getIdx()));
 
         // Mask of any NaN values found in the result
         const Xbyak::Opmask zero_mask = k1;
-        vcmpunordps(zero_mask, scratch, scratch);
+        vcmpunordps(zero_mask, xmm(scratch.getIdx()), xmm(scratch.getIdx()));
 
         // Mask of any non-NaN inputs producing NaN results
-        vcmpordps(zero_mask | zero_mask, src1, src2);
+        vcmpordps(zero_mask | zero_mask, xmm(src1.getIdx()), xmm(src2.getIdx()));
 
         knotb(zero_mask, zero_mask);
         vmovaps(src1 | zero_mask | T_z, scratch);
@@ -441,7 +441,7 @@ std::bitset<32> JitShader::PersistentCallerSavedRegs() {
 void JitShader::Compile_ADD(Instruction instr) {
     Compile_SwizzleSrc(instr, 1, instr.common.src1, SRC1);
     Compile_SwizzleSrc(instr, 2, instr.common.src2, SRC2);
-    addps(SRC1, SRC2);
+    addps(xmm(SRC1.getIdx()), xmm(SRC2.getIdx()));
     Compile_DestEnable(instr, SRC1);
 }
 
@@ -465,8 +465,8 @@ void JitShader::Compile_DP3(Instruction instr) {
         shufps(SRC1, SRC1, _MM_SHUFFLE(0, 0, 0, 0));
     }
 
-    addps(SRC1, SRC2);
-    addps(SRC1, SRC3);
+    addps(xmm(SRC1.getIdx()), xmm(SRC2.getIdx()));
+    addps(xmm(SRC1.getIdx()), xmm(SRC3.getIdx()));
 
     Compile_DestEnable(instr, SRC1);
 }
@@ -769,7 +769,7 @@ void JitShader::Compile_MAD(Instruction instr) {
     }
 
     Compile_SanitizedMul(SRC1, SRC2, SCRATCH);
-    addps(SRC1, SRC3);
+    addps(xmm(SRC1.getIdx()), xmm(SRC3.getIdx()));
 
     Compile_DestEnable(instr, SRC1);
 }
@@ -1086,7 +1086,7 @@ Xbyak::Label JitShader::CompilePrelude_Log2() {
     movaps(SRC1, xword[rip + default_qnan_vector]);
     ret();
     L(input_is_zero);
-    movaps(SRC1, xword[rip + negative_infinity_vector]);
+    movaps(xmm(SRC1.getIdx()), ptr[rip + default_qnan_vector]);
     ret();
 
     align(16);
