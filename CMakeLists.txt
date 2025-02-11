@@ -1,5 +1,5 @@
 # CMake 3.12 required for 20 to be a valid value for CXX_STANDARD
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.26)
 
 if(COMMAND CMAKE_POLICY)
     # Honor visibility properties for all targets
