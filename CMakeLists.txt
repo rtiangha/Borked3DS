@@ -167,7 +167,12 @@ option(ENABLE_VULKAN "Enables the Vulkan renderer" ON)
 option(BORKED3DS_USE_EXTERNAL_VULKAN_SPIRV_TOOLS "Use SPIRV-Tools from externals" ON)
 
 option(ENABLE_PROFILING "Enables integration with the Tracy profiler" ON)
-CMAKE_DEPENDENT_OPTION(USE_DISCORD_PRESENCE "Enables Discord Rich Presence" ON "NOT ANDROID AND NOT IOS" OFF)
+
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64" AND NOT ANDROID)
+    set(USE_DISCORD_PRESENCE ON)
+else()
+    set(USE_DISCORD_PRESENCE OFF)
+endif()
 
 # Compile options
 CMAKE_DEPENDENT_OPTION(COMPILE_WITH_DWARF "Add DWARF debugging information" ${IS_DEBUG_BUILD} "MINGW" OFF)
