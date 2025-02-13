@@ -42,8 +42,8 @@ std::pair<unsigned, unsigned> EmuWindow_SDL2::TouchToPixelPos(float touch_x, flo
     int w, h;
     SDL_GetWindowSize(render_window, &w, &h);
 
-    touch_x *= w;
-    touch_y *= h;
+    touch_x = touch_x * w;
+    touch_y = touch_y * h;
 
     return {static_cast<unsigned>(std::max(std::round(touch_x), 0.0f)),
             static_cast<unsigned>(std::max(std::round(touch_y), 0.0f))};

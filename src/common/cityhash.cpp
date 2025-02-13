@@ -108,7 +108,7 @@ static uint64 HashLen16(uint64 u, uint64 v, uint64 mul) {
     a ^= (a >> 47);
     uint64 b = (v ^ a) * mul;
     b ^= (b >> 47);
-    b *= mul;
+    b = b * mul;
     return b;
 }
 
@@ -253,10 +253,10 @@ static uint128 CityMurmur(const char* s, std::size_t len, uint128 seed) {
         a += d;
         do {
             a ^= ShiftMix(Fetch64(s) * k1) * k1;
-            a *= k1;
+            a = a * k1;
             b ^= a;
             c ^= ShiftMix(Fetch64(s + 8) * k1) * k1;
-            c *= k1;
+            c = c * k1;
             d ^= c;
             s += 16;
             l -= 16;
@@ -308,8 +308,8 @@ uint128 CityHash128WithSeed(const char* s, std::size_t len, uint128 seed) {
     x += Rotate(v.first + z, 49) * k0;
     y = y * k0 + Rotate(w.second, 37);
     z = z * k0 + Rotate(w.first, 27);
-    w.first *= 9;
-    v.first *= k0;
+    w.first = w.first * 9;
+    v.first = v.first * k0;
     // If 0 < len < 128, hash up to 4 chunks of 32 bytes each from the end of s.
     for (std::size_t tail_done = 0; tail_done < len;) {
         tail_done += 32;
@@ -319,7 +319,7 @@ uint128 CityHash128WithSeed(const char* s, std::size_t len, uint128 seed) {
         z += w.second + Fetch64(s + len - tail_done);
         w.second += v.first;
         v = WeakHashLen32WithSeeds(s + len - tail_done, v.first + z, v.second);
-        v.first *= k0;
+        v.first = v.first * k0;
     }
     // At this point our 56 bytes of state should contain more than
     // enough information for a strong 128-bit hash.  We use two

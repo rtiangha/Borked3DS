@@ -19,7 +19,7 @@ OGLStreamBuffer::OGLStreamBuffer(Driver& driver, GLenum target, GLsizeiptr size,
 
     GLsizeiptr allocate_size = size;
     if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && target == GL_ARRAY_BUFFER) {
-        allocate_size *= 2;
+        allocate_size = allocate_size * 2;
     }
 
     if (GLAD_GL_ARB_buffer_storage) {

@@ -108,7 +108,7 @@ union ETC1Tile {
 
         int modifier = etc1_modifier_table[table_index][GetTableSubIndex(texel)];
         if (GetNegationFlag(texel))
-            modifier *= -1;
+            modifier = modifier * -1;
 
         ret.r() = std::clamp(ret.r() + modifier, 0, 255);
         ret.g() = std::clamp(ret.g() + modifier, 0, 255);

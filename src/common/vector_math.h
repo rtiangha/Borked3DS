@@ -32,6 +32,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <type_traits>
@@ -62,8 +63,8 @@
 #define HAVE_NEON
 #endif
 
-#if defined(HAVE_NEON)
-__builtin_prefetch(&x, 0, 3); // For reading, high temporal locality
+#if defined(__ARM_FEATURE_FMA)
+#define HAVE_FMA
 #endif
 
 namespace Common {
@@ -80,6 +81,22 @@ namespace detail {
 constexpr bool has_simd_support = true;
 #else
 constexpr bool has_simd_support = false;
+#endif
+
+template <typename T, typename = void>
+struct has_simd_member : std::false_type {};
+
+template <typename T>
+struct has_simd_member<T, std::void_t<decltype(std::remove_cv_t<T>::simd)>> : std::true_type {};
+
+#if defined(HAVE_SSE2)
+[[nodiscard]] inline __m128i vec2_to_epi16(int16_t x, int16_t y) {
+    return _mm_setr_epi16(x, y, 0, 0, 0, 0, 0, 0);
+}
+
+[[nodiscard]] inline __m128i vec3_to_epi16(int16_t x, int16_t y, int16_t z) {
+    return _mm_setr_epi16(x, y, z, 0, 0, 0, 0, 0);
+}
 #endif
 
 template <typename T>
@@ -100,16 +117,8 @@ public:
     T y;
 
     constexpr Vec2() = default;
-    constexpr Vec2(const T& x_, const T& y_) : x(x_), y(y_) {
-        if constexpr (detail::is_vectorizable<T>::value) {
-#if defined(HAVE_NEON)
-            float values[2] = {x_, y_};
-            float32x2_t temp = vld1_f32(values);
-            x = vget_lane_f32(temp, 0);
-            y = vget_lane_f32(temp, 1);
-#endif
-        }
-    }
+    constexpr Vec2(const T& x_, const T& y_) : x(x_), y(y_) {}
+    static constexpr std::size_t dimension = 2;
 
     [[nodiscard]] T* AsArray() {
         return &x;
@@ -132,18 +141,21 @@ public:
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec2<T> result;
 #if defined(HAVE_SSE2)
-            // Load xy components into lower half of XMM register
+            // Create SIMD vector with both components (x,y)
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 sum = _mm_add_ps(a, b);
-            result.x = _mm_cvtss_f32(sum);
-            result.y = _mm_cvtss_f32(_mm_shuffle_ps(sum, sum, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly to result using lower 64 bits
+            _mm_store_sd(reinterpret_cast<double*>(&result.x), _mm_castps_pd(sum));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            // Direct initialization of NEON vectors
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
+            // Add and store directly
             float32x2_t sum = vadd_f32(a, b);
-            result.x = vget_lane_f32(sum, 0);
-            result.y = vget_lane_f32(sum, 1);
+            vst1_f32(&result.x, sum);
 #endif
             return result;
         } else {
@@ -157,14 +169,14 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 sum = _mm_add_ps(a, b);
-            x = _mm_cvtss_f32(sum);
-            y = _mm_cvtss_f32(_mm_shuffle_ps(sum, sum, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store result directly to x,y using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&x), _mm_castps_pd(sum));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            float32x2_t a = vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
             float32x2_t sum = vadd_f32(a, b);
-            x = vget_lane_f32(sum, 0);
-            y = vget_lane_f32(sum, 1);
+            vst1_f32(&x, sum);
 #endif
         } else {
             x += other.x;
@@ -180,34 +192,36 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 diff = _mm_sub_ps(a, b);
-            result.x = _mm_cvtss_f32(diff);
-            result.y = _mm_cvtss_f32(_mm_shuffle_ps(diff, diff, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store result directly using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&result.x), _mm_castps_pd(diff));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
             float32x2_t diff = vsub_f32(a, b);
-            result.x = vget_lane_f32(diff, 0);
-            result.y = vget_lane_f32(diff, 1);
+            vst1_f32(&result.x, diff);
 #endif
             return result;
         } else {
             return {x - other.x, y - other.y};
         }
     }
-    constexpr Vec2& operator-=(const Vec2& other) {
+
+    [[nodiscard]] constexpr Vec2& operator-=(const Vec2& other) {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 diff = _mm_sub_ps(a, b);
-            x = _mm_cvtss_f32(diff);
-            y = _mm_cvtss_f32(_mm_shuffle_ps(diff, diff, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly to x,y using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&x), _mm_castps_pd(diff));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            float32x2_t a = vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
             float32x2_t diff = vsub_f32(a, b);
-            x = vget_lane_f32(diff, 0);
-            y = vget_lane_f32(diff, 1);
+            vst1_f32(&x, diff);
 #endif
         } else {
             x -= other.x;
@@ -223,19 +237,20 @@ public:
 #if defined(HAVE_SSE2)
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 neg = _mm_sub_ps(_mm_setzero_ps(), a);
-            result.x = _mm_cvtss_f32(neg);
-            result.y = _mm_cvtss_f32(_mm_shuffle_ps(neg, neg, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&result.x), _mm_castps_pd(neg));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
             float32x2_t neg = vneg_f32(a);
-            result.x = vget_lane_f32(neg, 0);
-            result.y = vget_lane_f32(neg, 1);
+            vst1_f32(&result.x, neg);
 #endif
             return result;
         } else {
             return {-x, -y};
         }
     }
+
     [[nodiscard]] constexpr Vec2<decltype(T{} * T{})> operator*(const Vec2& other) const {
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec2<T> result;
@@ -243,14 +258,15 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 prod = _mm_mul_ps(a, b);
-            result.x = _mm_cvtss_f32(prod);
-            result.y = _mm_cvtss_f32(_mm_shuffle_ps(prod, prod, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&result.x), _mm_castps_pd(prod));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
             float32x2_t prod = vmul_f32(a, b);
-            result.x = vget_lane_f32(prod, 0);
-            result.y = vget_lane_f32(prod, 1);
+            vst1_f32(&result.x, prod);
 #endif
             return result;
         } else {
@@ -266,14 +282,14 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_set1_ps(f);
             __m128 prod = _mm_mul_ps(a, b);
-            result.x = _mm_cvtss_f32(prod);
-            result.y = _mm_cvtss_f32(_mm_shuffle_ps(prod, prod, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&result.x), _mm_castps_pd(prod));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
             float32x2_t b = vdup_n_f32(f);
             float32x2_t prod = vmul_f32(a, b);
-            result.x = vget_lane_f32(prod, 0);
-            result.y = vget_lane_f32(prod, 1);
+            vst1_f32(&result.x, prod);
 #endif
             return result;
         } else {
@@ -288,14 +304,13 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_set1_ps(f);
             __m128 prod = _mm_mul_ps(a, b);
-            x = _mm_cvtss_f32(prod);
-            y = _mm_cvtss_f32(_mm_shuffle_ps(prod, prod, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly to x,y using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&x), _mm_castps_pd(prod));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
+            float32x2_t a = vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<uint64_t*>(&x))));
             float32x2_t b = vdup_n_f32(f);
             float32x2_t prod = vmul_f32(a, b);
-            x = vget_lane_f32(prod, 0);
-            y = vget_lane_f32(prod, 1);
+            vst1_f32(&x, prod);
 #endif
         } else {
             *this = *this * f;
@@ -311,15 +326,15 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_set1_ps(f);
             __m128 quot = _mm_div_ps(a, b);
-            result.x = _mm_cvtss_f32(quot);
-            result.y = _mm_cvtss_f32(_mm_shuffle_ps(quot, quot, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&result.x), _mm_castps_pd(quot));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
             // NEON doesn't have direct division, use reciprocal multiplication
             float32x2_t recip = vdup_n_f32(1.0f / f);
             float32x2_t quot = vmul_f32(a, recip);
-            result.x = vget_lane_f32(quot, 0);
-            result.y = vget_lane_f32(quot, 1);
+            vst1_f32(&result.x, quot);
 #endif
             return result;
         } else {
@@ -334,15 +349,14 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_set1_ps(f);
             __m128 quot = _mm_div_ps(a, b);
-            x = _mm_cvtss_f32(quot);
-            y = _mm_cvtss_f32(_mm_shuffle_ps(quot, quot, _MM_SHUFFLE(1, 1, 1, 1)));
+            // Store directly to x,y using 64-bit store
+            _mm_store_sd(reinterpret_cast<double*>(&x), _mm_castps_pd(quot));
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
+            float32x2_t a = vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<uint64_t*>(&x))));
             // NEON doesn't have direct division, use reciprocal multiplication
             float32x2_t recip = vdup_n_f32(1.0f / f);
             float32x2_t quot = vmul_f32(a, recip);
-            x = vget_lane_f32(quot, 0);
-            y = vget_lane_f32(quot, 1);
+            vst1_f32(&x, quot);
 #endif
         } else {
             *this = *this / f;
@@ -355,10 +369,15 @@ public:
 #if defined(HAVE_SSE2)
             __m128 v = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 sq = _mm_mul_ps(v, v);
-            // Add x+y components
+            // Horizontal add using hadd instruction if available, otherwise use original method
+#if defined(__SSE3__)
+            return _mm_cvtss_f32(_mm_hadd_ps(sq, sq));
+#else
             return _mm_cvtss_f32(_mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1))));
+#endif
 #elif defined(HAVE_NEON)
-            volatile float32x2_t v = simd; // Prevent unwanted optimization
+            float32x2_t v =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
             float32x2_t sq = vmul_f32(v, v);
             return vget_lane_f32(vpadd_f32(sq, sq), 0);
 #endif
@@ -373,12 +392,16 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 cmp = _mm_cmpeq_ps(a, b);
-            return (_mm_movemask_ps(cmp) & 0x3) != 0x3; // Check only x,y (mask 0x3)
+            // Simplified mask check using only lower 2 bits
+            return (_mm_movemask_ps(cmp) & 3) != 3;
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
             uint32x2_t cmp = vceq_f32(a, b);
-            return (vget_lane_u32(cmp, 0) & vget_lane_u32(cmp, 1)) != 0xFFFFFFFF;
+            uint64x1_t result = vreinterpret_u64_u32(cmp);
+            return vget_lane_u64(result, 0) != UINT64_C(0xFFFFFFFFFFFFFFFF);
 #endif
         } else {
             return std::memcmp(AsArray(), other.AsArray(), sizeof(Vec2)) != 0;
@@ -391,12 +414,16 @@ public:
             __m128 a = _mm_setr_ps(x, y, 0.0f, 0.0f);
             __m128 b = _mm_setr_ps(other.x, other.y, 0.0f, 0.0f);
             __m128 cmp = _mm_cmpeq_ps(a, b);
-            return (_mm_movemask_ps(cmp) & 0x3) == 0x3; // Check only x,y (mask 0x3)
+            // Simplified mask check using only lower 2 bits
+            return (_mm_movemask_ps(cmp) & 3) == 3;
 #elif defined(HAVE_NEON)
-            float32x2_t a = {x, y};
-            float32x2_t b = {other.x, other.y};
+            float32x2_t a =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
+            float32x2_t b =
+                vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&other.x))));
             uint32x2_t cmp = vceq_f32(a, b);
-            return (vget_lane_u32(cmp, 0) & vget_lane_u32(cmp, 1)) == 0xFFFFFFFF;
+            uint64x1_t result = vreinterpret_u64_u32(cmp);
+            return vget_lane_u64(result, 0) == UINT64_C(0xFFFFFFFFFFFFFFFF);
 #endif
         } else {
             return std::memcmp(AsArray(), other.AsArray(), sizeof(Vec2)) == 0;
@@ -408,9 +435,12 @@ public:
     float Normalize(); // returns the previous length, which is often useful
 
     [[nodiscard]] constexpr T& operator[](std::size_t i) {
+        assert(i < dimension && "Index out of bounds in Vec2");
         return *((&x) + i);
     }
+
     [[nodiscard]] constexpr const T& operator[](std::size_t i) const {
+        assert(i < dimension && "Index out of bounds in Vec2");
         return *((&x) + i);
     }
 
@@ -459,8 +489,86 @@ public:
 };
 
 template <typename T, typename V>
-[[nodiscard]] constexpr Vec2<T> operator*(const V& f, const Vec2<T>& vec) {
-    return Vec2<T>(f * vec.x, f * vec.y);
+[[nodiscard]] constexpr Vec2<decltype(V{} * T{})> operator*(const V& f, const Vec2<T>& vec) {
+    if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+        if constexpr (std::is_same_v<V, float> && std::is_same_v<T, float>) {
+            Vec2<float> result;
+#if defined(HAVE_FMA)
+            // Use FMA for better precision
+            __m128 vf = _mm_set1_ps(f);
+            __m128 vvec = _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&vec.x));
+            _mm_storel_pi(reinterpret_cast<__m64*>(&result.x), _mm_mul_ps(vf, vvec));
+#else
+            // Standard SSE2 path
+            __m128 vf = _mm_set1_ps(f);
+            __m128 vvec = _mm_setr_ps(vec.x, vec.y, 0.0f, 0.0f);
+            __m128 vresult = _mm_mul_ps(vf, vvec);
+            result.x = _mm_cvtss_f32(vresult);
+            result.y = _mm_cvtss_f32(_mm_shuffle_ps(vresult, vresult, _MM_SHUFFLE(1, 1, 1, 1)));
+#endif
+            return result;
+        } else if constexpr (std::is_integral_v<V> && std::is_integral_v<T>) {
+            Vec2<decltype(V{} * T{})> result;
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                __m128i vf = _mm_set1_epi16(static_cast<int16_t>(f));
+                __m128i vvec =
+                    detail::vec2_to_epi16(static_cast<int16_t>(vec.x), static_cast<int16_t>(vec.y));
+                __m128i vresult = _mm_mullo_epi16(vf, vvec);
+                result.x = static_cast<T>(_mm_extract_epi16(vresult, 0));
+                result.y = static_cast<T>(_mm_extract_epi16(vresult, 1));
+            } else {
+                // For 32-bit integers
+                __m128i vf = _mm_set1_epi32(static_cast<int32_t>(f));
+                __m128i vvec =
+                    _mm_setr_epi32(static_cast<int32_t>(vec.x), static_cast<int32_t>(vec.y), 0, 0);
+                __m128i vresult = _mm_mullo_epi32(vf, vvec);
+                result.x = static_cast<T>(_mm_cvtsi128_si32(vresult));
+                result.y = static_cast<T>(_mm_extract_epi32(vresult, 1));
+            }
+            return result;
+        }
+#elif defined(HAVE_NEON)
+        if constexpr (std::is_same_v<V, float> && std::is_same_v<T, float>) {
+            Vec2<float> result;
+#if defined(__ARM_FEATURE_FMA)
+            // Use FMA on ARM if available
+            float32x2_t vvec = vld1_f32(&vec.x);
+            float32x2_t vf = vdup_n_f32(f);
+            float32x2_t vresult = vmul_f32(vf, vvec);
+            vst1_f32(&result.x, vresult);
+#else
+            float32x2_t vvec = {vec.x, vec.y};
+            float32x2_t vf = vdup_n_f32(f);
+            float32x2_t vresult = vmul_f32(vf, vvec);
+            result.x = vget_lane_f32(vresult, 0);
+            result.y = vget_lane_f32(vresult, 1);
+#endif
+            return result;
+        } else if constexpr (std::is_integral_v<V> && std::is_integral_v<T>) {
+            Vec2<decltype(V{} * T{})> result;
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                int16x4_t vvec = {static_cast<int16_t>(vec.x), static_cast<int16_t>(vec.y), 0, 0};
+                int16x4_t vf = vdup_n_s16(static_cast<int16_t>(f));
+                int16x4_t vresult = vmul_s16(vf, vvec);
+                result.x = static_cast<T>(vget_lane_s16(vresult, 0));
+                result.y = static_cast<T>(vget_lane_s16(vresult, 1));
+            } else {
+                // For 32-bit integers
+                int32x2_t vvec = {static_cast<int32_t>(vec.x), static_cast<int32_t>(vec.y)};
+                int32x2_t vf = vdup_n_s32(static_cast<int32_t>(f));
+                int32x2_t vresult = vmul_s32(vf, vvec);
+                result.x = static_cast<T>(vget_lane_s32(vresult, 0));
+                result.y = static_cast<T>(vget_lane_s32(vresult, 1));
+            }
+            return result;
+        }
+#endif
+    }
+    // Fallback for non-vectorizable types
+    return Vec2<decltype(V{} * T{})>(f * vec.x, f * vec.y);
 }
 
 using Vec2f = Vec2<float>;
@@ -472,18 +580,24 @@ inline float Vec2<float>::Length() const {
 #if defined(HAVE_SSE4_1)
     // SSE4.1 has a dedicated dot product instruction
     __m128 v = _mm_setr_ps(x, y, 0.0f, 0.0f);
-    return _mm_cvtss_f32(_mm_sqrt_ss(
-        _mm_dp_ps(v, v, 0x31))); // 0x31: only multiply xy (0x3) and store in lowest (0x1)
+    // Use dp_ps with mask 0x31 for xy multiply and lowest element store
+    return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(v, v, 0x31)));
 #elif defined(HAVE_SSE2)
     __m128 v = _mm_setr_ps(x, y, 0.0f, 0.0f);
-    __m128 sq = _mm_mul_ps(v, v); // Square components
-    __m128 sum = _mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1))); // Add x^2 + y^2
-    return _mm_cvtss_f32(_mm_sqrt_ss(sum));                                       // sqrt(x^2 + y^2)
+    __m128 sq = _mm_mul_ps(v, v);
+#if defined(__SSE3__)
+    // Use hadd for more efficient horizontal addition if SSE3 is available
+    return _mm_cvtss_f32(_mm_sqrt_ss(_mm_hadd_ps(sq, sq)));
+#else
+    // Fallback to SSE2 shuffle and add
+    return _mm_cvtss_f32(
+        _mm_sqrt_ss(_mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1)))));
+#endif
 #elif defined(HAVE_NEON)
-    float32x2_t v = {x, y};
-    float32x2_t sq = vmul_f32(v, v);     // Square components
-    float32x2_t sum = vpadd_f32(sq, sq); // Horizontal add
-    return sqrt(vget_lane_f32(sum, 0));  // sqrt(x^2 + y^2)
+    float32x2_t v = vcreate_f32(static_cast<uint64_t>(*(reinterpret_cast<const uint64_t*>(&x))));
+    float32x2_t sq = vmul_f32(v, v);
+    float32x2_t sum = vpadd_f32(sq, sq);
+    return vget_lane_f32(vsqrt_f32(vdup_n_f32(vget_lane_f32(sum, 0))), 0);
 #else
     return std::sqrt(x * x + y * y);
 #endif
@@ -491,8 +605,16 @@ inline float Vec2<float>::Length() const {
 
 template <>
 inline float Vec2<float>::Normalize() {
-    float length = Length();
-    *this /= length;
+    const float length = Length();
+    if (length < std::numeric_limits<float>::epsilon()) {
+        x = 0;
+        y = 0;
+        return 0;
+    }
+
+    const float inv_length = 1.0f / length;
+    x *= inv_length;
+    y *= inv_length;
     return length;
 }
 
@@ -507,31 +629,21 @@ class alignas(16) Vec3 {
     }
 
 public:
-    T x;
-    T y;
-    T z;
-    T pad; // For SIMD alignment
+    union {
+        struct {
+            T x, y, z;
+            T pad; // For SIMD alignment
+        };
+#if defined(HAVE_SSE2)
+        __m128 simd;
+#elif defined(HAVE_NEON)
+        float32x4_t simd;
+#endif
+    };
 
     constexpr Vec3() = default;
-    constexpr Vec3(const T& x_, const T& y_, const T& z_) {
-        if constexpr (detail::is_vectorizable<T>::value) {
-#if defined(HAVE_SSE2)
-            simd = _mm_set_ps(0.0f, z_, y_, x_); // Set w=0 for padding
-#elif defined(HAVE_NEON)
-            float values[4] = {x_, y_, z_, 0.0f}; // Include padding
-            float32x4_t temp = vld1q_f32(values);
-            vst1q_f32(&x, temp);
-#else
-            x = x_;
-            y = y_;
-            z = z_;
-#endif
-        } else {
-            x = x_;
-            y = y_;
-            z = z_;
-        }
-    }
+    constexpr Vec3(const T& x_, const T& y_, const T& z_) : x(x_), y(y_), z(z_) {}
+    static constexpr std::size_t dimension = 3;
 
     [[nodiscard]] T* AsArray() {
         return &x;
@@ -547,7 +659,17 @@ public:
             Vec3<T2> result;
 #if defined(HAVE_SSE2)
             if constexpr (std::is_same_v<T, float> && std::is_same_v<T2, float>) {
-                _mm_store_ps(&result.x, _mm_load_ps(&x));
+                // Use unaligned load/store for better flexibility
+                __m128 v = _mm_loadu_ps(&x);
+                _mm_storeu_ps(&result.x, v);
+            } else if constexpr (std::is_same_v<T, int32_t> && std::is_same_v<T2, float>) {
+                // Integer to float conversion
+                __m128i vi = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&x));
+                _mm_storeu_ps(&result.x, _mm_cvtepi32_ps(vi));
+            } else if constexpr (std::is_same_v<T, float> && std::is_same_v<T2, int32_t>) {
+                // Float to integer conversion
+                __m128 v = _mm_loadu_ps(&x);
+                _mm_storeu_si128(reinterpret_cast<__m128i*>(&result.x), _mm_cvtps_epi32(v));
             } else {
                 // Fallback to scalar for other type conversions
                 result.x = static_cast<T2>(x);
@@ -556,7 +678,17 @@ public:
             }
 #elif defined(HAVE_NEON)
             if constexpr (std::is_same_v<T, float> && std::is_same_v<T2, float>) {
-                vst1q_f32(&result.x, vld1q_f32(&x));
+                // Use unaligned load/store for better flexibility
+                float32x4_t v = vld1q_f32(&x);
+                vst1q_f32(&result.x, v);
+            } else if constexpr (std::is_same_v<T, int32_t> && std::is_same_v<T2, float>) {
+                // Integer to float conversion
+                int32x4_t vi = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                vst1q_f32(&result.x, vcvtq_f32_s32(vi));
+            } else if constexpr (std::is_same_v<T, float> && std::is_same_v<T2, int32_t>) {
+                // Float to integer conversion
+                float32x4_t v = vld1q_f32(&x);
+                vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vcvtq_s32_f32(v));
             } else {
                 // Fallback to scalar for other type conversions
                 result.x = static_cast<T2>(x);
@@ -574,9 +706,17 @@ public:
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec3<T> result;
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&result.x, _mm_set_ps1(f));
+            // Use unaligned store for better flexibility, and _mm_set1_ps is more commonly used
+            // than _mm_set_ps1
+            _mm_storeu_ps(&result.x, _mm_set1_ps(f));
 #elif defined(HAVE_NEON)
-            vst1q_f32(&result.x, vdupq_n_f32(f));
+            if constexpr (std::is_same_v<T, float>) {
+                // Optimal for float type
+                vst1q_f32(&result.x, vdupq_n_f32(f));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Support for integer type
+                vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vdupq_n_s32(f));
+            }
 #endif
             return result;
         } else {
@@ -588,9 +728,22 @@ public:
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec3<T> result;
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&result.x, _mm_add_ps(_mm_load_ps(&x), _mm_load_ps(&other.x)));
+            // Use unaligned loads/stores for better flexibility
+            __m128 a = _mm_loadu_ps(&x);
+            __m128 b = _mm_loadu_ps(&other.x);
+            _mm_storeu_ps(&result.x, _mm_add_ps(a, b));
 #elif defined(HAVE_NEON)
-            vst1q_f32(&result.x, vaddq_f32(vld1q_f32(&x), vld1q_f32(&other.x)));
+            if constexpr (std::is_same_v<T, float>) {
+                // Optimal for float type
+                float32x4_t a = vld1q_f32(&x);
+                float32x4_t b = vld1q_f32(&other.x);
+                vst1q_f32(&result.x, vaddq_f32(a, b));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Support for integer type
+                int32x4_t a = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                int32x4_t b = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vaddq_s32(a, b));
+            }
 #endif
             return result;
         } else {
@@ -598,12 +751,25 @@ public:
         }
     }
 
-    constexpr Vec3& operator+=(const Vec3& other) {
+    [[nodiscard]] constexpr Vec3& operator+=(const Vec3& other) {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&x, _mm_add_ps(_mm_load_ps(&x), _mm_load_ps(&other.x)));
+            // Use unaligned loads/stores for better flexibility
+            __m128 a = _mm_loadu_ps(&x);
+            __m128 b = _mm_loadu_ps(&other.x);
+            _mm_storeu_ps(&x, _mm_add_ps(a, b));
 #elif defined(HAVE_NEON)
-            vst1q_f32(&x, vaddq_f32(vld1q_f32(&x), vld1q_f32(&other.x)));
+            if constexpr (std::is_same_v<T, float>) {
+                // Optimal for float type
+                float32x4_t a = vld1q_f32(&x);
+                float32x4_t b = vld1q_f32(&other.x);
+                vst1q_f32(&x, vaddq_f32(a, b));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Support for integer type
+                int32x4_t a = vld1q_s32(reinterpret_cast<int32_t*>(&x));
+                int32x4_t b = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                vst1q_s32(reinterpret_cast<int32_t*>(&x), vaddq_s32(a, b));
+            }
 #endif
         } else {
             x += other.x;
@@ -617,9 +783,22 @@ public:
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec3<T> result;
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&result.x, _mm_sub_ps(_mm_load_ps(&x), _mm_load_ps(&other.x)));
+            // Use unaligned loads/stores for better flexibility
+            __m128 a = _mm_loadu_ps(&x);
+            __m128 b = _mm_loadu_ps(&other.x);
+            _mm_storeu_ps(&result.x, _mm_sub_ps(a, b));
 #elif defined(HAVE_NEON)
-            vst1q_f32(&result.x, vsubq_f32(vld1q_f32(&x), vld1q_f32(&other.x)));
+            if constexpr (std::is_same_v<T, float>) {
+                // Optimal for float type
+                float32x4_t a = vld1q_f32(&x);
+                float32x4_t b = vld1q_f32(&other.x);
+                vst1q_f32(&result.x, vsubq_f32(a, b));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Support for integer type
+                int32x4_t a = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                int32x4_t b = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vsubq_s32(a, b));
+            }
 #endif
             return result;
         } else {
@@ -627,12 +806,25 @@ public:
         }
     }
 
-    constexpr Vec3& operator-=(const Vec3& other) {
+    [[nodiscard]] constexpr Vec3& operator-=(const Vec3& other) {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&x, _mm_sub_ps(_mm_load_ps(&x), _mm_load_ps(&other.x)));
+            // Use unaligned loads/stores for better flexibility
+            __m128 a = _mm_loadu_ps(&x);
+            __m128 b = _mm_loadu_ps(&other.x);
+            _mm_storeu_ps(&x, _mm_sub_ps(a, b));
 #elif defined(HAVE_NEON)
-            vst1q_f32(&x, vsubq_f32(vld1q_f32(&x), vld1q_f32(&other.x)));
+            if constexpr (std::is_same_v<T, float>) {
+                // Optimal for float type
+                float32x4_t a = vld1q_f32(&x);
+                float32x4_t b = vld1q_f32(&other.x);
+                vst1q_f32(&x, vsubq_f32(a, b));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Support for integer type
+                int32x4_t a = vld1q_s32(reinterpret_cast<int32_t*>(&x));
+                int32x4_t b = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                vst1q_s32(reinterpret_cast<int32_t*>(&x), vsubq_s32(a, b));
+            }
 #endif
         } else {
             x -= other.x;
@@ -644,6 +836,68 @@ public:
 
     template <typename U = T>
     [[nodiscard]] constexpr Vec3<std::enable_if_t<std::is_signed_v<U>, U>> operator-() const {
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            if constexpr (std::is_same_v<T, float>) {
+                Vec3<float> result;
+                // Use bitwise XOR with sign bit to negate efficiently
+                const __m128 sign_mask = _mm_set1_ps(-0.0f); // 0x80000000
+                __m128 v = _mm_load_ps(&x);
+                _mm_store_ps(&result.x, _mm_xor_ps(v, sign_mask));
+                return result;
+            } else if constexpr (std::is_integral_v<T>) {
+                Vec3<T> result;
+                if constexpr (sizeof(T) <= 2) {
+                    // For 16-bit integers
+                    __m128i v = detail::vec3_to_epi16(
+                        static_cast<int16_t>(x), static_cast<int16_t>(y), static_cast<int16_t>(z));
+                    __m128i neg = _mm_sub_epi16(_mm_setzero_si128(), v);
+                    result.x = static_cast<T>(_mm_extract_epi16(neg, 0));
+                    result.y = static_cast<T>(_mm_extract_epi16(neg, 1));
+                    result.z = static_cast<T>(_mm_extract_epi16(neg, 2));
+                } else {
+                    // For 32-bit integers
+                    __m128i v = _mm_setr_epi32(static_cast<int32_t>(x), static_cast<int32_t>(y),
+                                               static_cast<int32_t>(z), 0);
+                    __m128i neg = _mm_sub_epi32(_mm_setzero_si128(), v);
+                    result.x = static_cast<T>(_mm_cvtsi128_si32(neg));
+                    result.y = static_cast<T>(_mm_extract_epi32(neg, 1));
+                    result.z = static_cast<T>(_mm_extract_epi32(neg, 2));
+                }
+                return result;
+            }
+#elif defined(HAVE_NEON)
+            if constexpr (std::is_same_v<T, float>) {
+                Vec3<float> result;
+                float32x4_t v = vld1q_f32(&x);
+                // Negate using NEON vector negation
+                float32x4_t neg = vnegq_f32(v);
+                vst1q_f32(&result.x, neg);
+                return result;
+            } else if constexpr (std::is_integral_v<T>) {
+                Vec3<T> result;
+                if constexpr (sizeof(T) <= 2) {
+                    // For 16-bit integers
+                    int16x4_t v = {static_cast<int16_t>(x), static_cast<int16_t>(y),
+                                   static_cast<int16_t>(z), 0};
+                    int16x4_t neg = vneg_s16(v);
+                    result.x = static_cast<T>(vget_lane_s16(neg, 0));
+                    result.y = static_cast<T>(vget_lane_s16(neg, 1));
+                    result.z = static_cast<T>(vget_lane_s16(neg, 2));
+                } else {
+                    // For 32-bit integers
+                    int32x4_t v = {static_cast<int32_t>(x), static_cast<int32_t>(y),
+                                   static_cast<int32_t>(z), 0};
+                    int32x4_t neg = vnegq_s32(v);
+                    result.x = static_cast<T>(vgetq_lane_s32(neg, 0));
+                    result.y = static_cast<T>(vgetq_lane_s32(neg, 1));
+                    result.z = static_cast<T>(vgetq_lane_s32(neg, 2));
+                }
+                return result;
+            }
+#endif
+        }
+        // Fallback for non-vectorizable types
         return {-x, -y, -z};
     }
 
@@ -651,9 +905,22 @@ public:
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec3<T> result;
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&result.x, _mm_mul_ps(_mm_load_ps(&x), _mm_load_ps(&other.x)));
+            // Use unaligned loads/stores for better flexibility
+            __m128 a = _mm_loadu_ps(&x);
+            __m128 b = _mm_loadu_ps(&other.x);
+            _mm_storeu_ps(&result.x, _mm_mul_ps(a, b));
 #elif defined(HAVE_NEON)
-            vst1q_f32(&result.x, vmulq_f32(vld1q_f32(&x), vld1q_f32(&other.x)));
+            if constexpr (std::is_same_v<T, float>) {
+                // Optimal for float type
+                float32x4_t a = vld1q_f32(&x);
+                float32x4_t b = vld1q_f32(&other.x);
+                vst1q_f32(&result.x, vmulq_f32(a, b));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Support for integer type
+                int32x4_t a = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                int32x4_t b = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vmulq_s32(a, b));
+            }
 #endif
             return result;
         } else {
@@ -663,12 +930,39 @@ public:
 
     template <typename V>
     [[nodiscard]] constexpr Vec3<decltype(T{} * V{})> operator*(const V& f) const {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+        if constexpr (detail::is_vectorizable<T>::value) {
             Vec3<decltype(T{} * V{})> result;
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&result.x, _mm_mul_ps(_mm_load_ps(&x), _mm_set1_ps(f)));
+            if constexpr (std::is_same_v<V, float>) {
+                // Optimal for float scalar multiplication
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(f);
+                _mm_storeu_ps(&result.x, _mm_mul_ps(vec, scalar));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // Support for integer scalar multiplication using float conversion
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(static_cast<float>(f));
+                _mm_storeu_ps(&result.x, _mm_mul_ps(vec, scalar));
+            }
 #elif defined(HAVE_NEON)
-            vst1q_f32(&result.x, vmulq_f32(vld1q_f32(&x), vdupq_n_f32(f)));
+            if constexpr (std::is_same_v<V, float>) {
+                // Optimal for float scalar multiplication
+                float32x4_t vec = vld1q_f32(&x);
+                float32x4_t scalar = vdupq_n_f32(f);
+                vst1q_f32(&result.x, vmulq_f32(vec, scalar));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    // Float vector * int scalar
+                    float32x4_t vec = vld1q_f32(&x);
+                    float32x4_t scalar = vdupq_n_f32(static_cast<float>(f));
+                    vst1q_f32(&result.x, vmulq_f32(vec, scalar));
+                } else if constexpr (std::is_same_v<T, int32_t>) {
+                    // Int vector * int scalar
+                    int32x4_t vec = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                    int32x4_t scalar = vdupq_n_s32(f);
+                    vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vmulq_s32(vec, scalar));
+                }
+            }
 #endif
             return result;
         } else {
@@ -677,12 +971,39 @@ public:
     }
 
     template <typename V>
-    constexpr Vec3& operator*=(const V& f) {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+    [[nodiscard]] constexpr Vec3& operator*=(const V& f) {
+        if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&x, _mm_mul_ps(_mm_load_ps(&x), _mm_set1_ps(f)));
+            if constexpr (std::is_same_v<V, float>) {
+                // Optimal for float scalar multiplication
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(f);
+                _mm_storeu_ps(&x, _mm_mul_ps(vec, scalar));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // Support for integer scalar multiplication using float conversion
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(static_cast<float>(f));
+                _mm_storeu_ps(&x, _mm_mul_ps(vec, scalar));
+            }
 #elif defined(HAVE_NEON)
-            vst1q_f32(&x, vmulq_f32(vld1q_f32(&x), vdupq_n_f32(f)));
+            if constexpr (std::is_same_v<V, float>) {
+                // Optimal for float scalar multiplication
+                float32x4_t vec = vld1q_f32(&x);
+                float32x4_t scalar = vdupq_n_f32(f);
+                vst1q_f32(&x, vmulq_f32(vec, scalar));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    // Float vector * int scalar
+                    float32x4_t vec = vld1q_f32(&x);
+                    float32x4_t scalar = vdupq_n_f32(static_cast<float>(f));
+                    vst1q_f32(&x, vmulq_f32(vec, scalar));
+                } else if constexpr (std::is_same_v<T, int32_t>) {
+                    // Int vector * int scalar
+                    int32x4_t vec = vld1q_s32(reinterpret_cast<int32_t*>(&x));
+                    int32x4_t scalar = vdupq_n_s32(f);
+                    vst1q_s32(reinterpret_cast<int32_t*>(&x), vmulq_s32(vec, scalar));
+                }
+            }
 #endif
         } else {
             x *= f;
@@ -691,18 +1012,47 @@ public:
         }
         return *this;
     }
+
     template <typename V>
     [[nodiscard]] constexpr Vec3<decltype(T{} / V{})> operator/(const V& f) const {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+        if constexpr (detail::is_vectorizable<T>::value) {
             Vec3<decltype(T{} / V{})> result;
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&result.x, _mm_div_ps(_mm_load_ps(&x), _mm_set1_ps(f)));
+            if constexpr (std::is_same_v<V, float>) {
+                // Optimal for float scalar division
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(f);
+                _mm_storeu_ps(&result.x, _mm_div_ps(vec, scalar));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // Support for integer scalar division using float conversion
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(static_cast<float>(f));
+                _mm_storeu_ps(&result.x, _mm_div_ps(vec, scalar));
+            }
 #elif defined(HAVE_NEON)
-            // NEON doesn't have a direct divide instruction, so we multiply by reciprocal
-            float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
-            // One Newton-Raphson iteration for better precision
-            recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
-            vst1q_f32(&result.x, vmulq_f32(vld1q_f32(&x), recip));
+            if constexpr (std::is_same_v<V, float>) {
+                // NEON optimized float division using reciprocal approximation
+                float32x4_t vec = vld1q_f32(&x);
+                float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
+                // Two Newton-Raphson iterations for better precision
+                recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
+                recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
+                vst1q_f32(&result.x, vmulq_f32(vec, recip));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    // Float vector / int scalar
+                    float32x4_t vec = vld1q_f32(&x);
+                    float32x4_t recip = vrecpeq_f32(vdupq_n_f32(static_cast<float>(f)));
+                    // Two Newton-Raphson iterations
+                    recip =
+                        vmulq_f32(vrecpsq_f32(vdupq_n_f32(static_cast<float>(f)), recip), recip);
+                    recip =
+                        vmulq_f32(vrecpsq_f32(vdupq_n_f32(static_cast<float>(f)), recip), recip);
+                    vst1q_f32(&result.x, vmulq_f32(vec, recip));
+                }
+                // Note: Integer division is not optimized with NEON as it's typically not
+                // beneficial
+            }
 #endif
             return result;
         } else {
@@ -711,16 +1061,44 @@ public:
     }
 
     template <typename V>
-    constexpr Vec3& operator/=(const V& f) {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+    [[nodiscard]] constexpr Vec3& operator/=(const V& f) {
+        if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            _mm_store_ps(&x, _mm_div_ps(_mm_load_ps(&x), _mm_set1_ps(f)));
+            if constexpr (std::is_same_v<V, float>) {
+                // Optimal for float scalar division
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(f);
+                _mm_storeu_ps(&x, _mm_div_ps(vec, scalar));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // Support for integer scalar division using float conversion
+                __m128 vec = _mm_loadu_ps(&x);
+                __m128 scalar = _mm_set1_ps(static_cast<float>(f));
+                _mm_storeu_ps(&x, _mm_div_ps(vec, scalar));
+            }
 #elif defined(HAVE_NEON)
-            // NEON doesn't have a direct divide instruction, so we multiply by reciprocal
-            float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
-            // One Newton-Raphson iteration for better precision
-            recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
-            vst1q_f32(&x, vmulq_f32(vld1q_f32(&x), recip));
+            if constexpr (std::is_same_v<V, float>) {
+                // NEON optimized float division using reciprocal approximation
+                float32x4_t vec = vld1q_f32(&x);
+                float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
+                // Two Newton-Raphson iterations for better precision
+                recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
+                recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
+                vst1q_f32(&x, vmulq_f32(vec, recip));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    // Float vector / int scalar
+                    float32x4_t vec = vld1q_f32(&x);
+                    float32x4_t recip = vrecpeq_f32(vdupq_n_f32(static_cast<float>(f)));
+                    // Two Newton-Raphson iterations
+                    recip =
+                        vmulq_f32(vrecpsq_f32(vdupq_n_f32(static_cast<float>(f)), recip), recip);
+                    recip =
+                        vmulq_f32(vrecpsq_f32(vdupq_n_f32(static_cast<float>(f)), recip), recip);
+                    vst1q_f32(&x, vmulq_f32(vec, recip));
+                }
+                // Note: Integer division is not optimized with NEON as it's typically not
+                // beneficial
+            }
 #endif
         } else {
             x /= f;
@@ -737,36 +1115,103 @@ public:
     [[nodiscard]] constexpr bool operator==(const Vec3& other) const {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            __m128 cmp = _mm_cmpeq_ps(_mm_load_ps(&x), _mm_load_ps(&other.x));
-            return (_mm_movemask_ps(cmp) & 0x7) == 0x7; // Check only x,y,z (mask 0x7)
+            if constexpr (std::is_same_v<T, float>) {
+                // Load vectors using unaligned loads for better flexibility
+                __m128 a = _mm_loadu_ps(&x);
+                __m128 b = _mm_loadu_ps(&other.x);
+                // Compare for equality
+                __m128 cmp = _mm_cmpeq_ps(a, b);
+                // Check only x,y,z components (mask 0x7)
+                return (_mm_movemask_ps(cmp) & 0x7) == 0x7;
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Integer comparison
+                __m128i a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&x));
+                __m128i b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&other.x));
+                __m128i cmp = _mm_cmpeq_epi32(a, b);
+                // Check only x,y,z components (mask 0x7)
+                return (_mm_movemask_ps(_mm_castsi128_ps(cmp)) & 0x7) == 0x7;
+            }
 #elif defined(HAVE_NEON)
-            uint32x4_t cmp = vceqq_f32(vld1q_f32(&x), vld1q_f32(&other.x));
-            return (vgetq_lane_u32(cmp, 0) & vgetq_lane_u32(cmp, 1) & vgetq_lane_u32(cmp, 2)) ==
-                   0xFFFFFFFF;
+            if constexpr (std::is_same_v<T, float>) {
+                // Load vectors
+                float32x4_t a = vld1q_f32(&x);
+                float32x4_t b = vld1q_f32(&other.x);
+                // Compare for equality
+                uint32x4_t cmp = vceqq_f32(a, b);
+                // Use AND reduction for first 3 components only
+                return ((vgetq_lane_u32(cmp, 0) & vgetq_lane_u32(cmp, 1) &
+                         vgetq_lane_u32(cmp, 2)) == 0xFFFFFFFF);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Integer comparison
+                int32x4_t a = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                int32x4_t b = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                uint32x4_t cmp = vceqq_s32(a, b);
+                // Use AND reduction for first 3 components only
+                return ((vgetq_lane_u32(cmp, 0) & vgetq_lane_u32(cmp, 1) &
+                         vgetq_lane_u32(cmp, 2)) == 0xFFFFFFFF);
+            }
 #endif
-        } else {
-            return x == other.x && y == other.y && z == other.z;
         }
+        // Fallback to scalar comparison
+        return x == other.x && y == other.y && z == other.z;
     }
 
     [[nodiscard]] constexpr T Length2() const {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            __m128 v = _mm_load_ps(&x);
-            __m128 sq = _mm_mul_ps(v, v);
-            // Add x+y+z components (we don't care about w)
-            __m128 sum = _mm_add_ss(_mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1))),
-                                    _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(2, 2, 2, 2)));
-            return _mm_cvtss_f32(sum);
+            if constexpr (std::is_same_v<T, float>) {
+                // Load vector using unaligned load for better flexibility
+                __m128 v = _mm_loadu_ps(&x);
+                // Square all components
+                __m128 sq = _mm_mul_ps(v, v);
+
+                // Horizontal add for x+y+z components (ignoring w)
+                // Using more efficient shuffling pattern
+                __m128 sum = sq;
+                sum = _mm_add_ps(sum, _mm_movehl_ps(sum, sum));     // Add z to x
+                sum = _mm_add_ss(sum, _mm_shuffle_ps(sum, sum, 1)); // Add y
+
+                return _mm_cvtss_f32(sum);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Integer version using SSE2
+                __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&x));
+                __m128i sq = _mm_mullo_epi32(v, v); // SSE4.1, fallback to scalar if not available
+
+                // Extract and sum components
+                int32_t sum = _mm_cvtsi128_si32(sq) +                       // x
+                              _mm_cvtsi128_si32(_mm_shuffle_epi32(sq, 1)) + // y
+                              _mm_cvtsi128_si32(_mm_shuffle_epi32(sq, 2));  // z
+
+                return sum;
+            }
 #elif defined(HAVE_NEON)
-            float32x4_t v = vld1q_f32(&x);
-            float32x4_t sq = vmulq_f32(v, v);
-            float32x2_t sum = vpadd_f32(vget_low_f32(sq), vget_high_f32(sq));
-            return vget_lane_f32(vpadd_f32(sum, sum), 0); // Only need x+y+z
+            if constexpr (std::is_same_v<T, float>) {
+                // Load and square components
+                float32x4_t v = vld1q_f32(&x);
+                float32x4_t sq = vmulq_f32(v, v);
+
+                // Efficient horizontal add using NEON intrinsics
+                float32x2_t sum = vget_low_f32(sq);     // Get x,y
+                sum = vadd_f32(sum, vget_high_f32(sq)); // Add z,w (only need z)
+                sum = vpadd_f32(sum, vdup_n_f32(0.0f)); // Horizontal add x+y
+
+                return vget_lane_f32(sum, 0) + vget_lane_f32(vget_high_f32(sq), 0); // Add z
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Integer version using NEON
+                int32x4_t v = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                int32x4_t sq = vmulq_s32(v, v);
+
+                // Horizontal add for integers
+                int32x2_t sum = vget_low_s32(sq);       // Get x,y
+                sum = vadd_s32(sum, vget_high_s32(sq)); // Add z
+                sum = vpadd_s32(sum, vdup_n_s32(0));    // Horizontal add
+
+                return vget_lane_s32(sum, 0);
+            }
 #endif
-        } else {
-            return x * x + y * y + z * z;
         }
+        // Fallback to scalar calculation
+        return x * x + y * y + z * z;
     }
 
     // Only implemented for T=float
@@ -775,11 +1220,43 @@ public:
     float Normalize(); // returns the previous length, which is often useful
 
     [[nodiscard]] constexpr T& operator[](std::size_t i) {
-        return *((&x) + i);
+        assert(i < dimension && "Vector index out of bounds");
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            // For Vec4 with SIMD member
+            if constexpr (detail::has_simd_member<decltype(*this)>::value) {
+                alignas(16) T* const elements = reinterpret_cast<T*>(&simd);
+                return elements[i];
+            }
+#elif defined(HAVE_NEON)
+            // For Vec4 with SIMD member
+            if constexpr (detail::has_simd_member<decltype(*this)>::value) {
+                return reinterpret_cast<T*>(&simd)[i];
+            }
+#endif
+        }
+        // Fast pointer arithmetic for base array access
+        return *(reinterpret_cast<T*>(&x) + i);
     }
 
     [[nodiscard]] constexpr const T& operator[](std::size_t i) const {
-        return *((&x) + i);
+        assert(i < dimension && "Vector index out of bounds");
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            // For Vec4 with SIMD member
+            if constexpr (detail::has_simd_member<decltype(*this)>::value) {
+                alignas(16) const T* const elements = reinterpret_cast<const T*>(&simd);
+                return elements[i];
+            }
+#elif defined(HAVE_NEON)
+            // For Vec4 with SIMD member
+            if constexpr (detail::has_simd_member<decltype(*this)>::value) {
+                return reinterpret_cast<const T*>(&simd)[i];
+            }
+#endif
+        }
+        // Fast pointer arithmetic for base array access
+        return *(reinterpret_cast<const T*>(&x) + i);
     }
 
     constexpr void SetZero() {
@@ -876,12 +1353,47 @@ public:
 
 template <typename T, typename V>
 [[nodiscard]] constexpr Vec3<T> operator*(const V& f, const Vec3<T>& vec) {
-    if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+    if constexpr (detail::is_vectorizable<T>::value) {
         Vec3<T> result;
 #if defined(HAVE_SSE2)
-        _mm_store_ps(&result.x, _mm_mul_ps(_mm_set1_ps(f), _mm_load_ps(&vec.x)));
+        if constexpr (std::is_same_v<V, float>) {
+            // Optimal for float scalar multiplication
+            __m128 scalar = _mm_set1_ps(f);
+            __m128 vector = _mm_loadu_ps(&vec.x);
+            _mm_storeu_ps(&result.x, _mm_mul_ps(scalar, vector));
+        } else if constexpr (std::is_same_v<V, int32_t>) {
+            if constexpr (std::is_same_v<T, float>) {
+                // Integer scalar * float vector
+                __m128 scalar = _mm_set1_ps(static_cast<float>(f));
+                __m128 vector = _mm_loadu_ps(&vec.x);
+                _mm_storeu_ps(&result.x, _mm_mul_ps(scalar, vector));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Integer scalar * integer vector
+                __m128i scalar = _mm_set1_epi32(f);
+                __m128i vector = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&vec.x));
+                _mm_storeu_si128(reinterpret_cast<__m128i*>(&result.x),
+                                 _mm_mullo_epi32(scalar, vector));
+            }
+        }
 #elif defined(HAVE_NEON)
-        vst1q_f32(&result.x, vmulq_f32(vdupq_n_f32(f), vld1q_f32(&vec.x)));
+        if constexpr (std::is_same_v<V, float>) {
+            // Optimal for float scalar multiplication
+            float32x4_t scalar = vdupq_n_f32(f);
+            float32x4_t vector = vld1q_f32(&vec.x);
+            vst1q_f32(&result.x, vmulq_f32(scalar, vector));
+        } else if constexpr (std::is_same_v<V, int32_t>) {
+            if constexpr (std::is_same_v<T, float>) {
+                // Integer scalar * float vector
+                float32x4_t scalar = vdupq_n_f32(static_cast<float>(f));
+                float32x4_t vector = vld1q_f32(&vec.x);
+                vst1q_f32(&result.x, vmulq_f32(scalar, vector));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Integer scalar * integer vector
+                int32x4_t scalar = vdupq_n_s32(f);
+                int32x4_t vector = vld1q_s32(reinterpret_cast<const int32_t*>(&vec.x));
+                vst1q_s32(reinterpret_cast<int32_t*>(&result.x), vmulq_s32(scalar, vector));
+            }
+        }
 #endif
         return result;
     } else {
@@ -892,18 +1404,34 @@ template <typename T, typename V>
 template <>
 inline float Vec3<float>::Length() const {
 #if defined(HAVE_SSE2)
-    __m128 v = _mm_load_ps(&x);
+    // Load vector using unaligned load for better flexibility
+    __m128 v = _mm_loadu_ps(&x);
+    // Square all components
     __m128 sq = _mm_mul_ps(v, v);
-    // Horizontal add x+y+z components
-    __m128 sum = _mm_add_ss(_mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1))),
-                            _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(2, 2, 2, 2)));
+
+    // More efficient horizontal add for x+y+z components
+    __m128 sum = sq;
+    sum = _mm_add_ps(sum, _mm_movehl_ps(sum, sum));     // Add z to x
+    sum = _mm_add_ss(sum, _mm_shuffle_ps(sum, sum, 1)); // Add y
+
+    // Calculate square root of sum
     return _mm_cvtss_f32(_mm_sqrt_ss(sum));
 #elif defined(HAVE_NEON)
+    // Load and square components
     float32x4_t v = vld1q_f32(&x);
     float32x4_t sq = vmulq_f32(v, v);
-    float32x2_t sum = vpadd_f32(vget_low_f32(sq), vget_high_f32(sq));
-    float32x2_t sum2 = vpadd_f32(sum, sum);
-    return sqrtf(vget_lane_f32(sum2, 0));
+
+    // Efficient horizontal add using NEON intrinsics
+    float32x2_t sum = vget_low_f32(sq);     // Get x,y
+    sum = vadd_f32(sum, vget_high_f32(sq)); // Add z,w (only need z)
+    sum = vpadd_f32(sum, vdup_n_f32(0.0f)); // Horizontal add x+y
+    float32x2_t result = vrsqrte_f32(sum);  // Approximate 1/sqrt
+
+    // One Newton-Raphson iteration for better precision
+    result = vmul_f32(vrsqrts_f32(vmul_f32(sum, result), result), result);
+
+    // Final multiplication to get sqrt
+    return vget_lane_f32(vmul_f32(sum, result), 0);
 #else
     return std::sqrt(x * x + y * y + z * z);
 #endif
@@ -912,38 +1440,77 @@ inline float Vec3<float>::Length() const {
 template <>
 inline Vec3<float> Vec3<float>::Normalized() const {
 #if defined(HAVE_SSE2)
-    __m128 v = _mm_load_ps(&x);
+    // Load vector using unaligned load for better flexibility
+    __m128 v = _mm_loadu_ps(&x);
+    // Square all components
     __m128 sq = _mm_mul_ps(v, v);
-    // Compute sum of squares
-    __m128 sum = _mm_add_ss(_mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1))),
-                            _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(2, 2, 2, 2)));
-    // Get reciprocal sqrt and broadcast to all elements
-    __m128 len = _mm_sqrt_ss(sum);
-    __m128 recip = _mm_div_ps(_mm_set1_ps(1.0f), _mm_shuffle_ps(len, len, _MM_SHUFFLE(0, 0, 0, 0)));
+
+    // Efficient horizontal add for x+y+z components
+    __m128 sum = sq;
+    sum = _mm_add_ps(sum, _mm_movehl_ps(sum, sum));     // Add z to x
+    sum = _mm_add_ss(sum, _mm_shuffle_ps(sum, sum, 1)); // Add y
+
+    // Compute reciprocal sqrt directly (faster than sqrt + div)
+    __m128 rsqrt = _mm_rsqrt_ps(_mm_shuffle_ps(sum, sum, 0));
+
+    // One Newton-Raphson iteration for better precision
+    // y = rsqrt * (1.5f - 0.5f * x * rsqrt * rsqrt)
+    __m128 three_halves = _mm_set1_ps(1.5f);
+    __m128 half = _mm_set1_ps(0.5f);
+    __m128 rsqrt_sq = _mm_mul_ps(rsqrt, rsqrt);
+    __m128 half_x_rsqrt_sq = _mm_mul_ps(_mm_mul_ps(half, _mm_shuffle_ps(sum, sum, 0)), rsqrt_sq);
+    rsqrt = _mm_mul_ps(rsqrt, _mm_sub_ps(three_halves, half_x_rsqrt_sq));
 
     Vec3<float> result;
-    _mm_store_ps(&result.x, _mm_mul_ps(v, recip));
+    _mm_storeu_ps(&result.x, _mm_mul_ps(v, rsqrt));
     return result;
+
 #elif defined(HAVE_NEON)
+    // Load and square components
     float32x4_t v = vld1q_f32(&x);
     float32x4_t sq = vmulq_f32(v, v);
-    float32x2_t sum = vpadd_f32(vget_low_f32(sq), vget_high_f32(sq));
-    float32x2_t len = vsqrt_f32(vpadd_f32(sum, sum));
-    // Compute reciprocal and broadcast
-    float32x4_t recip = vdupq_n_f32(1.0f / vget_lane_f32(len, 0));
+
+    // Efficient horizontal add
+    float32x2_t sum = vget_low_f32(sq);     // Get x,y
+    sum = vadd_f32(sum, vget_high_f32(sq)); // Add z,w (only need z)
+    sum = vpadd_f32(sum, vdup_n_f32(0.0f)); // Horizontal add x+y+z
+
+    // Use NEON reciprocal square root approximation
+    float32x2_t rsqrt = vrsqrte_f32(sum);
+
+    // Two Newton-Raphson iterations for better precision
+    rsqrt = vmul_f32(vrsqrts_f32(vmul_f32(sum, rsqrt), rsqrt), rsqrt);
+    rsqrt = vmul_f32(vrsqrts_f32(vmul_f32(sum, rsqrt), rsqrt), rsqrt);
+
+    // Broadcast reciprocal sqrt to all lanes and multiply
+    float32x4_t normalized = vmulq_f32(v, vdupq_lane_f32(rsqrt, 0));
 
     Vec3<float> result;
-    vst1q_f32(&result.x, vmulq_f32(v, recip));
+    vst1q_f32(&result.x, normalized);
     return result;
+
 #else
-    return *this / Length();
+    float length = Length();
+    if (length > 0.0f) {
+        float recip = 1.0f / length;
+        return Vec3<float>(x * recip, y * recip, z * recip);
+    }
+    return *this;
 #endif
 }
 
 template <>
 inline float Vec3<float>::Normalize() {
-    float length = Length();
-    *this /= length;
+    const float length = Length();
+    if (length < std::numeric_limits<float>::epsilon()) {
+        SetZero();
+        return 0.0f;
+    }
+
+    const float inv_length = 1.0f / length;
+    x *= inv_length;
+    y *= inv_length;
+    z *= inv_length;
     return length;
 }
 
@@ -983,21 +1550,9 @@ public:
     }
 
     constexpr Vec4() = default;
-    constexpr Vec4(const T& x_, const T& y_, const T& z_, const T& w_) {
-        if constexpr (detail::is_vectorizable<T>::value) {
-#if defined(HAVE_SSE2)
-            simd = _mm_set_ps(w_, z_, y_, x_);
-#elif defined(HAVE_NEON)
-            float values[4] = {x_, y_, z_, w_};
-            simd = vld1q_f32(values);
-#endif
-        } else {
-            x = x_;
-            y = y_;
-            z = z_;
-            w = w_;
-        }
-    }
+    constexpr Vec4(const T& x_, const T& y_, const T& z_, const T& w_)
+        : x(x_), y(y_), z(z_), w(w_) {}
+    static constexpr std::size_t dimension = 4;
 
     template <typename T2>
     [[nodiscard]] constexpr Vec4<T2> Cast() const {
@@ -1009,13 +1564,53 @@ public:
         return Vec4(f, f, f, f);
     }
 
+    [[nodiscard]] Vec4 Normalized() const {
+        const float length = Length();
+        if (length < std::numeric_limits<float>::epsilon()) {
+            return Vec4{0, 0, 0, 0};
+        }
+        return *this / length;
+    }
+
+    float Normalize() {
+        const float length = Length();
+        if (length < std::numeric_limits<float>::epsilon()) {
+            SetZero();
+            return 0.0f;
+        }
+
+        const float inv_length = 1.0f / length;
+        x *= inv_length;
+        y *= inv_length;
+        z *= inv_length;
+        w *= inv_length;
+        return length;
+    }
+
     [[nodiscard]] constexpr Vec4<decltype(T{} + T{})> operator+(const Vec4& other) const {
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec4<T> result;
 #if defined(HAVE_SSE2)
-            result.simd = _mm_add_ps(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                result.simd = _mm_add_ps(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                result.simd = _mm_castsi128_ps(
+                    _mm_add_epi32(_mm_castps_si128(simd), _mm_castps_si128(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = _mm_castsi128_ps(_mm_packs_epi32(
+                    _mm_add_epi16(_mm_castps_si128(simd), _mm_castps_si128(other.simd)),
+                    _mm_setzero_si128()));
+            }
 #elif defined(HAVE_NEON)
-            result.simd = vaddq_f32(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                result.simd = vaddq_f32(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                result.simd = vreinterpretq_f32_s32(
+                    vaddq_s32(vreinterpretq_s32_f32(simd), vreinterpretq_s32_f32(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = vreinterpretq_f32_s16(
+                    vaddq_s16(vreinterpretq_s16_f32(simd), vreinterpretq_s16_f32(other.simd)));
+            }
 #endif
             return result;
         } else {
@@ -1023,11 +1618,41 @@ public:
         }
     }
 
-    constexpr Vec4& operator+=(const Vec4& other) {
-        x += other.x;
-        y += other.y;
-        z += other.z;
-        w += other.w;
+    [[nodiscard]] constexpr Vec4& operator+=(const Vec4& other) {
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            if constexpr (std::is_same_v<T, float>) {
+                simd = _mm_add_ps(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                simd = _mm_castsi128_ps(
+                    _mm_add_epi32(_mm_castps_si128(simd), _mm_castps_si128(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                simd = _mm_castsi128_ps(_mm_packs_epi32(
+                    _mm_add_epi16(_mm_castps_si128(simd), _mm_castps_si128(other.simd)),
+                    _mm_setzero_si128()));
+            }
+#elif defined(HAVE_NEON)
+            if constexpr (std::is_same_v<T, float>) {
+                simd = vaddq_f32(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                simd = vreinterpretq_f32_s32(
+                    vaddq_s32(vreinterpretq_s32_f32(simd), vreinterpretq_s32_f32(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                simd = vreinterpretq_f32_s16(
+                    vaddq_s16(vreinterpretq_s16_f32(simd), vreinterpretq_s16_f32(other.simd)));
+            }
+#else
+            x += other.x;
+            y += other.y;
+            z += other.z;
+            w += other.w;
+#endif
+        } else {
+            x += other.x;
+            y += other.y;
+            z += other.z;
+            w += other.w;
+        }
         return *this;
     }
 
@@ -1035,9 +1660,26 @@ public:
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec4<T> result;
 #if defined(HAVE_SSE2)
-            result.simd = _mm_sub_ps(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                result.simd = _mm_sub_ps(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                result.simd = _mm_castsi128_ps(
+                    _mm_sub_epi32(_mm_castps_si128(simd), _mm_castps_si128(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = _mm_castsi128_ps(_mm_packs_epi32(
+                    _mm_sub_epi16(_mm_castps_si128(simd), _mm_castps_si128(other.simd)),
+                    _mm_setzero_si128()));
+            }
 #elif defined(HAVE_NEON)
-            result.simd = vsubq_f32(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                result.simd = vsubq_f32(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                result.simd = vreinterpretq_f32_s32(
+                    vsubq_s32(vreinterpretq_s32_f32(simd), vreinterpretq_s32_f32(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = vreinterpretq_f32_s16(
+                    vsubq_s16(vreinterpretq_s16_f32(simd), vreinterpretq_s16_f32(other.simd)));
+            }
 #endif
             return result;
         } else {
@@ -1045,12 +1687,34 @@ public:
         }
     }
 
-    constexpr Vec4& operator-=(const Vec4& other) {
+    [[nodiscard]] constexpr Vec4& operator-=(const Vec4& other) {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            simd = _mm_sub_ps(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                simd = _mm_sub_ps(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                simd = _mm_castsi128_ps(
+                    _mm_sub_epi32(_mm_castps_si128(simd), _mm_castps_si128(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                simd = _mm_castsi128_ps(_mm_packs_epi32(
+                    _mm_sub_epi16(_mm_castps_si128(simd), _mm_castps_si128(other.simd)),
+                    _mm_setzero_si128()));
+            }
 #elif defined(HAVE_NEON)
-            simd = vsubq_f32(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                simd = vsubq_f32(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                simd = vreinterpretq_f32_s32(
+                    vsubq_s32(vreinterpretq_s32_f32(simd), vreinterpretq_s32_f32(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                simd = vreinterpretq_f32_s16(
+                    vsubq_s16(vreinterpretq_s16_f32(simd), vreinterpretq_s16_f32(other.simd)));
+            }
+#else
+            x -= other.x;
+            y -= other.y;
+            z -= other.z;
+            w -= other.w;
 #endif
         } else {
             x -= other.x;
@@ -1063,16 +1727,77 @@ public:
 
     template <typename U = T>
     [[nodiscard]] constexpr Vec4<std::enable_if_t<std::is_signed_v<U>, U>> operator-() const {
-        return {-x, -y, -z, -w};
+        if constexpr (detail::is_vectorizable<T>::value) {
+            Vec4<T> result;
+#if defined(HAVE_SSE2)
+            if constexpr (std::is_same_v<T, float>) {
+                // Negate by XORing with sign bit mask
+                result.simd = _mm_xor_ps(simd, _mm_set1_ps(-0.0f));
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                // Negate integers using subtraction from zero
+                result.simd =
+                    _mm_castsi128_ps(_mm_sub_epi32(_mm_setzero_si128(), _mm_castps_si128(simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = _mm_castsi128_ps(
+                    _mm_packs_epi32(_mm_sub_epi16(_mm_setzero_si128(), _mm_castps_si128(simd)),
+                                    _mm_setzero_si128()));
+            }
+#elif defined(HAVE_NEON)
+            if constexpr (std::is_same_v<T, float>) {
+                // Negate using multiplication by -1
+                result.simd = vmulq_n_f32(simd, -1.0f);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                result.simd = vreinterpretq_f32_s32(vnegq_s32(vreinterpretq_s32_f32(simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = vreinterpretq_f32_s16(vnegq_s16(vreinterpretq_s16_f32(simd)));
+            }
+#endif
+            return result;
+        } else {
+            return {-x, -y, -z, -w};
+        }
     }
 
     [[nodiscard]] constexpr Vec4<decltype(T{} * T{})> operator*(const Vec4& other) const {
         if constexpr (detail::is_vectorizable<T>::value) {
             Vec4<T> result;
 #if defined(HAVE_SSE2)
-            result.simd = _mm_mul_ps(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                result.simd = _mm_mul_ps(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+#if defined(__SSE4_1__)
+                // Use SSE4.1's mullo instruction for full 32-bit multiplication
+                result.simd = _mm_castsi128_ps(
+                    _mm_mullo_epi32(_mm_castps_si128(simd), _mm_castps_si128(other.simd)));
+#else
+                // Fallback for SSE2: manual multiplication
+                __m128i a = _mm_castps_si128(simd);
+                __m128i b = _mm_castps_si128(other.simd);
+
+                // Multiply lower 32 bits
+                __m128i tmp = _mm_mul_epu32(a, b);
+                // Shift and multiply upper 32 bits
+                __m128i tmp2 = _mm_mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4));
+                // Combine results
+                result.simd = _mm_castsi128_ps(
+                    _mm_unpacklo_epi32(_mm_shuffle_epi32(tmp, _MM_SHUFFLE(0, 0, 2, 0)),
+                                       _mm_shuffle_epi32(tmp2, _MM_SHUFFLE(0, 0, 2, 0))));
+#endif
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = _mm_castsi128_ps(_mm_packs_epi32(
+                    _mm_mullo_epi16(_mm_castps_si128(simd), _mm_castps_si128(other.simd)),
+                    _mm_setzero_si128()));
+            }
 #elif defined(HAVE_NEON)
-            result.simd = vmulq_f32(simd, other.simd);
+            if constexpr (std::is_same_v<T, float>) {
+                result.simd = vmulq_f32(simd, other.simd);
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                result.simd = vreinterpretq_f32_s32(
+                    vmulq_s32(vreinterpretq_s32_f32(simd), vreinterpretq_s32_f32(other.simd)));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                result.simd = vreinterpretq_f32_s16(
+                    vmulq_s16(vreinterpretq_s16_f32(simd), vreinterpretq_s16_f32(other.simd)));
+            }
 #endif
             return result;
         } else {
@@ -1082,12 +1807,43 @@ public:
 
     template <typename V>
     [[nodiscard]] constexpr Vec4<decltype(T{} * V{})> operator*(const V& f) const {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+        if constexpr (detail::is_vectorizable<T>::value) {
             Vec4<decltype(T{} * V{})> result;
 #if defined(HAVE_SSE2)
-            result.simd = _mm_mul_ps(simd, _mm_set1_ps(f));
+            if constexpr (std::is_same_v<V, float>) {
+                result.simd = _mm_mul_ps(simd, _mm_set1_ps(f));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+#if defined(__SSE4_1__)
+                // Use SSE4.1's mullo instruction for full 32-bit multiplication
+                result.simd =
+                    _mm_castsi128_ps(_mm_mullo_epi32(_mm_castps_si128(simd), _mm_set1_epi32(f)));
+#else
+                // SSE2 fallback for integer multiplication
+                __m128i vec = _mm_castps_si128(simd);
+                __m128i scalar = _mm_set1_epi32(f);
+
+                // Multiply lower 32 bits
+                __m128i tmp = _mm_mul_epu32(vec, scalar);
+                // Shift and multiply upper 32 bits
+                __m128i tmp2 = _mm_mul_epu32(_mm_srli_si128(vec, 4), _mm_srli_si128(scalar, 4));
+                // Combine results
+                result.simd = _mm_castsi128_ps(
+                    _mm_unpacklo_epi32(_mm_shuffle_epi32(tmp, _MM_SHUFFLE(0, 0, 2, 0)),
+                                       _mm_shuffle_epi32(tmp2, _MM_SHUFFLE(0, 0, 2, 0))));
+#endif
+            } else if constexpr (std::is_same_v<V, int16_t>) {
+                result.simd = _mm_castsi128_ps(
+                    _mm_packs_epi32(_mm_mullo_epi16(_mm_castps_si128(simd), _mm_set1_epi16(f)),
+                                    _mm_setzero_si128()));
+            }
 #elif defined(HAVE_NEON)
-            result.simd = vmulq_f32(simd, vdupq_n_f32(f));
+            if constexpr (std::is_same_v<V, float>) {
+                result.simd = vmulq_n_f32(simd, f); // Use scalar multiply variant
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                result.simd = vreinterpretq_f32_s32(vmulq_n_s32(vreinterpretq_s32_f32(simd), f));
+            } else if constexpr (std::is_same_v<V, int16_t>) {
+                result.simd = vreinterpretq_f32_s16(vmulq_n_s16(vreinterpretq_s16_f32(simd), f));
+            }
 #endif
             return result;
         } else {
@@ -1097,11 +1853,46 @@ public:
 
     template <typename V>
     constexpr Vec4& operator*=(const V& f) {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+        if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            simd = _mm_mul_ps(simd, _mm_set1_ps(f));
+            if constexpr (std::is_same_v<V, float>) {
+                simd = _mm_mul_ps(simd, _mm_set1_ps(f));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+#if defined(__SSE4_1__)
+                // Use SSE4.1's mullo instruction for full 32-bit multiplication
+                simd = _mm_castsi128_ps(_mm_mullo_epi32(_mm_castps_si128(simd), _mm_set1_epi32(f)));
+#else
+                // SSE2 fallback for integer multiplication
+                __m128i vec = _mm_castps_si128(simd);
+                __m128i scalar = _mm_set1_epi32(f);
+
+                // Multiply lower 32 bits
+                __m128i tmp = _mm_mul_epu32(vec, scalar);
+                // Shift and multiply upper 32 bits
+                __m128i tmp2 = _mm_mul_epu32(_mm_srli_si128(vec, 4), _mm_srli_si128(scalar, 4));
+                // Combine results
+                simd = _mm_castsi128_ps(
+                    _mm_unpacklo_epi32(_mm_shuffle_epi32(tmp, _MM_SHUFFLE(0, 0, 2, 0)),
+                                       _mm_shuffle_epi32(tmp2, _MM_SHUFFLE(0, 0, 2, 0))));
+#endif
+            } else if constexpr (std::is_same_v<V, int16_t>) {
+                simd = _mm_castsi128_ps(
+                    _mm_packs_epi32(_mm_mullo_epi16(_mm_castps_si128(simd), _mm_set1_epi16(f)),
+                                    _mm_setzero_si128()));
+            }
 #elif defined(HAVE_NEON)
-            simd = vmulq_f32(simd, vdupq_n_f32(f));
+            if constexpr (std::is_same_v<V, float>) {
+                simd = vmulq_n_f32(simd, f); // Use scalar multiply variant
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                simd = vreinterpretq_f32_s32(vmulq_n_s32(vreinterpretq_s32_f32(simd), f));
+            } else if constexpr (std::is_same_v<V, int16_t>) {
+                simd = vreinterpretq_f32_s16(vmulq_n_s16(vreinterpretq_s16_f32(simd), f));
+            }
+#else
+            x *= f;
+            y *= f;
+            z *= f;
+            w *= f;
 #endif
         } else {
             x *= f;
@@ -1114,37 +1905,113 @@ public:
 
     template <typename V>
     [[nodiscard]] constexpr Vec4<decltype(T{} / V{})> operator/(const V& f) const {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+        if constexpr (detail::is_vectorizable<T>::value) {
             Vec4<decltype(T{} / V{})> result;
 #if defined(HAVE_SSE2)
-            result.simd = _mm_div_ps(simd, _mm_set1_ps(f));
+            if constexpr (std::is_same_v<V, float>) {
+                result.simd = _mm_div_ps(simd, _mm_set1_ps(f));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // For integer division, convert to float, divide, and convert back
+                __m128 float_vec = _mm_cvtepi32_ps(_mm_castps_si128(simd));
+                __m128 float_scalar = _mm_set1_ps(static_cast<float>(f));
+                __m128 div_result = _mm_div_ps(float_vec, float_scalar);
+                result.simd = _mm_castsi128_ps(_mm_cvtps_epi32(div_result));
+            }
 #elif defined(HAVE_NEON)
-            // NEON doesn't have direct division, use reciprocal multiplication
-            float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
-            // Use two Newton-Raphson iterations for better precision
-            recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
-            recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
-            result.simd = vmulq_f32(simd, recip);
+            if constexpr (std::is_same_v<V, float>) {
+                // NEON doesn't have direct division, use reciprocal multiplication
+                float32x4_t divisor = vdupq_n_f32(f);
+                // Initial estimate
+                float32x4_t recip = vrecpeq_f32(divisor);
+
+                // Two Newton-Raphson iterations for better precision
+                // Each iteration approximately doubles the number of correct bits
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+
+                // Final multiplication
+                result.simd = vmulq_f32(simd, recip);
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // For integer division, convert to float, divide, and convert back
+                float32x4_t float_vec = vcvtq_f32_s32(vreinterpretq_s32_f32(simd));
+                float32x4_t divisor = vdupq_n_f32(static_cast<float>(f));
+                float32x4_t recip = vrecpeq_f32(divisor);
+
+                // Two Newton-Raphson iterations
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+
+                float32x4_t result_f = vmulq_f32(float_vec, recip);
+                result.simd = vreinterpretq_f32_s32(vcvtq_s32_f32(result_f));
+            }
+#else
+            return {x / f, y / f, z / f, w / f};
 #endif
             return result;
         } else {
+            // Check for division by zero in debug builds
+#ifdef _DEBUG
+            if (f == V{}) {
+                throw std::domain_error("Division by zero in Vec4");
+            }
+#endif
             return {x / f, y / f, z / f, w / f};
         }
     }
 
     template <typename V>
-    constexpr Vec4& operator/=(const V& f) {
-        if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
+    [[nodiscard]] constexpr Vec4& operator/=(const V& f) {
+        if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            simd = _mm_div_ps(simd, _mm_set1_ps(f));
+            if constexpr (std::is_same_v<V, float>) {
+                simd = _mm_div_ps(simd, _mm_set1_ps(f));
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // For integer division, convert to float, divide, and convert back
+                __m128 float_vec = _mm_cvtepi32_ps(_mm_castps_si128(simd));
+                __m128 float_scalar = _mm_set1_ps(static_cast<float>(f));
+                __m128 div_result = _mm_div_ps(float_vec, float_scalar);
+                simd = _mm_castsi128_ps(_mm_cvtps_epi32(div_result));
+            }
 #elif defined(HAVE_NEON)
-            // NEON doesn't have direct division, use reciprocal multiplication
-            float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
-            // One Newton-Raphson iteration for better precision
-            recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
-            simd = vmulq_f32(simd, recip);
+            if constexpr (std::is_same_v<V, float>) {
+                // NEON doesn't have direct division, use reciprocal multiplication
+                float32x4_t divisor = vdupq_n_f32(f);
+                // Initial estimate
+                float32x4_t recip = vrecpeq_f32(divisor);
+
+                // Two Newton-Raphson iterations for better precision
+                // Each iteration approximately doubles the number of correct bits
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+
+                // Final multiplication
+                simd = vmulq_f32(simd, recip);
+            } else if constexpr (std::is_same_v<V, int32_t>) {
+                // For integer division, convert to float, divide, and convert back
+                float32x4_t float_vec = vcvtq_f32_s32(vreinterpretq_s32_f32(simd));
+                float32x4_t divisor = vdupq_n_f32(static_cast<float>(f));
+                float32x4_t recip = vrecpeq_f32(divisor);
+
+                // Two Newton-Raphson iterations
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+                recip = vmulq_f32(vrecpsq_f32(divisor, recip), recip);
+
+                float32x4_t result_f = vmulq_f32(float_vec, recip);
+                simd = vreinterpretq_f32_s32(vcvtq_s32_f32(result_f));
+            }
+#else
+            x /= f;
+            y /= f;
+            z /= f;
+            w /= f;
 #endif
         } else {
+            // Check for division by zero in debug builds
+#ifdef _DEBUG
+            if (f == V{}) {
+                throw std::domain_error("Division by zero in Vec4");
+            }
+#endif
             x /= f;
             y /= f;
             z /= f;
@@ -1156,47 +2023,273 @@ public:
     [[nodiscard]] constexpr bool operator==(const Vec4& other) const {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            __m128 cmp = _mm_cmpeq_ps(simd, other.simd);
-            return _mm_movemask_ps(cmp) == 0xF; // All 4 components must match
+            if constexpr (std::is_same_v<T, float>) {
+                __m128 cmp = _mm_cmpeq_ps(simd, other.simd);
+                return _mm_movemask_ps(cmp) == 0xF; // All 4 components must match
+            } else if constexpr (std::is_integral_v<T>) {
+                __m128i a = _mm_castps_si128(simd);
+                __m128i b = _mm_castps_si128(other.simd);
+                __m128i cmp = _mm_cmpeq_epi32(a, b);
+                return _mm_movemask_ps(_mm_castsi128_ps(cmp)) == 0xF;
+            }
 #elif defined(HAVE_NEON)
-            uint32x4_t cmp = vceqq_f32(simd, other.simd);
-            uint32x2_t and_hl = vand_u32(vget_high_u32(cmp), vget_low_u32(cmp));
-            uint32x2_t and_all = vand_u32(and_hl, vrev64_u32(and_hl));
-            return vget_lane_u32(and_all, 0) == 0xFFFFFFFF;
+            if constexpr (std::is_same_v<T, float>) {
+                uint32x4_t cmp = vceqq_f32(simd, other.simd);
+#if defined(__aarch64__)
+                // AArch64 has a more efficient implementation
+                return vminvq_u32(cmp) == 0xFFFFFFFF;
+#else
+                // ARM32 implementation
+                uint32x2_t and_hl = vand_u32(vget_high_u32(cmp), vget_low_u32(cmp));
+                return vget_lane_u32(vpmin_u32(and_hl, and_hl), 0) == 0xFFFFFFFF;
 #endif
-        } else {
-            return x == other.x && y == other.y && z == other.z && w == other.w;
+            } else if constexpr (std::is_same_v<T, int32_t>) {
+                uint32x4_t cmp =
+                    vceqq_s32(vreinterpretq_s32_f32(simd), vreinterpretq_s32_f32(other.simd));
+#if defined(__aarch64__)
+                return vminvq_u32(cmp) == 0xFFFFFFFF;
+#else
+                uint32x2_t and_hl = vand_u32(vget_high_u32(cmp), vget_low_u32(cmp));
+                return vget_lane_u32(vpmin_u32(and_hl, and_hl), 0) == 0xFFFFFFFF;
+#endif
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                uint16x8_t cmp =
+                    vceqq_s16(vreinterpretq_s16_f32(simd), vreinterpretq_s16_f32(other.simd));
+#if defined(__aarch64__)
+                return vminvq_u16(cmp) == 0xFFFF;
+#else
+                uint16x4_t and_hl = vand_u16(vget_high_u16(cmp), vget_low_u16(cmp));
+                return vget_lane_u16(vpmin_u16(and_hl, and_hl), 0) == 0xFFFF;
+#endif
+            }
+#endif
         }
+        // Fallback to scalar comparison
+        return x == other.x && y == other.y && z == other.z && w == other.w;
     }
 
     [[nodiscard]] constexpr bool operator!=(const Vec4& other) const {
-        return !(*this == other);
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            if constexpr (std::is_same_v<T, float>) {
+                // Use SSE comparison for floating-point
+                __m128 eq = _mm_cmpeq_ps(simd, other.simd);
+                return (_mm_movemask_ps(eq) & 0xF) != 0xF;
+            } else if constexpr (std::is_integral_v<T>) {
+                if constexpr (sizeof(T) <= 2) {
+                    // For 16-bit integers
+                    __m128i v1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&x));
+                    __m128i v2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&other.x));
+                    __m128i eq = _mm_cmpeq_epi16(v1, v2);
+                    return (_mm_movemask_epi8(eq) & 0xFF) != 0xFF;
+                } else {
+                    // For 32-bit integers
+                    __m128i v1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&x));
+                    __m128i v2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&other.x));
+                    __m128i eq = _mm_cmpeq_epi32(v1, v2);
+                    return (_mm_movemask_ps(_mm_castsi128_ps(eq)) & 0xF) != 0xF;
+                }
+            }
+#elif defined(HAVE_NEON)
+            if constexpr (std::is_same_v<T, float>) {
+                // Use NEON comparison for floating-point
+                uint32x4_t eq = vceqq_f32(simd, other.simd);
+#if defined(__aarch64__)
+                // AArch64 has efficient all-true testing
+                return !vminvq_u32(eq);
+#else
+                uint32x2_t hi = vget_high_u32(eq);
+                uint32x2_t lo = vget_low_u32(eq);
+                uint32x2_t and_res = vand_u32(hi, lo);
+                return (vget_lane_u32(and_res, 0) & vget_lane_u32(and_res, 1)) != 0xFFFFFFFF;
+#endif
+            } else if constexpr (std::is_integral_v<T>) {
+                if constexpr (sizeof(T) <= 2) {
+                    // For 16-bit integers
+                    int16x4_t v1 = vld1_s16(reinterpret_cast<const int16_t*>(&x));
+                    int16x4_t v2 = vld1_s16(reinterpret_cast<const int16_t*>(&other.x));
+                    uint16x4_t eq = vceq_s16(v1, v2);
+                    return (vget_lane_u16(eq, 0) & vget_lane_u16(eq, 1) & vget_lane_u16(eq, 2) &
+                            vget_lane_u16(eq, 3)) != 0xFFFF;
+                } else {
+                    // For 32-bit integers
+                    int32x4_t v1 = vld1q_s32(reinterpret_cast<const int32_t*>(&x));
+                    int32x4_t v2 = vld1q_s32(reinterpret_cast<const int32_t*>(&other.x));
+                    uint32x4_t eq = vceqq_s32(v1, v2);
+#if defined(__aarch64__)
+                    return !vminvq_u32(eq);
+#else
+                    uint32x2_t hi = vget_high_u32(eq);
+                    uint32x2_t lo = vget_low_u32(eq);
+                    uint32x2_t and_res = vand_u32(hi, lo);
+                    return (vget_lane_u32(and_res, 0) & vget_lane_u32(and_res, 1)) != 0xFFFFFFFF;
+#endif
+                }
+            }
+#endif
+        }
+        // Fallback scalar implementation
+        return x != other.x || y != other.y || z != other.z || w != other.w;
     }
 
     [[nodiscard]] constexpr T Length2() const {
         if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-            __m128 sq = _mm_mul_ps(simd, simd);
-            // Horizontal add all four components
-            __m128 sum1 = _mm_add_ps(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(2, 3, 0, 1)));
-            __m128 sum2 = _mm_add_ps(sum1, _mm_shuffle_ps(sum1, sum1, _MM_SHUFFLE(1, 0, 3, 2)));
-            return _mm_cvtss_f32(sum2);
+            if constexpr (std::is_same_v<T, float>) {
+                __m128 sq = _mm_mul_ps(simd, simd);
+                // Horizontal add all four components using optimized shuffles
+                __m128 sum1 = _mm_add_ps(sq, _mm_movehl_ps(sq, sq)); // Add upper and lower halves
+                __m128 sum2 =
+                    _mm_add_ss(sum1, _mm_shuffle_ps(sum1, sum1, 1)); // Add remaining elements
+                return _mm_cvtss_f32(sum2);
+            } else if constexpr (std::is_integral_v<T>) {
+                // Handle integer types - prevent overflow by converting to wider type
+                __m128i vec = _mm_castps_si128(simd);
+                __m128i squares;
+
+                if constexpr (sizeof(T) <= 2) {
+                    // For 16-bit integers, use 32-bit multiplication
+                    squares = _mm_madd_epi16(vec, vec); // Multiply and add adjacent pairs
+                } else {
+                    // For 32-bit integers, multiply and accumulate carefully
+                    __m128i lo = _mm_srli_epi64(_mm_mul_epu32(vec, vec), 32);
+                    __m128i hi = _mm_mul_epu32(_mm_srli_epi64(vec, 32), _mm_srli_epi64(vec, 32));
+                    squares = _mm_or_si128(lo, _mm_slli_epi64(hi, 32));
+                }
+
+                // Sum the components
+                __m128i sum1 = _mm_add_epi64(_mm_unpacklo_epi32(squares, _mm_setzero_si128()),
+                                             _mm_unpackhi_epi32(squares, _mm_setzero_si128()));
+                return static_cast<T>(_mm_cvtsi128_si64(sum1) +
+                                      _mm_cvtsi128_si64(_mm_shuffle_epi32(sum1, 0x4E)));
+            }
 #elif defined(HAVE_NEON)
-            float32x4_t sq = vmulq_f32(simd, simd);
-            float32x2_t sum = vpadd_f32(vget_low_f32(sq), vget_high_f32(sq));
-            return vget_lane_f32(vpadd_f32(sum, sum), 0);
+            if constexpr (std::is_same_v<T, float>) {
+                float32x4_t sq = vmulq_f32(simd, simd);
+#if defined(__aarch64__)
+                // Use dedicated instruction on AArch64
+                return vaddvq_f32(sq);
+#else
+                // Optimized horizontal add for ARM32
+                float32x2_t sum = vpadd_f32(vget_low_f32(sq), vget_high_f32(sq));
+                return vget_lane_f32(vpadd_f32(sum, sum), 0);
 #endif
-        } else {
-            return x * x + y * y + z * z + w * w;
+            } else if constexpr (std::is_integral_v<T>) {
+                if constexpr (sizeof(T) <= 2) {
+                    // For 16-bit integers
+                    int32x4_t squares = vmull_s16(vget_low_s16(vreinterpretq_s16_f32(simd)),
+                                                  vget_low_s16(vreinterpretq_s16_f32(simd)));
+#if defined(__aarch64__)
+                    return static_cast<T>(vaddvq_s32(squares));
+#else
+                    int32x2_t sum = vadd_s32(vget_low_s32(squares), vget_high_s32(squares));
+                    return static_cast<T>(vget_lane_s32(vpadd_s32(sum, sum), 0));
+#endif
+                } else {
+                    // For 32-bit integers
+                    int64x2_t squares = vmull_s32(vget_low_s32(vreinterpretq_s32_f32(simd)),
+                                                  vget_low_s32(vreinterpretq_s32_f32(simd)));
+                    return static_cast<T>(vgetq_lane_s64(squares, 0) + vgetq_lane_s64(squares, 1));
+                }
+            }
+#endif
         }
+        // Fallback scalar implementation
+        return x * x + y * y + z * z + w * w;
     }
 
+    [[nodiscard]] float Length() const {
+        const float length2 = Length2();
+        if (length2 < std::numeric_limits<float>::epsilon()) {
+            return 0.0f;
+        }
+#if defined(HAVE_SSE2)
+        return _mm_cvtss_f32(_mm_sqrt_ss(_mm_set_ss(length2)));
+#elif defined(HAVE_NEON)
+        float32x2_t len = vsqrt_f32(vdup_n_f32(length2));
+        return vget_lane_f32(len, 0);
+#else
+        return std::sqrt(length2);
+#endif
+    }
     [[nodiscard]] constexpr T& operator[](std::size_t i) {
-        return *((&x) + i);
+        assert(i < 4 && "Index out of bounds in Vec4");
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            if constexpr (std::is_same_v<T, float>) {
+                // Direct SIMD access for floats
+                alignas(16) float* const elements = reinterpret_cast<float*>(&simd);
+                return elements[i];
+            } else if constexpr (std::is_integral_v<T>) {
+                // Integer SIMD access with proper alignment
+                if constexpr (sizeof(T) <= 2) {
+                    // 16-bit integers
+                    alignas(16) int16_t* const elements = reinterpret_cast<int16_t*>(&simd);
+                    return *reinterpret_cast<T*>(&elements[i]);
+                } else {
+                    // 32-bit integers
+                    alignas(16) int32_t* const elements = reinterpret_cast<int32_t*>(&simd);
+                    return *reinterpret_cast<T*>(&elements[i]);
+                }
+            }
+#elif defined(HAVE_NEON)
+            if constexpr (std::is_same_v<T, float>) {
+                // ARM NEON float access
+                return reinterpret_cast<float*>(&simd)[i];
+            } else if constexpr (std::is_integral_v<T>) {
+                if constexpr (sizeof(T) <= 2) {
+                    // 16-bit integers with NEON alignment
+                    return reinterpret_cast<T*>(&simd)[i];
+                } else {
+                    // 32-bit integers with NEON alignment
+                    return reinterpret_cast<T*>(&simd)[i];
+                }
+            }
+#endif
+        }
+        // Fast pointer arithmetic for standard access
+        return *(reinterpret_cast<T*>(&x) + i);
     }
 
     [[nodiscard]] constexpr const T& operator[](std::size_t i) const {
-        return *((&x) + i);
+        assert(i < 4 && "Index out of bounds in Vec4");
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            if constexpr (std::is_same_v<T, float>) {
+                // Direct const SIMD access for floats
+                alignas(16) const float* const elements = reinterpret_cast<const float*>(&simd);
+                return elements[i];
+            } else if constexpr (std::is_integral_v<T>) {
+                // Integer const SIMD access with proper alignment
+                if constexpr (sizeof(T) <= 2) {
+                    // 16-bit integers
+                    alignas(16) const int16_t* const elements =
+                        reinterpret_cast<const int16_t*>(&simd);
+                    return *reinterpret_cast<const T*>(&elements[i]);
+                } else {
+                    // 32-bit integers
+                    alignas(16) const int32_t* const elements =
+                        reinterpret_cast<const int32_t*>(&simd);
+                    return *reinterpret_cast<const T*>(&elements[i]);
+                }
+            }
+#elif defined(HAVE_NEON)
+            if constexpr (std::is_same_v<T, float>) {
+                // ARM NEON const float access
+                return reinterpret_cast<const float*>(&simd)[i];
+            } else if constexpr (std::is_integral_v<T>) {
+                if constexpr (sizeof(T) <= 2) {
+                    // 16-bit integers with NEON alignment
+                    return reinterpret_cast<const T*>(&simd)[i];
+                } else {
+                    // 32-bit integers with NEON alignment
+                    return reinterpret_cast<const T*>(&simd)[i];
+                }
+            }
+#endif
+        }
+        // Fast const pointer arithmetic for standard access
+        return *(reinterpret_cast<const T*>(&x) + i);
     }
 
     constexpr void SetZero() {
@@ -1303,17 +2396,39 @@ public:
 
 template <typename T, typename V>
 [[nodiscard]] constexpr Vec4<decltype(V{} * T{})> operator*(const V& f, const Vec4<T>& vec) {
-    if constexpr (detail::is_vectorizable<T>::value && std::is_same_v<V, float>) {
-        Vec4<decltype(V{} * T{})> result;
+    if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE2)
-        result.simd = _mm_mul_ps(_mm_set1_ps(f), vec.simd);
+        if constexpr (std::is_same_v<V, float>) {
+            Vec4<decltype(V{} * T{})> result;
+            result.simd = _mm_mul_ps(_mm_set1_ps(f), vec.simd);
+            return result;
+        } else if constexpr (std::is_integral_v<V>) {
+            Vec4<decltype(V{} * T{})> result;
+            if constexpr (sizeof(V) <= 4) {
+                // For 32-bit and smaller integers
+                result.simd = _mm_castsi128_ps(_mm_mullo_epi32(
+                    _mm_set1_epi32(static_cast<int32_t>(f)), _mm_castps_si128(vec.simd)));
+            }
+            return result;
+        }
 #elif defined(HAVE_NEON)
-        result.simd = vmulq_f32(vdupq_n_f32(f), vec.simd);
+        if constexpr (std::is_same_v<V, float>) {
+            Vec4<decltype(V{} * T{})> result;
+            result.simd = vmulq_n_f32(vec.simd, f); // Use scalar multiply variant
+            return result;
+        } else if constexpr (std::is_same_v<V, int32_t>) {
+            Vec4<decltype(V{} * T{})> result;
+            result.simd = vreinterpretq_f32_s32(vmulq_n_s32(vreinterpretq_s32_f32(vec.simd), f));
+            return result;
+        } else if constexpr (std::is_same_v<V, int16_t>) {
+            Vec4<decltype(V{} * T{})> result;
+            result.simd = vreinterpretq_f32_s16(vmulq_n_s16(vreinterpretq_s16_f32(vec.simd), f));
+            return result;
+        }
 #endif
-        return result;
-    } else {
-        return {f * vec.x, f * vec.y, f * vec.z, f * vec.w};
     }
+    // Fallback to scalar multiplication
+    return {f * vec.x, f * vec.y, f * vec.z, f * vec.w};
 }
 
 using Vec4f = Vec4<float>;
@@ -1324,113 +2439,374 @@ template <typename T>
 constexpr decltype(T{} * T{} + T{} * T{}) Dot(const Vec2<T>& a, const Vec2<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE4_1)
-        // Load 2D vectors into lower half of SSE register and use SSE4.1 dot product
-        __m128 va = _mm_setr_ps(a.x, a.y, 0.0f, 0.0f);
-        __m128 vb = _mm_setr_ps(b.x, b.y, 0.0f, 0.0f);
-        return _mm_cvtss_f32(
-            _mm_dp_ps(va, vb, 0x31)); // 0x31: only multiply xy (0x3) and store in lowest (0x1)
+        if constexpr (std::is_same_v<T, float>) {
+            // Use SSE4.1 dot product instruction
+            __m128 va = _mm_setr_ps(a.x, a.y, 0.0f, 0.0f);
+            __m128 vb = _mm_setr_ps(b.x, b.y, 0.0f, 0.0f);
+            return _mm_cvtss_f32(
+                _mm_dp_ps(va, vb, 0x31)); // 0x31: multiply xy (0x3) and store in lowest (0x1)
+        } else if constexpr (std::is_integral_v<T>) {
+            // For integer types, use wider type to prevent overflow
+            __m128i va = _mm_setr_epi32(static_cast<int32_t>(a.x), static_cast<int32_t>(a.y), 0, 0);
+            __m128i vb = _mm_setr_epi32(static_cast<int32_t>(b.x), static_cast<int32_t>(b.y), 0, 0);
+            __m128i mul = _mm_mullo_epi32(va, vb);
+            return static_cast<T>(_mm_extract_epi32(mul, 0) + _mm_extract_epi32(mul, 1));
+        }
 #elif defined(HAVE_SSE2)
-        // Load just the two components we need
-        __m128 va = _mm_setr_ps(a.x, a.y, 0.0f, 0.0f);
-        __m128 vb = _mm_setr_ps(b.x, b.y, 0.0f, 0.0f);
-        __m128 mul = _mm_mul_ps(va, vb);
-        // Add first two elements (x and y)
-        __m128 sum = _mm_add_ss(mul, _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(1, 1, 1, 1)));
-        return _mm_cvtss_f32(sum);
+        if constexpr (std::is_same_v<T, float>) {
+            // Optimized SSE2 path for floats
+            __m128 va =
+                _mm_set_ps(0.0f, 0.0f, a.y, a.x); // Reverse order for better shuffle performance
+            __m128 vb = _mm_set_ps(0.0f, 0.0f, b.y, b.x);
+            __m128 mul = _mm_mul_ps(va, vb);
+            return _mm_cvtss_f32(_mm_add_ss(mul, _mm_shuffle_ps(mul, mul, 1)));
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers, use 32-bit multiplication
+                __m128i va =
+                    _mm_set_epi32(0, 0, static_cast<int32_t>(a.y), static_cast<int32_t>(a.x));
+                __m128i vb =
+                    _mm_set_epi32(0, 0, static_cast<int32_t>(b.y), static_cast<int32_t>(b.x));
+                __m128i mul = _mm_madd_epi16(va, vb); // Multiply and add adjacent pairs
+                return static_cast<T>(_mm_cvtsi128_si32(mul));
+            } else {
+                // For 32-bit integers
+                __m128i va =
+                    _mm_set_epi32(0, 0, static_cast<int32_t>(a.y), static_cast<int32_t>(a.x));
+                __m128i vb =
+                    _mm_set_epi32(0, 0, static_cast<int32_t>(b.y), static_cast<int32_t>(b.x));
+                __m128i mul = _mm_mul_epu32(va, vb);
+                return static_cast<T>(_mm_cvtsi128_si64(mul));
+            }
+        }
 #elif defined(HAVE_NEON)
-        // Load just the two components into a 64-bit register
-        float32x2_t va = {a.x, a.y};
-        float32x2_t vb = {b.x, b.y};
-        // Multiply and add horizontally in one go
-        float32x2_t mul = vmul_f32(va, vb);
-        return vget_lane_f32(vpadd_f32(mul, mul), 0);
+        if constexpr (std::is_same_v<T, float>) {
+            // Optimized NEON path using dot product instruction
+            float32x2_t va = {a.x, a.y};
+            float32x2_t vb = {b.x, b.y};
+#if defined(__aarch64__)
+            return vaddv_f32(vmul_f32(va, vb)); // More efficient on AArch64
+#else
+            float32x2_t mul = vmul_f32(va, vb);
+            return vget_lane_f32(vpadd_f32(mul, mul), 0);
 #endif
-    } else {
-        return a.x * b.x + a.y * b.y;
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                int16x4_t va = {static_cast<int16_t>(a.x), static_cast<int16_t>(a.y), 0, 0};
+                int16x4_t vb = {static_cast<int16_t>(b.x), static_cast<int16_t>(b.y), 0, 0};
+                int32x4_t mul = vmull_s16(va, vb);
+                return static_cast<T>(vgetq_lane_s32(mul, 0) + vgetq_lane_s32(mul, 1));
+            } else {
+                // For 32-bit integers
+                int32x2_t va = {static_cast<int32_t>(a.x), static_cast<int32_t>(a.y)};
+                int32x2_t vb = {static_cast<int32_t>(b.x), static_cast<int32_t>(b.y)};
+                int64x2_t mul = vmull_s32(va, vb);
+                return static_cast<T>(vgetq_lane_s64(mul, 0) + vgetq_lane_s64(mul, 1));
+            }
+        }
+#endif
     }
+    // Fallback scalar implementation
+    return a.x * b.x + a.y * b.y;
 }
 
 template <typename T>
 [[nodiscard]] constexpr decltype(T{} * T{} + T{} * T{}) Dot(const Vec3<T>& a, const Vec3<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE4_1)
-        // SSE4.1 has a dedicated dot product instruction
-        // 0xF1 mask: multiply all components (0xF) but only store result in lowest component (0x1)
-        return _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&a.x), _mm_load_ps(&b.x), 0x71));
+        if constexpr (std::is_same_v<T, float>) {
+            // SSE4.1 dot product instruction
+            // 0x71 mask: multiply xyz components (0x7) and store in lowest component (0x1)
+            return _mm_cvtss_f32(_mm_dp_ps(_mm_load_ps(&a.x), _mm_load_ps(&b.x), 0x71));
+        } else if constexpr (std::is_integral_v<T>) {
+            // For integer types, use wider type to prevent overflow
+            __m128i va = _mm_setr_epi32(static_cast<int32_t>(a.x), static_cast<int32_t>(a.y),
+                                        static_cast<int32_t>(a.z), 0);
+            __m128i vb = _mm_setr_epi32(static_cast<int32_t>(b.x), static_cast<int32_t>(b.y),
+                                        static_cast<int32_t>(b.z), 0);
+            __m128i mul = _mm_mullo_epi32(va, vb);
+            // Horizontal add of three components
+            __m128i sum = _mm_add_epi32(mul, _mm_srli_si128(mul, 4));
+            sum = _mm_add_epi32(sum, _mm_srli_si128(mul, 8));
+            return static_cast<T>(_mm_cvtsi128_si32(sum));
+        }
 #elif defined(HAVE_SSE2)
-        __m128 va = _mm_load_ps(&a.x);
-        __m128 vb = _mm_load_ps(&b.x);
-        __m128 mul = _mm_mul_ps(va, vb);
-        // Add x+y components
-        __m128 sum = _mm_add_ss(mul, _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(1, 1, 1, 1)));
-        // Add z component
-        sum = _mm_add_ss(sum, _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(2, 2, 2, 2)));
-        return _mm_cvtss_f32(sum);
+        if constexpr (std::is_same_v<T, float>) {
+            __m128 va = _mm_load_ps(&a.x);
+            __m128 vb = _mm_load_ps(&b.x);
+            __m128 mul = _mm_mul_ps(va, vb);
+            // Optimized horizontal add using shuffles
+            __m128 sum = _mm_add_ps(mul, _mm_movehl_ps(mul, mul)); // Add upper and lower halves
+            sum = _mm_add_ss(sum, _mm_shuffle_ps(sum, sum, 1));    // Add remaining element
+            return _mm_cvtss_f32(sum);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                __m128i va =
+                    detail::vec3_to_epi16(static_cast<int16_t>(a.x), static_cast<int16_t>(a.y),
+                                          static_cast<int16_t>(a.z));
+                __m128i vb =
+                    detail::vec3_to_epi16(static_cast<int16_t>(b.x), static_cast<int16_t>(b.y),
+                                          static_cast<int16_t>(b.z));
+                __m128i mul = _mm_madd_epi16(va, vb); // Multiply and add adjacent pairs
+                // Horizontal add of two 32-bit results
+                __m128i sum = _mm_add_epi32(mul, _mm_srli_si128(mul, 4));
+                return static_cast<T>(_mm_cvtsi128_si32(sum));
+            } else {
+                // For 32-bit integers
+                __m128i va = _mm_setr_epi32(static_cast<int32_t>(a.x), static_cast<int32_t>(a.y),
+                                            static_cast<int32_t>(a.z), 0);
+                __m128i vb = _mm_setr_epi32(static_cast<int32_t>(b.x), static_cast<int32_t>(b.y),
+                                            static_cast<int32_t>(b.z), 0);
+                __m128i mul = _mm_mul_epu32(va, vb);
+                // Horizontal add of results
+                __m128i sum = _mm_add_epi64(mul, _mm_srli_si128(mul, 8));
+                return static_cast<T>(_mm_cvtsi128_si64(sum));
+            }
+        }
 #elif defined(HAVE_NEON)
-        float32x4_t va = vld1q_f32(&a.x);
-        float32x4_t vb = vld1q_f32(&b.x);
-        float32x4_t mul = vmulq_f32(va, vb);
-        float32x2_t sum = vget_low_f32(mul);
-        // Add first two elements
-        sum = vpadd_f32(sum, sum);
-        // Add third element
-        return vget_lane_f32(sum, 0) + vgetq_lane_f32(mul, 2);
+        if constexpr (std::is_same_v<T, float>) {
+            float32x4_t va = vld1q_f32(&a.x);
+            float32x4_t vb = vld1q_f32(&b.x);
+            float32x4_t mul = vmulq_f32(va, vb);
+#if defined(__aarch64__)
+            // More efficient on AArch64 using dedicated instruction
+            return vaddvq_f32(vsetq_lane_f32(0.f, mul, 3));
+#else
+            float32x2_t sum = vget_low_f32(mul);
+            sum = vpadd_f32(sum, sum);                             // Add x+y
+            return vget_lane_f32(sum, 0) + vgetq_lane_f32(mul, 2); // Add z
 #endif
-    } else {
-        return a.x * b.x + a.y * b.y + a.z * b.z;
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                int16x4_t va = {static_cast<int16_t>(a.x), static_cast<int16_t>(a.y),
+                                static_cast<int16_t>(a.z), 0};
+                int16x4_t vb = {static_cast<int16_t>(b.x), static_cast<int16_t>(b.y),
+                                static_cast<int16_t>(b.z), 0};
+                int32x4_t mul = vmull_s16(va, vb);
+#if defined(__aarch64__)
+                return static_cast<T>(vaddvq_s32(mul));
+#else
+                int32x2_t sum = vadd_s32(vget_low_s32(mul), vget_high_s32(mul));
+                return static_cast<T>(vget_lane_s32(vpadd_s32(sum, sum), 0));
+#endif
+            } else {
+                // For 32-bit integers
+                int32x2_t va = {static_cast<int32_t>(a.x), static_cast<int32_t>(a.y)};
+                int32x2_t vb = {static_cast<int32_t>(b.x), static_cast<int32_t>(b.y)};
+                int64x2_t mul = vmull_s32(va, vb);
+                int64x2_t sum = vaddq_s64(mul, vmull_s32(vcreate_s32(static_cast<int32_t>(a.z)),
+                                                         vcreate_s32(static_cast<int32_t>(b.z))));
+                return static_cast<T>(vgetq_lane_s64(sum, 0) + vgetq_lane_s64(sum, 1));
+            }
+        }
+#endif
     }
+    // Fallback scalar implementation
+    return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 template <typename T>
 [[nodiscard]] constexpr decltype(T{} * T{} + T{} * T{}) Dot(const Vec4<T>& a, const Vec4<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
 #if defined(HAVE_SSE4_1)
-        // SSE4.1 has a dedicated dot product instruction
-        return _mm_cvtss_f32(_mm_dp_ps(a.simd, b.simd, 0xF1));
+        if constexpr (std::is_same_v<T, float>) {
+            // SSE4.1 dot product instruction
+            // 0xF1 mask: multiply xyzw components (0xF) and store in lowest component (0x1)
+            return _mm_cvtss_f32(_mm_dp_ps(a.simd, b.simd, 0xF1));
+        } else if constexpr (std::is_integral_v<T>) {
+            // For integer types, use wider type to prevent overflow
+            __m128i mul = _mm_mullo_epi32(_mm_castps_si128(a.simd), _mm_castps_si128(b.simd));
+            // Horizontal add of all components
+            __m128i sum = _mm_add_epi32(mul, _mm_srli_si128(mul, 8));
+            sum = _mm_add_epi32(sum, _mm_srli_si128(sum, 4));
+            return static_cast<T>(_mm_cvtsi128_si32(sum));
+        }
 #elif defined(HAVE_SSE2)
-        __m128 mul = _mm_mul_ps(a.simd, b.simd);
-        // Add pairs
-        __m128 sum1 = _mm_add_ps(mul, _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(2, 3, 0, 1)));
-        // Add remaining pairs
-        __m128 sum2 = _mm_add_ps(sum1, _mm_shuffle_ps(sum1, sum1, _MM_SHUFFLE(1, 0, 3, 2)));
-        return _mm_cvtss_f32(sum2);
+        if constexpr (std::is_same_v<T, float>) {
+            __m128 mul = _mm_mul_ps(a.simd, b.simd);
+            // Optimized horizontal add
+            __m128 sum = _mm_add_ps(mul, _mm_movehl_ps(mul, mul)); // Add upper and lower halves
+            sum = _mm_add_ss(sum, _mm_shuffle_ps(sum, sum, 1));    // Add remaining elements
+            return _mm_cvtss_f32(sum);
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                __m128i mul = _mm_madd_epi16(_mm_castps_si128(a.simd), _mm_castps_si128(b.simd));
+                // Horizontal add
+                __m128i sum = _mm_add_epi32(mul, _mm_srli_si128(mul, 8));
+                sum = _mm_add_epi32(sum, _mm_srli_si128(sum, 4));
+                return static_cast<T>(_mm_cvtsi128_si32(sum));
+            } else {
+                // For 32-bit integers
+                __m128i va = _mm_castps_si128(a.simd);
+                __m128i vb = _mm_castps_si128(b.simd);
+                // Multiply low and high parts separately to handle potential overflow
+                __m128i lo = _mm_mul_epu32(va, vb);
+                __m128i hi = _mm_mul_epu32(_mm_srli_si128(va, 4), _mm_srli_si128(vb, 4));
+                __m128i sum = _mm_add_epi64(lo, hi);
+                return static_cast<T>(_mm_cvtsi128_si64(sum) +
+                                      _mm_cvtsi128_si64(_mm_srli_si128(sum, 8)));
+            }
+        }
 #elif defined(HAVE_NEON)
-        float32x4_t mul = vmulq_f32(a.simd, b.simd);
-        float32x2_t sum = vpadd_f32(vget_low_f32(mul), vget_high_f32(mul));
-        float32x2_t total = vpadd_f32(sum, sum);
-        return vget_lane_f32(total, 0);
+        if constexpr (std::is_same_v<T, float>) {
+            float32x4_t mul = vmulq_f32(a.simd, b.simd);
+#if defined(__aarch64__)
+            // More efficient on AArch64
+            return vaddvq_f32(mul);
+#else
+            float32x2_t sum = vpadd_f32(vget_low_f32(mul), vget_high_f32(mul));
+            return vget_lane_f32(vpadd_f32(sum, sum), 0);
 #endif
-    } else {
-        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                int16x8_t mul =
+                    vmulq_s16(vreinterpretq_s16_f32(a.simd), vreinterpretq_s16_f32(b.simd));
+#if defined(__aarch64__)
+                return static_cast<T>(vaddvq_s16(mul));
+#else
+                int16x4_t sum = vadd_s16(vget_low_s16(mul), vget_high_s16(mul));
+                return static_cast<T>(vget_lane_s16(vpadd_s16(sum, sum), 0));
+#endif
+            } else {
+                // For 32-bit integers
+                int32x4_t mul =
+                    vmulq_s32(vreinterpretq_s32_f32(a.simd), vreinterpretq_s32_f32(b.simd));
+#if defined(__aarch64__)
+                return static_cast<T>(vaddvq_s32(mul));
+#else
+                int32x2_t sum = vadd_s32(vget_low_s32(mul), vget_high_s32(mul));
+                return static_cast<T>(vget_lane_s32(vpadd_s32(sum, sum), 0));
+#endif
+            }
+        }
+#endif
     }
+    // Fallback scalar implementation
+    return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
 
 template <typename T>
 [[nodiscard]] constexpr Vec3<decltype(T{} * T{} - T{} * T{})> Cross(const Vec3<T>& a,
                                                                     const Vec3<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
-        Vec3<T> result;
 #if defined(HAVE_SSE2)
-        __m128 a_yzx =
-            _mm_shuffle_ps(_mm_load_ps(&a.x), _mm_load_ps(&a.x), _MM_SHUFFLE(3, 0, 2, 1));
-        __m128 b_yzx =
-            _mm_shuffle_ps(_mm_load_ps(&b.x), _mm_load_ps(&b.x), _MM_SHUFFLE(3, 0, 2, 1));
-        __m128 c =
-            _mm_sub_ps(_mm_mul_ps(_mm_load_ps(&a.x), b_yzx), _mm_mul_ps(_mm_load_ps(&b.x), a_yzx));
-        _mm_store_ps(&result.x, _mm_shuffle_ps(c, c, _MM_SHUFFLE(3, 0, 2, 1)));
+        if constexpr (std::is_same_v<T, float>) {
+            Vec3<T> result;
+            // Load vectors and create shuffled copies
+            __m128 va = _mm_load_ps(&a.x);
+            __m128 vb = _mm_load_ps(&b.x);
+            __m128 a_yzx = _mm_shuffle_ps(va, va, _MM_SHUFFLE(3, 0, 2, 1));
+            __m128 b_yzx = _mm_shuffle_ps(vb, vb, _MM_SHUFFLE(3, 0, 2, 1));
+            // Compute cross product with FMA if available
+#if defined(HAVE_FMA)
+            __m128 c = _mm_fmsub_ps(va, b_yzx, _mm_mul_ps(vb, a_yzx));
+#else
+            __m128 c = _mm_sub_ps(_mm_mul_ps(va, b_yzx), _mm_mul_ps(vb, a_yzx));
+#endif
+            // Store result with correct component ordering
+            _mm_store_ps(&result.x, _mm_shuffle_ps(c, c, _MM_SHUFFLE(3, 0, 2, 1)));
+            return result;
+        } else if constexpr (std::is_integral_v<T>) {
+            Vec3<T> result;
+            // Handle integer cross product with overflow protection
+
+            __m128i va = _mm_setr_epi32(static_cast<int32_t>(a.x), static_cast<int32_t>(a.y),
+                                        static_cast<int32_t>(a.z), 0);
+            __m128i vb = _mm_setr_epi32(static_cast<int32_t>(b.x), static_cast<int32_t>(b.y),
+                                        static_cast<int32_t>(b.z), 0);
+
+            __m128i a_yzx = _mm_shuffle_epi32(va, _MM_SHUFFLE(3, 0, 2, 1));
+            __m128i b_yzx = _mm_shuffle_epi32(vb, _MM_SHUFFLE(3, 0, 2, 1));
+
+            // Compute products with wider type
+            __m128i mul1 = _mm_mullo_epi32(va, b_yzx);
+            __m128i mul2 = _mm_mullo_epi32(vb, a_yzx);
+            __m128i diff = _mm_sub_epi32(mul1, mul2);
+
+            // Store with correct ordering
+            result.x = static_cast<T>(_mm_extract_epi32(diff, 1));
+            result.y = static_cast<T>(_mm_extract_epi32(diff, 2));
+            result.z = static_cast<T>(_mm_extract_epi32(diff, 0));
+            return result;
+        }
 #elif defined(HAVE_NEON)
-        float32x4_t a_vec = vld1q_f32(&a.x);
-        float32x4_t b_vec = vld1q_f32(&b.x);
-        // Create vectors with elements shifted for cross product
-        float32x4_t a_yzx = vextq_f32(a_vec, a_vec, 1);
-        float32x4_t b_yzx = vextq_f32(b_vec, b_vec, 1);
-        float32x4_t result = vsubq_f32(vmulq_f32(a_vec, b_yzx), vmulq_f32(b_vec, a_yzx));
-        Vec3<T> ret;
-        vst1q_f32(&ret.x, result);
-        return ret;
-    } else {
-        return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+        if constexpr (std::is_same_v<T, float>) {
+            float32x4_t va = vld1q_f32(&a.x);
+            float32x4_t vb = vld1q_f32(&b.x);
+
+// Optimize component shuffling
+#if defined(__aarch64__)
+            // Use dedicated instructions on AArch64
+            float32x4_t a_yzx = vextq_f32(va, va, 1);
+            float32x4_t b_yzx = vextq_f32(vb, vb, 1);
+
+// Use fused multiply-subtract if available
+#if defined(__ARM_FEATURE_FMA)
+            float32x4_t result = vfmsq_f32(vmulq_f32(va, b_yzx), vb, a_yzx);
+#else
+            float32x4_t result = vsubq_f32(vmulq_f32(va, b_yzx), vmulq_f32(vb, a_yzx));
+#endif
+#else
+            // Optimized for ARM32
+            float32x2_t a_low = vget_low_f32(va);
+            float32x2_t a_high = vget_high_f32(va);
+            float32x2_t b_low = vget_low_f32(vb);
+            float32x2_t b_high = vget_high_f32(vb);
+
+            float32x2x2_t a_crossed = vzip_f32(a_high, a_low);
+            float32x2x2_t b_crossed = vzip_f32(b_high, b_low);
+
+            float32x4_t result =
+                vsubq_f32(vmulq_f32(vcombine_f32(a_crossed.val[0], a_crossed.val[1]),
+                                    vcombine_f32(b_crossed.val[0], b_crossed.val[1])),
+                          vmulq_f32(vcombine_f32(b_crossed.val[1], b_crossed.val[0]),
+                                    vcombine_f32(a_crossed.val[1], a_crossed.val[0])));
+#endif
+
+            Vec3<T> ret;
+            vst1q_f32(&ret.x, result);
+            return ret;
+        } else if constexpr (std::is_integral_v<T>) {
+            if constexpr (sizeof(T) <= 2) {
+                // For 16-bit integers
+                int16x4_t va = {static_cast<int16_t>(a.x), static_cast<int16_t>(a.y),
+                                static_cast<int16_t>(a.z), 0};
+                int16x4_t vb = {static_cast<int16_t>(b.x), static_cast<int16_t>(b.y),
+                                static_cast<int16_t>(b.z), 0};
+
+                int32x4_t mul1 = vmull_s16(va, vext_s16(vb, vb, 1));
+                int32x4_t mul2 = vmull_s16(vb, vext_s16(va, va, 1));
+                int32x4_t diff = vsubq_s32(mul1, mul2);
+
+                Vec3<T> result;
+                result.x = static_cast<T>(vgetq_lane_s32(diff, 1));
+                result.y = static_cast<T>(vgetq_lane_s32(diff, 2));
+                result.z = static_cast<T>(vgetq_lane_s32(diff, 0));
+                return result;
+            } else {
+                // For 32-bit integers
+                int32x4_t va = vld1q_s32(reinterpret_cast<const int32_t*>(&a.x));
+                int32x4_t vb = vld1q_s32(reinterpret_cast<const int32_t*>(&b.x));
+
+                int32x4_t a_yzx = vextq_s32(va, va, 1);
+                int32x4_t b_yzx = vextq_s32(vb, vb, 1);
+
+                int32x4_t result = vsubq_s32(vmulq_s32(va, b_yzx), vmulq_s32(vb, a_yzx));
+
+                Vec3<T> ret;
+                vst1q_s32(reinterpret_cast<int32_t*>(&ret.x), result);
+                return ret;
+            }
+        }
+#endif
     }
+    // Fallback scalar implementation
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
 
 // linear interpolation via float: 0.0=begin, 1.0=end
@@ -1439,71 +2815,101 @@ template <typename X>
                                                                      const float t) {
     if constexpr (detail::is_vectorizable<X>::value) {
 #if defined(HAVE_SSE2)
-        // For Vec2
+        const __m128 vt = _mm_set1_ps(t);
+        const __m128 invt = _mm_sub_ps(_mm_set1_ps(1.0f), vt);
+
         if constexpr (std::is_same_v<X, Vec2<float>>) {
-            __m128 vbegin = _mm_setr_ps(begin.x, begin.y, 0.0f, 0.0f);
-            __m128 vend = _mm_setr_ps(end.x, end.y, 0.0f, 0.0f);
-            __m128 vt = _mm_set1_ps(t);
-            __m128 invt = _mm_sub_ps(_mm_set1_ps(1.0f), vt);
-            __m128 result = _mm_add_ps(_mm_mul_ps(vbegin, invt), _mm_mul_ps(vend, vt));
-            return Vec2<float>(
-                _mm_cvtss_f32(result),
-                _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))));
-        }
-        // For Vec3
-        else if constexpr (std::is_same_v<X, Vec3<float>>) {
-            __m128 vbegin = _mm_load_ps(&begin.x);
-            __m128 vend = _mm_load_ps(&end.x);
-            __m128 vt = _mm_set1_ps(t);
-            __m128 invt = _mm_sub_ps(_mm_set1_ps(1.0f), vt);
-            __m128 result = _mm_add_ps(_mm_mul_ps(vbegin, invt), _mm_mul_ps(vend, vt));
+            // Optimized Vec2 implementation
+#if defined(HAVE_FMA)
+            // Use FMA for better precision
+            const __m128 vbegin = _mm_setr_ps(begin.x, begin.y, 0.0f, 0.0f);
+            const __m128 vend = _mm_setr_ps(end.x, end.y, 0.0f, 0.0f);
+            const __m128 result = _mm_fmadd_ps(vend, vt, _mm_mul_ps(vbegin, invt));
+#else
+            const __m128 vbegin =
+                _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&begin.x));
+            const __m128 vend =
+                _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&end.x));
+            const __m128 result = _mm_add_ps(_mm_mul_ps(vbegin, invt), _mm_mul_ps(vend, vt));
+#endif
+            Vec2<float> ret;
+            _mm_storel_pi(reinterpret_cast<__m64*>(&ret.x), result);
+            return ret;
+        } else if constexpr (std::is_same_v<X, Vec3<float>>) {
+            // Optimized Vec3 implementation
+#if defined(HAVE_FMA)
+            const __m128 vbegin = _mm_load_ps(&begin.x);
+            const __m128 vend = _mm_load_ps(&end.x);
+            const __m128 result = _mm_fmadd_ps(vend, vt, _mm_mul_ps(vbegin, invt));
+#else
+            const __m128 vbegin = _mm_load_ps(&begin.x);
+            const __m128 vend = _mm_load_ps(&end.x);
+            const __m128 result = _mm_add_ps(_mm_mul_ps(vbegin, invt), _mm_mul_ps(vend, vt));
+#endif
             Vec3<float> ret;
             _mm_store_ps(&ret.x, result);
             return ret;
-        }
-        // For Vec4
-        else if constexpr (std::is_same_v<X, Vec4<float>>) {
-            __m128 invt = _mm_sub_ps(_mm_set1_ps(1.0f), _mm_set1_ps(t));
-            __m128 result =
-                _mm_add_ps(_mm_mul_ps(begin.simd, invt), _mm_mul_ps(end.simd, _mm_set1_ps(t)));
+        } else if constexpr (std::is_same_v<X, Vec4<float>>) {
+            // Optimized Vec4 implementation
+#if defined(HAVE_FMA)
             Vec4<float> ret;
-            ret.simd = result;
+            ret.simd = _mm_fmadd_ps(end.simd, vt, _mm_mul_ps(begin.simd, invt));
+#else
+            Vec4<float> ret;
+            ret.simd = _mm_add_ps(_mm_mul_ps(begin.simd, invt), _mm_mul_ps(end.simd, vt));
+#endif
             return ret;
         }
+
 #elif defined(HAVE_NEON)
-        // For Vec2
         if constexpr (std::is_same_v<X, Vec2<float>>) {
-            float32x2_t vbegin = {begin.x, begin.y};
-            float32x2_t vend = {end.x, end.y};
-            float32x2_t vt = vdup_n_f32(t);
-            float32x2_t invt = vdup_n_f32(1.0f - t);
-            float32x2_t result = vadd_f32(vmul_f32(vbegin, invt), vmul_f32(vend, vt));
-            return Vec2<float>(vget_lane_f32(result, 0), vget_lane_f32(result, 1));
-        }
-        // For Vec3
-        else if constexpr (std::is_same_v<X, Vec3<float>>) {
-            float32x4_t vbegin = vld1q_f32(&begin.x);
-            float32x4_t vend = vld1q_f32(&end.x);
-            float32x4_t vt = vdupq_n_f32(t);
-            float32x4_t invt = vdupq_n_f32(1.0f - t);
-            float32x4_t result = vaddq_f32(vmulq_f32(vbegin, invt), vmulq_f32(vend, vt));
+            // Optimized Vec2 implementation
+            const float32x2_t vbegin = vld1_f32(&begin.x);
+            const float32x2_t vend = vld1_f32(&end.x);
+            const float32x2_t vt = vdup_n_f32(t);
+#if defined(__ARM_FEATURE_FMA)
+            const float32x2_t invt = vdup_n_f32(1.0f);
+            const float32x2_t result = vfma_f32(vmul_f32(vbegin, invt), vend, vt);
+#else
+            const float32x2_t invt = vdup_n_f32(1.0f - t);
+            const float32x2_t result = vadd_f32(vmul_f32(vbegin, invt), vmul_f32(vend, vt));
+#endif
+            Vec2<float> ret;
+            vst1_f32(&ret.x, result);
+            return ret;
+        } else if constexpr (std::is_same_v<X, Vec3<float>>) {
+            // Optimized Vec3 implementation
+            const float32x4_t vbegin = vld1q_f32(&begin.x);
+            const float32x4_t vend = vld1q_f32(&end.x);
+            const float32x4_t vt = vdupq_n_f32(t);
+#if defined(__ARM_FEATURE_FMA)
+            const float32x4_t invt = vdupq_n_f32(1.0f);
+            const float32x4_t result = vfmaq_f32(vmulq_f32(vbegin, invt), vend, vt);
+#else
+            const float32x4_t invt = vdupq_n_f32(1.0f - t);
+            const float32x4_t result = vaddq_f32(vmulq_f32(vbegin, invt), vmulq_f32(vend, vt));
+#endif
             Vec3<float> ret;
             vst1q_f32(&ret.x, result);
             return ret;
-        }
-        // For Vec4
-        else if constexpr (std::is_same_v<X, Vec4<float>>) {
-            float32x4_t invt = vdupq_n_f32(1.0f - t);
-            float32x4_t vt = vdupq_n_f32(t);
-            float32x4_t result = vaddq_f32(vmulq_f32(begin.simd, invt), vmulq_f32(end.simd, vt));
+        } else if constexpr (std::is_same_v<X, Vec4<float>>) {
+            // Optimized Vec4 implementation
+            const float32x4_t vt = vdupq_n_f32(t);
+#if defined(__ARM_FEATURE_FMA)
+            const float32x4_t invt = vdupq_n_f32(1.0f);
             Vec4<float> ret;
-            ret.simd = result;
+            ret.simd = vfmaq_f32(vmulq_f32(begin.simd, invt), end.simd, vt);
+#else
+            const float32x4_t invt = vdupq_n_f32(1.0f - t);
+            Vec4<float> ret;
+            ret.simd = vaddq_f32(vmulq_f32(begin.simd, invt), vmulq_f32(end.simd, vt));
+#endif
             return ret;
         }
 #endif
     }
     // Fallback for non-vectorizable types
-    return begin * (1.f - t) + end * t;
+    return begin * (1.0f - t) + end * t;
 }
 
 // linear interpolation via int: 0=begin, base=end
@@ -1511,79 +2917,117 @@ template <typename X, int base>
 [[nodiscard]] constexpr decltype((X{} * int{} + X{} * int{}) / base) LerpInt(const X& begin,
                                                                              const X& end,
                                                                              const int t) {
+    static_assert(base > 0, "Base must be positive");
+    static_assert(base <= std::numeric_limits<int>::max(), "Base too large");
+
     if constexpr (detail::is_vectorizable<X>::value) {
 #if defined(HAVE_SSE2)
-        // For Vec2
+        // Precompute common values
+        const __m128 vt = _mm_set1_ps(static_cast<float>(t));
+        const __m128 vbase_minus_t = _mm_set1_ps(static_cast<float>(base - t));
+        const __m128 inv_base = _mm_set1_ps(1.0f / static_cast<float>(base));
+
         if constexpr (std::is_same_v<X, Vec2<float>>) {
-            __m128 vbegin = _mm_setr_ps(begin.x, begin.y, 0.0f, 0.0f);
-            __m128 vend = _mm_setr_ps(end.x, end.y, 0.0f, 0.0f);
-            __m128 vt = _mm_set1_ps(static_cast<float>(t));
-            __m128 vbase_minus_t = _mm_set1_ps(static_cast<float>(base - t));
-            __m128 vbase = _mm_set1_ps(static_cast<float>(base));
-            __m128 result = _mm_div_ps(
-                _mm_add_ps(_mm_mul_ps(vbegin, vbase_minus_t), _mm_mul_ps(vend, vt)), vbase);
-            return Vec2<float>(
-                _mm_cvtss_f32(result),
-                _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))));
-        }
-        // For Vec3
-        else if constexpr (std::is_same_v<X, Vec3<float>>) {
-            __m128 vbegin = _mm_load_ps(&begin.x);
-            __m128 vend = _mm_load_ps(&end.x);
-            __m128 vt = _mm_set1_ps(static_cast<float>(t));
-            __m128 vbase_minus_t = _mm_set1_ps(static_cast<float>(base - t));
-            __m128 vbase = _mm_set1_ps(static_cast<float>(base));
-            __m128 result = _mm_div_ps(
-                _mm_add_ps(_mm_mul_ps(vbegin, vbase_minus_t), _mm_mul_ps(vend, vt)), vbase);
+#if defined(HAVE_FMA)
+            // Use FMA for better precision
+            const __m128 vbegin =
+                _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&begin.x));
+            const __m128 vend =
+                _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&end.x));
+            const __m128 result =
+                _mm_mul_ps(_mm_fmadd_ps(vend, vt, _mm_mul_ps(vbegin, vbase_minus_t)), inv_base);
+#else
+            const __m128 vbegin =
+                _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&begin.x));
+            const __m128 vend =
+                _mm_loadl_pi(_mm_setzero_ps(), reinterpret_cast<const __m64*>(&end.x));
+            const __m128 result = _mm_mul_ps(
+                _mm_add_ps(_mm_mul_ps(vbegin, vbase_minus_t), _mm_mul_ps(vend, vt)), inv_base);
+#endif
+            Vec2<float> ret;
+            _mm_storel_pi(reinterpret_cast<__m64*>(&ret.x), result);
+            return ret;
+        } else if constexpr (std::is_same_v<X, Vec3<float>>) {
+#if defined(HAVE_FMA)
+            const __m128 vbegin = _mm_load_ps(&begin.x);
+            const __m128 vend = _mm_load_ps(&end.x);
+            const __m128 result =
+                _mm_mul_ps(_mm_fmadd_ps(vend, vt, _mm_mul_ps(vbegin, vbase_minus_t)), inv_base);
+#else
+            const __m128 vbegin = _mm_load_ps(&begin.x);
+            const __m128 vend = _mm_load_ps(&end.x);
+            const __m128 result = _mm_mul_ps(
+                _mm_add_ps(_mm_mul_ps(vbegin, vbase_minus_t), _mm_mul_ps(vend, vt)), inv_base);
+#endif
             Vec3<float> ret;
             _mm_store_ps(&ret.x, result);
             return ret;
-        }
-        // For Vec4
-        else if constexpr (std::is_same_v<X, Vec4<float>>) {
-            __m128 vt = _mm_set1_ps(static_cast<float>(t));
-            __m128 vbase_minus_t = _mm_set1_ps(static_cast<float>(base - t));
-            __m128 vbase = _mm_set1_ps(static_cast<float>(base));
-            __m128 result = _mm_div_ps(
-                _mm_add_ps(_mm_mul_ps(begin.simd, vbase_minus_t), _mm_mul_ps(end.simd, vt)), vbase);
+        } else if constexpr (std::is_same_v<X, Vec4<float>>) {
+#if defined(HAVE_FMA)
             Vec4<float> ret;
-            ret.simd = result;
+            ret.simd = _mm_mul_ps(_mm_fmadd_ps(end.simd, vt, _mm_mul_ps(begin.simd, vbase_minus_t)),
+                                  inv_base);
+#else
+            Vec4<float> ret;
+            ret.simd = _mm_mul_ps(
+                _mm_add_ps(_mm_mul_ps(begin.simd, vbase_minus_t), _mm_mul_ps(end.simd, vt)),
+                inv_base);
+#endif
             return ret;
         }
+
 #elif defined(HAVE_NEON)
-        // For Vec2
+        const float inv_base = 1.0f / static_cast<float>(base);
+
         if constexpr (std::is_same_v<X, Vec2<float>>) {
-            float32x2_t vbegin = {begin.x, begin.y};
-            float32x2_t vend = {end.x, end.y};
-            float32x2_t vt = vdup_n_f32(static_cast<float>(t));
-            float32x2_t vbase_minus_t = vdup_n_f32(static_cast<float>(base - t));
-            float32x2_t vbase = vdup_n_f32(static_cast<float>(base));
-            float32x2_t result =
-                vdiv_f32(vadd_f32(vmul_f32(vbegin, vbase_minus_t), vmul_f32(vend, vt)), vbase);
-            return Vec2<float>(vget_lane_f32(result, 0), vget_lane_f32(result, 1));
-        }
-        // For Vec3
-        else if constexpr (std::is_same_v<X, Vec3<float>>) {
-            float32x4_t vbegin = vld1q_f32(&begin.x);
-            float32x4_t vend = vld1q_f32(&end.x);
-            float32x4_t vt = vdupq_n_f32(static_cast<float>(t));
-            float32x4_t vbase_minus_t = vdupq_n_f32(static_cast<float>(base - t));
-            float32x4_t vbase = vdupq_n_f32(static_cast<float>(base));
-            float32x4_t result =
-                vdivq_f32(vaddq_f32(vmulq_f32(vbegin, vbase_minus_t), vmulq_f32(vend, vt)), vbase);
+            const float32x2_t vbegin = vld1_f32(&begin.x);
+            const float32x2_t vend = vld1_f32(&end.x);
+            const float32x2_t vt = vdup_n_f32(static_cast<float>(t));
+            const float32x2_t vbase_minus_t = vdup_n_f32(static_cast<float>(base - t));
+            const float32x2_t vinv_base = vdup_n_f32(inv_base);
+
+#if defined(__ARM_FEATURE_FMA)
+            const float32x2_t result =
+                vmul_f32(vfma_f32(vmul_f32(vbegin, vbase_minus_t), vend, vt), vinv_base);
+#else
+            const float32x2_t result =
+                vmul_f32(vadd_f32(vmul_f32(vbegin, vbase_minus_t), vmul_f32(vend, vt)), vinv_base);
+#endif
+            Vec2<float> ret;
+            vst1_f32(&ret.x, result);
+            return ret;
+        } else if constexpr (std::is_same_v<X, Vec3<float>>) {
+            const float32x4_t vbegin = vld1q_f32(&begin.x);
+            const float32x4_t vend = vld1q_f32(&end.x);
+            const float32x4_t vt = vdupq_n_f32(static_cast<float>(t));
+            const float32x4_t vbase_minus_t = vdupq_n_f32(static_cast<float>(base - t));
+            const float32x4_t vinv_base = vdupq_n_f32(inv_base);
+
+#if defined(__ARM_FEATURE_FMA)
+            const float32x4_t result =
+                vmulq_f32(vfmaq_f32(vmulq_f32(vbegin, vbase_minus_t), vend, vt), vinv_base);
+#else
+            const float32x4_t result = vmulq_f32(
+                vaddq_f32(vmulq_f32(vbegin, vbase_minus_t), vmulq_f32(vend, vt)), vinv_base);
+#endif
             Vec3<float> ret;
             vst1q_f32(&ret.x, result);
             return ret;
-        }
-        // For Vec4
-        else if constexpr (std::is_same_v<X, Vec4<float>>) {
-            float32x4_t vt = vdupq_n_f32(static_cast<float>(t));
-            float32x4_t vbase_minus_t = vdupq_n_f32(static_cast<float>(base - t));
-            float32x4_t vbase = vdupq_n_f32(static_cast<float>(base));
-            float32x4_t result = vdivq_f32(
-                vaddq_f32(vmulq_f32(begin.simd, vbase_minus_t), vmulq_f32(end.simd, vt)), vbase);
+        } else if constexpr (std::is_same_v<X, Vec4<float>>) {
+            const float32x4_t vt = vdupq_n_f32(static_cast<float>(t));
+            const float32x4_t vbase_minus_t = vdupq_n_f32(static_cast<float>(base - t));
+            const float32x4_t vinv_base = vdupq_n_f32(inv_base);
+
+#if defined(__ARM_FEATURE_FMA)
             Vec4<float> ret;
-            ret.simd = result;
+            ret.simd =
+                vmulq_f32(vfmaq_f32(vmulq_f32(begin.simd, vbase_minus_t), end.simd, vt), vinv_base);
+#else
+            Vec4<float> ret;
+            ret.simd =
+                vmulq_f32(vaddq_f32(vmulq_f32(begin.simd, vbase_minus_t), vmulq_f32(end.simd, vt)),
+                          vinv_base);
+#endif
             return ret;
         }
 #endif
