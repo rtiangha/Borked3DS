@@ -797,10 +797,10 @@ void FragmentModule::WriteLighting() {
     // Apply shadow attenuation to alpha components if enabled
     if (lighting.shadow_alpha) {
         if (lighting.enable_primary_alpha) {
-            out += "diffuse_sum.a *= shadow.a;\n";
+            out += "diffuse_sum.a = diffuse_sum.a * shadow.a;\n";
         }
         if (lighting.enable_secondary_alpha) {
-            out += "specular_sum.a *= shadow.a;\n";
+            out += "specular_sum.a = specular_sum.a * shadow.a;\n";
         }
     }
 
@@ -1038,7 +1038,7 @@ void FragmentModule::DefineProcTexSampler() {
     // value entries and difference entries.
     out += R"(
 float ProcTexLookupLUT(int offset, float coord) {
-    coord *= 128.0;
+    coord = coord * 128.0;
     float index_i = clamp(floor(coord), 0.0, 127.0);
     float index_f = coord - index_i; // fract() cannot be used here because 128.0 needs to be
                                      // extracted as index_i = 127.0 and index_f = 1.0
@@ -1095,7 +1095,7 @@ float ProcTexNoiseCoef(vec2 x) {
                        config.proctex.lut_offset2, config.proctex.lut_offset3);
     out += "int lut_offset = lut_offsets[level];\n";
     // For the color lut, coord=0.0 is lut[offset] and coord=1.0 is lut[offset+width-1]
-    out += "lut_coord *= float(lut_width - 1);\n";
+    out += "lut_coord = lut_coord * float(lut_width - 1);\n";
 
     switch (config.proctex.lut_filter) {
     case ProcTexFilter::Linear:

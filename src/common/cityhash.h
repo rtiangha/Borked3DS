@@ -104,7 +104,7 @@ using uint128 = std::pair<uint64_t, uint64_t>;
     a ^= (a >> 47);
     uint64_t b = (Uint128High64(x) ^ a) * kMul;
     b ^= (b >> 47);
-    b *= kMul;
+    b = b * kMul;
     return b;
 }
 

@@ -39,7 +39,7 @@ vec4 textureBicubic(sampler2D tex_sampler, vec2 texCoords) {
     vec4 s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw);
     vec4 offset = c + vec4(xcubic.yw, ycubic.yw) / s;
 
-    offset *= invTexSize.xxyy;
+    offset = offset * invTexSize.xxyy;
 
     vec4 sample0 = texture(tex_sampler, offset.xz);
     vec4 sample1 = texture(tex_sampler, offset.yz);

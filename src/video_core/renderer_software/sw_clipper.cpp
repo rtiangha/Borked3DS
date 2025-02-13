@@ -17,7 +17,7 @@ void FlipQuaternionIfOpposite(Pica::OutputVertex& a, const Pica::OutputVertex& b
     auto quat_a = a.quat();
     auto quat_b = b.quat();
     if (Common::Dot(quat_a, quat_b) < f24::Zero()) {
-        quat_a *= f24::FromFloat32(-1.0f);
+        quat_a = quat_a * f24::FromFloat32(-1.0f);
         a.set_quat(quat_a);
     }
 }
