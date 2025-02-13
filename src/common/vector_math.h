@@ -62,6 +62,10 @@
 #define HAVE_NEON
 #endif
 
+#if defined(HAVE_NEON)
+__builtin_prefetch(&x, 0, 3); // For reading, high temporal locality
+#endif
+
 namespace Common {
 
 template <typename T>
@@ -96,7 +100,16 @@ public:
     T y;
 
     constexpr Vec2() = default;
-    constexpr Vec2(const T& x_, const T& y_) : x(x_), y(y_) {}
+    constexpr Vec2(const T& x_, const T& y_) : x(x_), y(y_) {
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_NEON)
+            float values[2] = {x_, y_};
+            float32x2_t temp = vld1_f32(values);
+            x = vget_lane_f32(temp, 0);
+            y = vget_lane_f32(temp, 1);
+#endif
+        }
+    }
 
     [[nodiscard]] T* AsArray() {
         return &x;
@@ -345,7 +358,7 @@ public:
             // Add x+y components
             return _mm_cvtss_f32(_mm_add_ss(sq, _mm_shuffle_ps(sq, sq, _MM_SHUFFLE(1, 1, 1, 1))));
 #elif defined(HAVE_NEON)
-            float32x2_t v = {x, y};
+            volatile float32x2_t v = simd; // Prevent unwanted optimization
             float32x2_t sq = vmul_f32(v, v);
             return vget_lane_f32(vpadd_f32(sq, sq), 0);
 #endif
@@ -500,7 +513,25 @@ public:
     T pad; // For SIMD alignment
 
     constexpr Vec3() = default;
-    constexpr Vec3(const T& x_, const T& y_, const T& z_) : x(x_), y(y_), z(z_) {}
+    constexpr Vec3(const T& x_, const T& y_, const T& z_) {
+        if constexpr (detail::is_vectorizable<T>::value) {
+#if defined(HAVE_SSE2)
+            simd = _mm_set_ps(0.0f, z_, y_, x_); // Set w=0 for padding
+#elif defined(HAVE_NEON)
+            float values[4] = {x_, y_, z_, 0.0f}; // Include padding
+            float32x4_t temp = vld1q_f32(values);
+            vst1q_f32(&x, temp);
+#else
+            x = x_;
+            y = y_;
+            z = z_;
+#endif
+        } else {
+            x = x_;
+            y = y_;
+            z = z_;
+        }
+    }
 
     [[nodiscard]] T* AsArray() {
         return &x;
@@ -871,7 +902,8 @@ inline float Vec3<float>::Length() const {
     float32x4_t v = vld1q_f32(&x);
     float32x4_t sq = vmulq_f32(v, v);
     float32x2_t sum = vpadd_f32(vget_low_f32(sq), vget_high_f32(sq));
-    return sqrt(vget_lane_f32(vpadd_f32(sum, sum), 0)); // Only need x+y+z
+    float32x2_t sum2 = vpadd_f32(sum, sum);
+    return sqrtf(vget_lane_f32(sum2, 0));
 #else
     return std::sqrt(x * x + y * y + z * z);
 #endif
@@ -956,7 +988,8 @@ public:
 #if defined(HAVE_SSE2)
             simd = _mm_set_ps(w_, z_, y_, x_);
 #elif defined(HAVE_NEON)
-            simd = {x_, y_, z_, w_};
+            float values[4] = {x_, y_, z_, w_};
+            simd = vld1q_f32(values);
 #endif
         } else {
             x = x_;
@@ -1088,7 +1121,8 @@ public:
 #elif defined(HAVE_NEON)
             // NEON doesn't have direct division, use reciprocal multiplication
             float32x4_t recip = vrecpeq_f32(vdupq_n_f32(f));
-            // One Newton-Raphson iteration for better precision
+            // Use two Newton-Raphson iterations for better precision
+            recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
             recip = vmulq_f32(vrecpsq_f32(vdupq_n_f32(f), recip), recip);
             result.simd = vmulq_f32(simd, recip);
 #endif
@@ -1126,8 +1160,9 @@ public:
             return _mm_movemask_ps(cmp) == 0xF; // All 4 components must match
 #elif defined(HAVE_NEON)
             uint32x4_t cmp = vceqq_f32(simd, other.simd);
-            uint32x2_t fold = vand_u32(vget_low_u32(cmp), vget_high_u32(cmp));
-            return vget_lane_u32(vpmin_u32(fold, fold), 0) == 0xFFFFFFFF;
+            uint32x2_t and_hl = vand_u32(vget_high_u32(cmp), vget_low_u32(cmp));
+            uint32x2_t and_all = vand_u32(and_hl, vrev64_u32(and_hl));
+            return vget_lane_u32(and_all, 0) == 0xFFFFFFFF;
 #endif
         } else {
             return x == other.x && y == other.y && z == other.z && w == other.w;
@@ -1362,7 +1397,8 @@ template <typename T>
 #elif defined(HAVE_NEON)
         float32x4_t mul = vmulq_f32(a.simd, b.simd);
         float32x2_t sum = vpadd_f32(vget_low_f32(mul), vget_high_f32(mul));
-        return vget_lane_f32(vpadd_f32(sum, sum), 0);
+        float32x2_t total = vpadd_f32(sum, sum);
+        return vget_lane_f32(total, 0);
 #endif
     } else {
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
@@ -1385,12 +1421,13 @@ template <typename T>
 #elif defined(HAVE_NEON)
         float32x4_t a_vec = vld1q_f32(&a.x);
         float32x4_t b_vec = vld1q_f32(&b.x);
+        // Create vectors with elements shifted for cross product
         float32x4_t a_yzx = vextq_f32(a_vec, a_vec, 1);
         float32x4_t b_yzx = vextq_f32(b_vec, b_vec, 1);
-        float32x4_t c = vsubq_f32(vmulq_f32(a_vec, b_yzx), vmulq_f32(b_vec, a_yzx));
-        vst1q_f32(&result.x, vextq_f32(c, c, 3));
-#endif
-        return result;
+        float32x4_t result = vsubq_f32(vmulq_f32(a_vec, b_yzx), vmulq_f32(b_vec, a_yzx));
+        Vec3<T> ret;
+        vst1q_f32(&ret.x, result);
+        return ret;
     } else {
         return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
     }
