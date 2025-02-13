@@ -62,7 +62,9 @@
 #endif
 #define HAVE_NEON
 #endif
-
+#if defined(__AVX2__)
+#define HAVE_AVX2
+#endif
 #if defined(__ARM_FEATURE_FMA)
 #define HAVE_FMA
 #endif
@@ -1403,7 +1405,13 @@ template <typename T, typename V>
 
 template <>
 inline float Vec3<float>::Length() const {
-#if defined(HAVE_SSE2)
+#if defined(HAVE_AVX)
+    __m256 v = _mm256_setr_ps(x, y, z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+    __m256 sq = _mm256_mul_ps(v, v);
+    __m256 sum = _mm256_hadd_ps(sq, sq);
+    sum = _mm256_hadd_ps(sum, sum);
+    return _mm_cvtss_f32(_mm256_extractf128_ps(sum, 0));
+#elif defined(HAVE_SSE2)
     // Load vector using unaligned load for better flexibility
     __m128 v = _mm_loadu_ps(&x);
     // Square all components
@@ -2514,7 +2522,14 @@ constexpr decltype(T{} * T{} + T{} * T{}) Dot(const Vec2<T>& a, const Vec2<T>& b
 template <typename T>
 [[nodiscard]] constexpr decltype(T{} * T{} + T{} * T{}) Dot(const Vec3<T>& a, const Vec3<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
-#if defined(HAVE_SSE4_1)
+#if defined(HAVE_AVX)
+        __m256 va = _mm256_setr_ps(a.x, a.y, a.z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        __m256 vb = _mm256_setr_ps(b.x, b.y, b.z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        __m256 mul = _mm256_mul_ps(va, vb);
+        __m256 sum = _mm256_hadd_ps(mul, mul);
+        sum = _mm256_hadd_ps(sum, sum);
+        return _mm_cvtss_f32(_mm256_extractf128_ps(sum, 0));
+#elif defined(HAVE_SSE4_1)
         if constexpr (std::is_same_v<T, float>) {
             // SSE4.1 dot product instruction
             // 0x71 mask: multiply xyz components (0x7) and store in lowest component (0x1)
@@ -2611,7 +2626,14 @@ template <typename T>
 template <typename T>
 [[nodiscard]] constexpr decltype(T{} * T{} + T{} * T{}) Dot(const Vec4<T>& a, const Vec4<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
-#if defined(HAVE_SSE4_1)
+#if defined(HAVE_AVX)
+        __m256 va = _mm256_setr_ps(a.x, a.y, a.z, a.w, 0.0f, 0.0f, 0.0f, 0.0f);
+        __m256 vb = _mm256_setr_ps(b.x, b.y, b.z, b.w, 0.0f, 0.0f, 0.0f, 0.0f);
+        __m256 mul = _mm256_mul_ps(va, vb);
+        __m256 sum = _mm256_hadd_ps(mul, mul);
+        sum = _mm256_hadd_ps(sum, sum);
+        return _mm_cvtss_f32(_mm256_extractf128_ps(sum, 0));
+#elif defined(HAVE_SSE4_1)
         if constexpr (std::is_same_v<T, float>) {
             // SSE4.1 dot product instruction
             // 0xF1 mask: multiply xyzw components (0xF) and store in lowest component (0x1)
@@ -2694,7 +2716,29 @@ template <typename T>
 [[nodiscard]] constexpr Vec3<decltype(T{} * T{} - T{} * T{})> Cross(const Vec3<T>& a,
                                                                     const Vec3<T>& b) {
     if constexpr (detail::is_vectorizable<T>::value) {
-#if defined(HAVE_SSE2)
+#if defined(HAVE_AVX)
+        Vec3<T> result;
+        __m256 va = _mm256_setr_ps(a.x, a.y, a.z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        __m256 vb = _mm256_setr_ps(b.x, b.y, b.z, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+        // Shuffle components for cross product
+        __m256 va_yzx = _mm256_permute_ps(va, _MM_SHUFFLE(3, 0, 2, 1));
+        __m256 vb_yzx = _mm256_permute_ps(vb, _MM_SHUFFLE(3, 0, 2, 1));
+
+        // Compute cross product
+        __m256 mul1 = _mm256_mul_ps(va, vb_yzx);
+        __m256 mul2 = _mm256_mul_ps(vb, va_yzx);
+        __m256 res = _mm256_sub_ps(mul1, mul2);
+
+        // Extract results
+        result.x = _mm_cvtss_f32(_mm256_extractf128_ps(res, 0));
+        result.y = _mm_cvtss_f32(
+            _mm256_extractf128_ps(_mm256_permute_ps(res, _MM_SHUFFLE(1, 1, 1, 1)), 0));
+        result.z = _mm_cvtss_f32(
+            _mm256_extractf128_ps(_mm256_permute_ps(res, _MM_SHUFFLE(2, 2, 2, 2)), 0));
+
+        return result;
+#elif defined(HAVE_SSE2)
         if constexpr (std::is_same_v<T, float>) {
             Vec3<T> result;
             // Load vectors and create shuffled copies
