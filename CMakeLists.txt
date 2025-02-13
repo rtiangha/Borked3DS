@@ -1,5 +1,5 @@
 # CMake 3.12 required for 20 to be a valid value for CXX_STANDARD
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.15)
 
 if(COMMAND CMAKE_POLICY)
     # Honor visibility properties for all targets
@@ -64,10 +64,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # Architecture specific flags
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
         # ARM64 NEON support
-        set(SIMD_FLAGS "${SIMD_FLAGS} -march=armv8-a+simd")
+        set(SIMD_FLAGS "${SIMD_FLAGS} -march=armv8-a+simd -mfloat-abi=hard -mfpu=neon")
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)")
         # x86_64 SSE/AVX support
-        set(SIMD_FLAGS "${SIMD_FLAGS} -msse4.1") # Ensures SSE4.1 support
+        set(SIMD_FLAGS "${SIMD_FLAGS} -march=x86-64-v2 -mtune=x86-64-v3 -msse4.1") # Ensures SSE4.1 support
     endif()
 
     # Enable vectorization
@@ -167,12 +167,7 @@ option(ENABLE_VULKAN "Enables the Vulkan renderer" ON)
 option(BORKED3DS_USE_EXTERNAL_VULKAN_SPIRV_TOOLS "Use SPIRV-Tools from externals" ON)
 
 option(ENABLE_PROFILING "Enables integration with the Tracy profiler" ON)
-
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64" AND NOT ANDROID)
-    set(USE_DISCORD_PRESENCE ON)
-else()
-    set(USE_DISCORD_PRESENCE OFF)
-endif()
+CMAKE_DEPENDENT_OPTION(USE_DISCORD_PRESENCE "Enables Discord Rich Presence" ON "NOT ANDROID AND NOT IOS" OFF)
 
 # Compile options
 CMAKE_DEPENDENT_OPTION(COMPILE_WITH_DWARF "Add DWARF debugging information" ${IS_DEBUG_BUILD} "MINGW" OFF)

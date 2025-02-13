@@ -78,14 +78,8 @@ android {
         externalNativeBuild {
             cmake {
                 arguments(
-                    "-DENABLE_QT=0", // Don't use QT
-                    "-DENABLE_SDL2=0", // Don't use SDL
-                    "-DCMAKE_CXX_FLAGS=-O2",
-                    "-DCMAKE_C_FLAGS=-O2",
-                    "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",    // Enable Thin LTO
-                    "-DCMAKE_SHARED_LINKER_FLAGS=-flto=thin", // Enable Thin LTO
-                    "-DANDROID_ARM_NEON=true", // cryptopp requires Neon to work
-                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", // Support Android V 16KiB page sizes
+                    "-DENABLE_QT=0",
+                    "-DENABLE_SDL2=0",
                     "-DUSE_SYSTEM_BOOST=OFF",
                     "-DUSE_SYSTEM_CATCH2=OFF",
                     "-DUSE_SYSTEM_CRYPTOPP=OFF",
@@ -108,13 +102,53 @@ android {
                     "-DUSE_SYSTEM_GLSLANG=OFF",
                     "-DUSE_SYSTEM_VULKAN_HEADERS=OFF",
                     "-DUSE_SYSTEM_VMA=OFF",
-                    "-DBORKED3DS_USE_EXTERNAL_VULKAN_SPIRV_TOOLS=ON"
+                    "-DBORKED3DS_USE_EXTERNAL_VULKAN_SPIRV_TOOLS=ON",
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
                 )
             }
         }
 
         buildConfigField("String", "GIT_HASH", "\"${getGitHash()}\"")
         buildConfigField("String", "BRANCH", "\"${getBranch()}\"")
+    }
+
+    flavorDimensions += listOf("abi")
+
+    productFlavors {
+        create("arm64") {
+            dimension = "abi"
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+            externalNativeBuild {
+                cmake {
+                    arguments(
+                        "-DCMAKE_CXX_FLAGS=-O3 -march=armv8-a+simd",
+                        "-DCMAKE_C_FLAGS=-O3 -march=armv8-a+simd",
+                        "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-flto=thin",
+                        "-DANDROID_ARM_NEON=true"
+                    )
+                }
+            }
+        }
+
+        create("x86_64") {
+            dimension = "abi"
+            ndk {
+                abiFilters += "x86_64"
+            }
+            externalNativeBuild {
+                cmake {
+                    arguments(
+                        "-DCMAKE_CXX_FLAGS=-O3 -march=x86-64-v2 -mtune=x86-64-v3 -msse4.1",
+                        "-DCMAKE_C_FLAGS=-O3 -march=x86-64-v2 -mtune=x86-64-v3 -msse4.1",
+                        "-DCMAKE_EXE_LINKER_FLAGS=-flto=thin",
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-flto=thin"
+                    )
+                }
+            }
+        }
     }
 
     val keystoreFile = System.getenv("DROID_KEYSTORE_FILE")
@@ -174,8 +208,6 @@ android {
             isJniDebuggable = true
         }
     }
-
-    flavorDimensions.add("version")
 
     externalNativeBuild {
         cmake {
