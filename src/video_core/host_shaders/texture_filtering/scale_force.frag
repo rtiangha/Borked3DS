@@ -58,7 +58,7 @@ vec4 textureBicubic(vec2 tex_coords) {
     vec4 s = vec4(xcubic.xz + xcubic.yw, ycubic.xz + ycubic.yw);
     vec4 offset = c + vec4(xcubic.yw, ycubic.yw) / s;
 
-    offset *= inv_tex_size.xxyy;
+    offset = offset * inv_tex_size.xxyy;
 
     vec4 sample0 = textureLod(input_texture, offset.xz, 0.0);
     vec4 sample1 = textureLod(input_texture, offset.yz, 0.0);
@@ -86,7 +86,7 @@ vec4 ColorDist(vec4 A, vec4 B, vec4 C, vec4 D) {
     mat4x3 colors = mat4x3(A.rgb, B.rgb, C.rgb, D.rgb) - center_matrix;
     mat4x3 YCbCr = YCBCR_MATRIX * colors;
     vec4 color_dist = vec3(1.0) * YCbCr;
-    color_dist *= color_dist;
+    color_dist = color_dist * color_dist;
     vec4 alpha = vec4(A.a, B.a, C.a, D.a);
 
     return sqrt((color_dist + abs(center_alpha - alpha)) * alpha * center_alpha);

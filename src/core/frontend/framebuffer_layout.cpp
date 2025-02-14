@@ -474,7 +474,7 @@ FramebufferLayout FrameLayoutFromResolutionScale(u32 res_scale, bool is_secondar
         }
     }
     if (stereo_full)
-        layout.width *= 2;
+        layout.width = layout.width * 2;
     return layout;
     UNREACHABLE();
 }

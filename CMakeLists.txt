@@ -61,13 +61,23 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # Base options
     set(SIMD_FLAGS "-O3")
 
-    # Architecture specific flags
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
-        # ARM64 NEON support
-        set(SIMD_FLAGS "${SIMD_FLAGS} -march=armv8-a+simd")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)")
-        # x86_64 SSE/AVX support
-        set(SIMD_FLAGS "${SIMD_FLAGS} -msse4.1") # Ensures SSE4.1 support
+    if (ANDROID)
+        if(ANDROID_ABI STREQUAL "arm64-v8a")
+            # ARM64 NEON support
+            set(SIMD_FLAGS "${SIMD_FLAGS} -march=armv8-a+simd")
+        elseif(ANDROID_ABI STREQUAL "x86_64")
+            # x86_64 SSE/AVX support
+            set(SIMD_FLAGS "${SIMD_FLAGS} -march=atom -mtune=sandybridge -msse4.1")
+        endif()
+    else()
+        # Architecture specific flags
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+            # ARM64 NEON support
+            set(SIMD_FLAGS "${SIMD_FLAGS} -march=armv8-a+simd -mfloat-abi=hard -mfpu=neon")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)")
+            # x86_64 SSE/AVX support
+            set(SIMD_FLAGS "${SIMD_FLAGS} -march=x86-64-v2 -mtune=x86-64-v3 -msse4.1") # Ensures SSE4.1 support
+        endif()
     endif()
 
     # Enable vectorization

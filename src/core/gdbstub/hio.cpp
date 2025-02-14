@@ -148,7 +148,7 @@ void HandleHioReply(Core::System& system, const u8* const command_buffer,
 
     u64 unsigned_retval =
         HexToInt(reinterpret_cast<const u8*>(command_parts[0].data()), command_parts[0].size());
-    current_hio_request.retval *= unsigned_retval;
+    current_hio_request.retval = current_hio_request.retval * unsigned_retval;
 
     if (command_parts.size() > 1) {
         // Technically the errno could be signed but in practice this doesn't happen

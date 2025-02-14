@@ -50,7 +50,8 @@ std::size_t TimeStretcher::Process(const s16* in, std::size_t num_in, s16* out,
     // We tweak current_ratio to encourage this.
     constexpr double tweak_time_scale = 0.050; // seconds
     const double tweak_correction = (backlog_fullness - 0.5) * (time_delta / tweak_time_scale);
-    current_ratio *= std::pow(1.0 + 2.0 * tweak_correction, tweak_correction < 0 ? 3.0 : 1.0);
+    current_ratio =
+        current_ratio * std::pow(1.0 + 2.0 * tweak_correction, tweak_correction < 0 ? 3.0 : 1.0);
 
     // This low-pass filter smoothes out variance in the calculated stretch ratio.
     // The time-scale determines how responsive this filter is.

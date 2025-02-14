@@ -20,7 +20,7 @@ float LookupLUT(const std::array<Pica::PicaCore::ProcTex::ValueEntry, 128>& lut,
     // For NoiseLUT/ColorMap/AlphaMap, coord=0.0 is lut[0], coord=127.0/128.0 is lut[127] and
     // coord=1.0 is lut[127]+lut_diff[127]. For other indices, the result is interpolated using
     // value entries and difference entries.
-    coord *= 128;
+    coord = coord * 128;
     const int index_int = std::min(static_cast<int>(coord), 127);
     const float frac = coord - index_int;
     return lut[index_int].ToFloat() + frac * lut[index_int].DiffToFloat();

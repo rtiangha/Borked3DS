@@ -791,7 +791,7 @@ typename RasterizerCache<T>::SurfaceRect_Tuple RasterizerCache<T>::GetTexCopySur
             match_subrect = params;
             match_subrect.width = match_surface.PixelsInBytes(params.width) / tiled_size;
             match_subrect.stride = match_surface.PixelsInBytes(params.stride) / tiled_size;
-            match_subrect.height *= tiled_size;
+            match_subrect.height = match_subrect.height * tiled_size;
         } else {
             match_subrect = match_surface.FromInterval(params.GetInterval());
             ASSERT(match_subrect.GetInterval() == params.GetInterval());

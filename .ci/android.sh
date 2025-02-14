@@ -21,14 +21,15 @@ cmake -S . -B build \
   -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
   -D CMAKE_CXX_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang++ \
   -D CMAKE_C_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang \
-  -D CMAKE_CXX_FLAGS=-O2 \
-  -D CMAKE_C_FLAGS=-O2 \
+  -D CMAKE_CXX_FLAGS="-O3 -march=armv8-a+simd" \
   -D CMAKE_EXE_LINKER_FLAGS=-flto=thin \
   -D CMAKE_SHARED_LINKER_FLAGS=-flto=thin \
   -D ANDROID_PLATFORM=28 \
   -D CMAKE_ANDROID_ARCH_ABI=arm64-v8a \
   -D CMAKE_ANDROID_STL_TYPE=c++_static \
   -D ANDROID_USE_LEGACY_TOOLCHAIN_FILE=NO \
+  -D ANDROID_ARM_NEON=ON \
+  -D ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON \
   -D CMAKE_BUILD_TYPE=Release \
   -D UPDATE_DEPS=ON \
   -G Ninja
@@ -49,14 +50,14 @@ cmake -S . -B build \
   -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
   -D CMAKE_CXX_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang++ \
   -D CMAKE_C_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang \
-  -D CMAKE_CXX_FLAGS=-O2 \
-  -D CMAKE_C_FLAGS=-O2 \
+  -D CMAKE_CXX_FLAGS="-O3 -march=atom -mtune=sandybridge -msse4.1" \
   -D CMAKE_EXE_LINKER_FLAGS=-flto=thin \
   -D CMAKE_SHARED_LINKER_FLAGS=-flto=thin \
   -D ANDROID_PLATFORM=28 \
   -D CMAKE_ANDROID_ARCH_ABI=x86_64 \
   -D CMAKE_ANDROID_STL_TYPE=c++_static \
   -D ANDROID_USE_LEGACY_TOOLCHAIN_FILE=NO \
+  -D ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON \
   -D CMAKE_BUILD_TYPE=Release \
   -D UPDATE_DEPS=ON \
   -G Ninja

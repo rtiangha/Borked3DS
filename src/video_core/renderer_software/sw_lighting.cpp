@@ -279,10 +279,10 @@ std::pair<Common::Vec4<u8>, Common::Vec4<u8>> ComputeFragmentsColors(
             f32 geo_factor = half_vector.Length2();
             geo_factor = geo_factor == 0.0f ? 0.0f : std::min(dot_product / geo_factor, 1.0f);
             if (light_config.config.geometric_factor_0) {
-                specular_0 *= geo_factor;
+                specular_0 = specular_0 * geo_factor;
             }
             if (light_config.config.geometric_factor_1) {
-                specular_1 *= geo_factor;
+                specular_1 = specular_1 * geo_factor;
             }
         }
 
@@ -301,24 +301,24 @@ std::pair<Common::Vec4<u8>, Common::Vec4<u8>> ComputeFragmentsColors(
         const auto specular = (specular_0 + specular_1) * clamp_highlights * dist_atten *
                               spot_atten * shadow_secondary;
 
-        diffuse_sum += Common::MakeVec(diffuse, 0.0f);
-        specular_sum += Common::MakeVec(specular, 0.0f);
+        diffuse_sum = diffuse_sum + Common::MakeVec(diffuse, 0.0f);
+        specular_sum = specular_sum + Common::MakeVec(specular, 0.0f);
     }
 
     if (lighting.config0.shadow_alpha) {
         // Alpha shadow also uses the Fresnel selecotr to determine which alpha to apply
         // Enabled for diffuse lighting alpha component
         if (lighting.config0.enable_primary_alpha) {
-            diffuse_sum.a() *= shadow.w;
+            diffuse_sum.a() = diffuse_sum.a() * shadow.w;
         }
 
         // Enabled for the specular lighting alpha component
         if (lighting.config0.enable_secondary_alpha) {
-            specular_sum.a() *= shadow.w;
+            specular_sum.a() = specular_sum.a() * shadow.w;
         }
     }
 
-    diffuse_sum += Common::MakeVec(lighting.global_ambient.ToVec3f(), 0.0f);
+    diffuse_sum = diffuse_sum + Common::MakeVec(lighting.global_ambient.ToVec3f(), 0.0f);
 
     const auto diffuse = Common::MakeVec(std::clamp(diffuse_sum.x, 0.0f, 1.0f) * 255,
                                          std::clamp(diffuse_sum.y, 0.0f, 1.0f) * 255,

@@ -110,7 +110,7 @@ private:
 
             // Find the angular rate vector in world space
             auto angular_rate = ((q - old_q) * inv_q).xyz * 2;
-            angular_rate *= 1000 / update_millisecond / Common::PI * 180;
+            angular_rate = angular_rate * (1000.0f / update_millisecond / Common::PI * 180.0f);
 
             // Transform the two vectors from world space to 3DS space
             gravity = QuaternionRotate(inv_q, gravity);

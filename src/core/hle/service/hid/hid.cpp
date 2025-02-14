@@ -327,7 +327,7 @@ void Module::UpdateAccelerometerCallback(std::uintptr_t user_data, s64 cycles_la
     } else {
         Common::Vec3<float> accel;
         std::tie(accel, std::ignore) = motion_device->GetStatus();
-        accel *= accelerometer_coef;
+        accel = accel * accelerometer_coef;
         // TODO(wwylele): do a time stretch like the one in UpdateGyroscopeCallback
         // The time stretch formula should be like
         // stretched_vector = (raw_vector - gravity) * stretch_ratio + gravity
@@ -380,7 +380,7 @@ void Module::UpdateGyroscopeCallback(std::uintptr_t user_data, s64 cycles_late) 
         Common::Vec3<float> gyro;
         std::tie(std::ignore, gyro) = motion_device->GetStatus();
         double stretch = system.perf_stats->GetLastFrameTimeScale();
-        gyro *= gyroscope_coef * static_cast<float>(stretch);
+        gyro = gyro * gyroscope_coef * static_cast<float>(stretch);
         gyroscope_entry.x = static_cast<s16>(gyro.x);
         gyroscope_entry.y = static_cast<s16>(gyro.y);
         gyroscope_entry.z = static_cast<s16>(gyro.z);

@@ -243,14 +243,14 @@ void RasterizerSoftware::MakeScreenCoords(Vertex& vtx) {
     auto tc2 = vtx.tc2();
 
     // Scale all vectors by inv_w
-    pos *= inv_w;
-    quat *= inv_w;
-    color *= inv_w;
-    tc0 *= inv_w;
-    tc1 *= inv_w;
-    vtx.tc0_w *= inv_w;
-    view *= inv_w;
-    tc2 *= inv_w;
+    pos = pos * inv_w;
+    quat = quat * inv_w;
+    color = color * inv_w;
+    tc0 = tc0 * inv_w;
+    tc1 = tc1 * inv_w;
+    vtx.tc0_w *= inv_w; // This one is fine as is - it's scalar
+    view = view * inv_w;
+    tc2 = tc2 * inv_w;
 
     // Store results back using setters
     vtx.set_pos(pos);
@@ -388,7 +388,7 @@ void RasterizerSoftware::ProcessTriangle(const Vertex& v0, const Vertex& v1, con
                 if (regs.rasterizer.depthmap_enable ==
                     Pica::RasterizerRegs::DepthBuffering::WBuffering) {
                     // W-Buffer (z * scale + w * offset = (z / w * scale + offset) * w)
-                    depth *= interpolated_w_inverse.ToFloat32() * wsum;
+                    depth = depth * interpolated_w_inverse.ToFloat32() * wsum;
                 }
 
                 // Clamp the result
