@@ -395,6 +395,24 @@ void Instance::CreateAttribTable() {
     }
 }
 
+void Instance::CheckDeviceMemory() {
+    const auto memory_properties = physical_device.getMemoryProperties();
+
+    LOG_INFO(Render_Vulkan, "Device Memory Heaps:");
+    for (u32 i = 0; i < memory_properties.memoryHeapCount; ++i) {
+        const auto& heap = memory_properties.memoryHeaps[i];
+        LOG_INFO(Render_Vulkan, "Heap {}: Size = {} MB, Flags = {}", i, heap.size / (1024 * 1024),
+                 vk::to_string(heap.flags));
+    }
+
+    LOG_INFO(Render_Vulkan, "Device Memory Types:");
+    for (u32 i = 0; i < memory_properties.memoryTypeCount; ++i) {
+        const auto& type = memory_properties.memoryTypes[i];
+        LOG_INFO(Render_Vulkan, "Type {}: Heap = {}, Flags = {}", i, type.heapIndex,
+                 vk::to_string(type.propertyFlags));
+    }
+}
+
 bool Instance::CreateDevice() {
     const vk::StructureChain feature_chain = physical_device.getFeatures2<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDevicePortabilitySubsetFeaturesKHR,
@@ -423,64 +441,52 @@ bool Instance::CreateDevice() {
         return false;
     }
 
-    boost::container::static_vector<const char*, 13> enabled_extensions;
-    const auto add_extension = [&](std::string_view extension, bool blacklist = false,
-                                   std::string_view reason = "") -> bool {
-        const auto result =
-            std::find_if(available_extensions.begin(), available_extensions.end(),
-                         [&](const std::string& name) { return name == extension; });
-
-        if (result != available_extensions.end() && !blacklist) {
-            LOG_INFO(Render_Vulkan, "Enabling extension: {}", extension);
-            enabled_extensions.push_back(extension.data());
-            return true;
-        } else if (blacklist) {
-            LOG_WARNING(Render_Vulkan, "Extension {} has been blacklisted because {}", extension,
-                        reason);
-            return false;
-        }
-
-        LOG_WARNING(Render_Vulkan, "Extension {} unavailable.", extension);
-        return false;
+    struct ExtensionSupport {
+        const char* name;
+        bool required;
+        bool* supported;
     };
 
-    const bool is_nvidia = driver_id == vk::DriverIdKHR::eNvidiaProprietary;
-    const bool is_moltenvk = driver_id == vk::DriverIdKHR::eMoltenvk;
-    const bool is_arm = driver_id == vk::DriverIdKHR::eArmProprietary;
-    const bool is_qualcomm = driver_id == vk::DriverIdKHR::eQualcommProprietary;
-    const bool is_turnip = driver_id == vk::DriverIdKHR::eMesaTurnip;
+    const std::array extension_support = {
+        ExtensionSupport{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true, nullptr},
+        ExtensionSupport{VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME, false, &image_format_list},
+        ExtensionSupport{VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME, false,
+                         &shader_stencil_export},
+        ExtensionSupport{VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME, false, &external_memory_host},
+        ExtensionSupport{VK_EXT_TOOLING_INFO_EXTENSION_NAME, false, &tooling_info},
+        ExtensionSupport{VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME, false, &timeline_semaphores},
+        ExtensionSupport{VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME, false, &has_portability_subset},
+        ExtensionSupport{VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, false,
+                         &extended_dynamic_state},
+        ExtensionSupport{VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME, false,
+                         &extended_dynamic_state2},
+        ExtensionSupport{VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, false,
+                         &extended_dynamic_state3},
+        ExtensionSupport{VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME, false, &custom_border_color},
+        ExtensionSupport{VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME, false, &index_type_uint8},
+        ExtensionSupport{VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME, false,
+                         &fragment_shader_interlock},
+        ExtensionSupport{VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME, false,
+                         &fragment_shader_barycentric},
+    };
 
-    add_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    image_format_list = add_extension(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
-    shader_stencil_export = add_extension(VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME);
-    external_memory_host = add_extension(VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME);
-    tooling_info = add_extension(VK_EXT_TOOLING_INFO_EXTENSION_NAME);
-    const bool has_timeline_semaphores =
-        add_extension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME, is_qualcomm || is_turnip,
-                      "it is broken on Qualcomm drivers");
-    const bool has_portability_subset = add_extension(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-    const bool has_extended_dynamic_state =
-        add_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, is_arm || is_qualcomm,
-                      "it is broken on Qualcomm and ARM drivers");
-    const bool has_extended_dynamic_state_2 =
-        add_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME, is_arm || is_qualcomm,
-                      "it is broken on Qualcomm and ARM drivers");
-    const bool has_extended_dynamic_state_3 =
-        add_extension(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, is_arm || is_qualcomm,
-                      "it is broken on Qualcomm and ARM drivers");
-    const bool has_custom_border_color =
-        add_extension(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME, is_qualcomm,
-                      "it is broken on most Qualcomm driver versions");
-    const bool has_index_type_uint8 = add_extension(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
-    const bool has_fragment_shader_interlock =
-        add_extension(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME, is_nvidia,
-                      "it is broken on Nvidia drivers");
-    const bool has_pipeline_creation_cache_control =
-        add_extension(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME, is_nvidia,
-                      "it is broken on Nvidia drivers");
-    const bool has_fragment_shader_barycentric =
-        add_extension(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME, is_moltenvk,
-                      "the PerVertexKHR attribute is not supported by MoltenVK");
+    boost::container::static_vector<const char*, 13> enabled_extensions;
+    for (const auto& ext : extension_support) {
+        const bool available = std::find(available_extensions.begin(), available_extensions.end(),
+                                         ext.name) != available_extensions.end();
+
+        if (available) {
+            enabled_extensions.push_back(ext.name);
+            if (ext.supported) {
+                *ext.supported = true;
+            }
+        } else if (ext.required) {
+            LOG_CRITICAL(Render_Vulkan, "Required extension {} not available", ext.name);
+            return false;
+        } else {
+            LOG_WARNING(Render_Vulkan, "Optional extension {} not available", ext.name);
+        }
+    }
 
     const auto family_properties = physical_device.getQueueFamilyProperties();
     if (family_properties.empty()) {
@@ -561,48 +567,48 @@ bool Instance::CreateDevice() {
         device_chain.unlink<vk::PhysicalDevicePortabilitySubsetFeaturesKHR>();
     }
 
-    if (has_timeline_semaphores) {
+    if (timeline_semaphores) {
         FEAT_SET(vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR, timelineSemaphore,
                  timeline_semaphores)
     } else {
         device_chain.unlink<vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR>();
     }
 
-    if (has_index_type_uint8) {
+    if (index_type_uint8) {
         FEAT_SET(vk::PhysicalDeviceIndexTypeUint8FeaturesEXT, indexTypeUint8, index_type_uint8)
     } else {
         device_chain.unlink<vk::PhysicalDeviceIndexTypeUint8FeaturesEXT>();
     }
 
-    if (has_fragment_shader_interlock) {
+    if (fragment_shader_interlock) {
         FEAT_SET(vk::PhysicalDeviceFragmentShaderInterlockFeaturesEXT, fragmentShaderPixelInterlock,
                  fragment_shader_interlock)
     } else {
         device_chain.unlink<vk::PhysicalDeviceFragmentShaderInterlockFeaturesEXT>();
     }
 
-    if (has_extended_dynamic_state) {
+    if (extended_dynamic_state) {
         FEAT_SET(vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT, extendedDynamicState,
                  extended_dynamic_state)
     } else {
         device_chain.unlink<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
     }
 
-    if (has_extended_dynamic_state_2) {
+    if (extended_dynamic_state2) {
         FEAT_SET(vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT, extendedDynamicState2,
                  extended_dynamic_state2)
     } else {
         device_chain.unlink<vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT>();
     }
 
-    if (has_extended_dynamic_state_3) {
+    if (extended_dynamic_state3) {
         FEAT_SET(vk::PhysicalDeviceExtendedDynamicState3FeaturesEXT,
                  extendedDynamicState3DepthClipEnable, extended_dynamic_state3)
     } else {
         device_chain.unlink<vk::PhysicalDeviceExtendedDynamicState3FeaturesEXT>();
     }
 
-    if (has_custom_border_color) {
+    if (custom_border_color) {
         FEAT_SET(vk::PhysicalDeviceCustomBorderColorFeaturesEXT, customBorderColors,
                  custom_border_color)
         FEAT_SET(vk::PhysicalDeviceCustomBorderColorFeaturesEXT, customBorderColorWithoutFormat,
@@ -611,7 +617,7 @@ bool Instance::CreateDevice() {
         device_chain.unlink<vk::PhysicalDeviceCustomBorderColorFeaturesEXT>();
     }
 
-    if (has_pipeline_creation_cache_control) {
+    if (pipeline_creation_cache_control) {
         FEAT_SET(vk::PhysicalDevicePipelineCreationCacheControlFeaturesEXT,
                  pipelineCreationCacheControl, pipeline_creation_cache_control)
     } else {
@@ -623,7 +629,7 @@ bool Instance::CreateDevice() {
                  min_imported_host_pointer_alignment);
     }
 
-    if (has_fragment_shader_barycentric) {
+    if (fragment_shader_barycentric) {
         FEAT_SET(vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR, fragmentShaderBarycentric,
                  fragment_shader_barycentric)
     } else {
@@ -646,6 +652,7 @@ bool Instance::CreateDevice() {
     present_queue = device->getQueue(queue_family_index, 0);
 
     CreateAllocator();
+    CheckDeviceMemory();
     return true;
 }
 
@@ -699,5 +706,4 @@ void Instance::CollectToolingInfo() {
         has_nsight_graphics = has_nsight_graphics || name == "NVIDIA Nsight Graphics";
     }
 }
-
 } // namespace Vulkan
