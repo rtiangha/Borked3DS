@@ -113,9 +113,13 @@ void RendererVulkan::PrepareRendertarget() {
                 continue;
             }
 
+            LOG_DEBUG(Render_Vulkan, "Processing framebuffer {} with format {}", i,
+                      static_cast<u32>(texture.format));
+
             const auto color_fill =
                 fb_id == 0 ? regs_lcd.color_fill_top : regs_lcd.color_fill_bottom;
             if (color_fill.is_enabled) {
+                LOG_DEBUG(Render_Vulkan, "Color fill enabled for buffer {}", i);
                 screen_infos[i].image_view = texture.image_view;
                 FillScreen(color_fill.AsVector(), texture);
                 continue;
@@ -123,11 +127,14 @@ void RendererVulkan::PrepareRendertarget() {
 
             if (texture.width != framebuffer.width || texture.height != framebuffer.height ||
                 texture.format != framebuffer.color_format) {
+                LOG_DEBUG(Render_Vulkan, "Reconfiguring framebuffer {} due to size/format change",
+                          i);
                 ConfigureFramebufferTexture(texture, framebuffer);
             }
 
             LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1);
         }
+        LOG_DEBUG(Render_Vulkan, "PrepareRendertarget completed successfully");
     } catch (const std::exception& err) {
         LOG_CRITICAL(Render_Vulkan, "Error in PrepareRendertarget: {}", err.what());
     }
