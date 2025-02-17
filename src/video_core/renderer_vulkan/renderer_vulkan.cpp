@@ -98,26 +98,38 @@ void RendererVulkan::Sync() {
 }
 
 void RendererVulkan::PrepareRendertarget() {
+    LOG_DEBUG(Render_Vulkan, "Preparing rendertarget");
     const auto& framebuffer_config = pica.regs.framebuffer_config;
     const auto& regs_lcd = pica.regs_lcd;
-    for (u32 i = 0; i < 3; i++) {
-        const u32 fb_id = i == 2 ? 1 : 0;
-        const auto& framebuffer = framebuffer_config[fb_id];
-        auto& texture = screen_infos[i].texture;
 
-        const auto color_fill = fb_id == 0 ? regs_lcd.color_fill_top : regs_lcd.color_fill_bottom;
-        if (color_fill.is_enabled) {
-            screen_infos[i].image_view = texture.image_view;
-            FillScreen(color_fill.AsVector(), texture);
-            continue;
+    try {
+        for (u32 i = 0; i < 3; i++) {
+            const u32 fb_id = i == 2 ? 1 : 0;
+            const auto& framebuffer = framebuffer_config[fb_id];
+            auto& texture = screen_infos[i].texture;
+
+            if (!texture.image || !texture.image_view) {
+                LOG_ERROR(Render_Vulkan, "Invalid texture at index {}", i);
+                continue;
+            }
+
+            const auto color_fill =
+                fb_id == 0 ? regs_lcd.color_fill_top : regs_lcd.color_fill_bottom;
+            if (color_fill.is_enabled) {
+                screen_infos[i].image_view = texture.image_view;
+                FillScreen(color_fill.AsVector(), texture);
+                continue;
+            }
+
+            if (texture.width != framebuffer.width || texture.height != framebuffer.height ||
+                texture.format != framebuffer.color_format) {
+                ConfigureFramebufferTexture(texture, framebuffer);
+            }
+
+            LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1);
         }
-
-        if (texture.width != framebuffer.width || texture.height != framebuffer.height ||
-            texture.format != framebuffer.color_format) {
-            ConfigureFramebufferTexture(texture, framebuffer);
-        }
-
-        LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1);
+    } catch (const std::exception& err) {
+        LOG_CRITICAL(Render_Vulkan, "Error in PrepareRendertarget: {}", err.what());
     }
 }
 
@@ -816,32 +828,47 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
         ReloadPipeline();
     }
 
-    PrepareDraw(frame, layout);
-
-    const auto& top_screen = layout.top_screen;
-    const auto& bottom_screen = layout.bottom_screen;
-    draw_info.modelview = MakeOrthographicMatrix(layout.width, layout.height);
-
-    draw_info.layer = 0;
-    if (!Settings::values.swap_screen.GetValue()) {
-        DrawTopScreen(layout, top_screen);
-        draw_info.layer = 0;
-        DrawBottomScreen(layout, bottom_screen);
-    } else {
-        DrawBottomScreen(layout, bottom_screen);
-        draw_info.layer = 0;
-        DrawTopScreen(layout, top_screen);
-    }
-
-    if (layout.additional_screen_enabled) {
-        const auto& additional_screen = layout.additional_screen;
-        if (!Settings::values.swap_screen.GetValue()) {
-            DrawTopScreen(layout, additional_screen);
-        } else {
-            DrawBottomScreen(layout, additional_screen);
+    try {
+        if (!frame) {
+            LOG_CRITICAL(Render_Vulkan, "Null frame passed to DrawScreens");
+            return;
         }
-    }
 
+        LOG_DEBUG(Render_Vulkan, "Starting DrawScreens with frame size: {}x{}", layout.width,
+                  layout.height);
+
+        PrepareDraw(frame, layout);
+
+        const auto& top_screen = layout.top_screen;
+        const auto& bottom_screen = layout.bottom_screen;
+        draw_info.modelview = MakeOrthographicMatrix(layout.width, layout.height);
+
+        draw_info.layer = 0;
+        if (!Settings::values.swap_screen.GetValue()) {
+            DrawTopScreen(layout, top_screen);
+            draw_info.layer = 0;
+            DrawBottomScreen(layout, bottom_screen);
+        } else {
+            DrawBottomScreen(layout, bottom_screen);
+            draw_info.layer = 0;
+            DrawTopScreen(layout, top_screen);
+        }
+
+        if (layout.additional_screen_enabled) {
+            const auto& additional_screen = layout.additional_screen;
+            if (!Settings::values.swap_screen.GetValue()) {
+                DrawTopScreen(layout, additional_screen);
+            } else {
+                DrawBottomScreen(layout, additional_screen);
+            }
+        }
+
+        LOG_DEBUG(Render_Vulkan, "DrawScreens completed successfully");
+    } catch (const vk::SystemError& err) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error in DrawScreens: {}", err.what());
+    } catch (const std::exception& err) {
+        LOG_CRITICAL(Render_Vulkan, "Error in DrawScreens: {}", err.what());
+    }
     scheduler.Record([](vk::CommandBuffer cmdbuf) { cmdbuf.endRenderPass(); });
 }
 
