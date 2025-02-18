@@ -46,11 +46,12 @@ ConfigureDebug::ConfigureDebug(bool is_powered_on_, QWidget* parent)
                 Vulkan::Instance debug_inst{true};
             } catch (vk::LayerNotPresentError&) {
                 ui->toggle_renderer_debug->toggle();
-                QMessageBox::warning(this, tr("Validation layer not available"),
-                                     tr("Unable to enable debug renderer because the layer "
-                                        "<strong>VK_LAYER_KHRONOS_validation</strong> is missing. "
-                                        "Please install the Vulkan SDK or the appropriate package "
-                                        "of your distribution"));
+                QMessageBox::warning(
+                    this, tr("Validation layer not available"),
+                    tr("Unable to enable debug renderer because the layer "
+                       "<strong>VK_LAYER_KHRONOS_validation</strong> is missing. "
+                       "Please install the Vulkan SDK or Vulkan Validation Layers. "
+                       "of your distribution"));
             }
         }
     });

@@ -260,7 +260,7 @@
            <string>Debug Renderer</string>
           </property>
           <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note: Vulkan debug renderer requires the Vulkan SDK to be installed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note: Vulkan debug renderer requires the Vulkan SDK or Validation Layers to be installed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
