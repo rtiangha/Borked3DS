@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-BUILD_MOLTENVK=false 
+BUILD_MOLTENVK=true
 
 if [ "$BUILD_MOLTENVK" = true ]; then
     export EXTRA_CMAKE_FLAGS=(-DBORKED3DS_USE_EXTERNAL_MOLTENVK=ON)
