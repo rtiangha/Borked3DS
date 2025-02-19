@@ -3,6 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <exception>
+
 #include "common/assert.h"
 #include "common/logging/log.h"
 #include "common/memory_detect.h"
@@ -108,14 +110,22 @@ void RendererVulkan::PrepareRendertarget() {
             const auto& framebuffer = framebuffer_config[fb_id];
             auto& texture = screen_infos[i].texture;
 
+            // Validate texture before use
             if (!texture.image || !texture.image_view) {
-                LOG_ERROR(Render_Vulkan, "Invalid texture at index {}", i);
-                continue;
+                LOG_ERROR(Render_Vulkan, "Texture at index {} is not properly initialized", i);
+                if (!ConfigureFramebufferTexture(texture, framebuffer)) {
+                    LOG_CRITICAL(Render_Vulkan, "Failed to initialize texture at index {}", i);
+                    continue;
+                }
             }
+
+            LOG_DEBUG(Render_Vulkan, "Processing framebuffer {} with format {}", i,
+                      static_cast<u32>(texture.format));
 
             const auto color_fill =
                 fb_id == 0 ? regs_lcd.color_fill_top : regs_lcd.color_fill_bottom;
             if (color_fill.is_enabled) {
+                LOG_DEBUG(Render_Vulkan, "Color fill enabled for buffer {}", i);
                 screen_infos[i].image_view = texture.image_view;
                 FillScreen(color_fill.AsVector(), texture);
                 continue;
@@ -123,11 +133,21 @@ void RendererVulkan::PrepareRendertarget() {
 
             if (texture.width != framebuffer.width || texture.height != framebuffer.height ||
                 texture.format != framebuffer.color_format) {
-                ConfigureFramebufferTexture(texture, framebuffer);
+                LOG_DEBUG(Render_Vulkan, "Reconfiguring framebuffer {} due to size/format change",
+                          i);
+                if (!ConfigureFramebufferTexture(texture, framebuffer)) {
+                    LOG_ERROR(Render_Vulkan, "Failed to reconfigure framebuffer {}", i);
+                    continue;
+                }
             }
-
-            LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1);
+            if (!LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1)) {
+                LOG_ERROR(Render_Vulkan, "Failed to load framebuffer for screen {}", i);
+                continue;
+            }
         }
+        LOG_DEBUG(Render_Vulkan, "PrepareRendertarget completed successfully");
+    } catch (const vk::SystemError& e) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error in PrepareRendertarget: {}", e.what());
     } catch (const std::exception& err) {
         LOG_CRITICAL(Render_Vulkan, "Error in PrepareRendertarget: {}", err.what());
     }
@@ -197,35 +217,59 @@ void RendererVulkan::RenderToWindow(PresentWindow& window, const Layout::Framebu
     window.Present(frame);
 }
 
-void RendererVulkan::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer,
+bool RendererVulkan::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer,
                                         ScreenInfo& screen_info, bool right_eye) {
 
-    if (framebuffer.address_right1 == 0 || framebuffer.address_right2 == 0) {
-        right_eye = false;
-    }
+    try {
+        LOG_DEBUG(Render_Vulkan, "Loading framebuffer to screen info");
 
-    const PAddr framebuffer_addr =
-        framebuffer.active_fb == 0
-            ? (right_eye ? framebuffer.address_right1 : framebuffer.address_left1)
-            : (right_eye ? framebuffer.address_right2 : framebuffer.address_left2);
+        if (framebuffer.address_right1 == 0 || framebuffer.address_right2 == 0) {
+            LOG_DEBUG(Render_Vulkan, "No right eye buffer available, forcing left eye");
+            right_eye = false;
+        }
 
-    LOG_TRACE(Render_Vulkan, "0x{:08x} bytes from 0x{:08x}({}x{}), fmt {:x}",
-              framebuffer.stride * framebuffer.height, framebuffer_addr, framebuffer.width.Value(),
-              framebuffer.height.Value(), framebuffer.format);
+        const PAddr framebuffer_addr =
+            framebuffer.active_fb == 0
+                ? (right_eye ? framebuffer.address_right1 : framebuffer.address_left1)
+                : (right_eye ? framebuffer.address_right2 : framebuffer.address_left2);
 
-    const u32 bpp = Pica::BytesPerPixel(framebuffer.color_format);
-    const std::size_t pixel_stride = framebuffer.stride / bpp;
+        LOG_DEBUG(Render_Vulkan, "Using framebuffer address 0x{:08x}", framebuffer_addr);
+        LOG_TRACE(Render_Vulkan, "0x{:08x} bytes from 0x{:08x}({}x{}), fmt {:x}",
+                  framebuffer.stride * framebuffer.height, framebuffer_addr,
+                  framebuffer.width.Value(), framebuffer.height.Value(), framebuffer.format);
 
-    ASSERT(pixel_stride * bpp == framebuffer.stride);
-    ASSERT(pixel_stride % 4 == 0);
+        const u32 bpp = Pica::BytesPerPixel(framebuffer.color_format);
+        const std::size_t pixel_stride = framebuffer.stride / bpp;
 
-    if (!rasterizer.AccelerateDisplay(framebuffer, framebuffer_addr, static_cast<u32>(pixel_stride),
-                                      screen_info)) {
-        // Reset the screen info's display texture to its own permanent texture
-        screen_info.image_view = screen_info.texture.image_view;
-        screen_info.texcoords = {0.f, 0.f, 1.f, 1.f};
+        if (pixel_stride * bpp != framebuffer.stride) {
+            LOG_ERROR(Render_Vulkan, "Invalid pixel stride");
+            return false;
+        }
 
-        ASSERT(false);
+        if (pixel_stride % 4 != 0) {
+            LOG_ERROR(Render_Vulkan, "Pixel stride not aligned to 4");
+            return false;
+        }
+
+        LOG_DEBUG(Render_Vulkan, "Accelerating display...");
+        if (!rasterizer.AccelerateDisplay(framebuffer, framebuffer_addr,
+                                          static_cast<u32>(pixel_stride), screen_info)) {
+            LOG_ERROR(Render_Vulkan, "Failed to accelerate display");
+            // Reset the screen info's display texture to its own permanent texture
+            screen_info.image_view = screen_info.texture.image_view;
+            screen_info.texcoords = {0.f, 0.f, 1.f, 1.f};
+            LOG_ERROR(Render_Vulkan, "Failed to accelerate display");
+            return false;
+        }
+
+        LOG_DEBUG(Render_Vulkan, "Framebuffer loaded successfully");
+        return true;
+    } catch (const vk::SystemError& error) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error in LoadFBToScreenInfo: {}", error.what());
+        return false;
+    } catch (const std::exception& error) {
+        LOG_CRITICAL(Render_Vulkan, "Error in LoadFBToScreenInfo: {}", error.what());
+        return false;
     }
 }
 
@@ -406,68 +450,93 @@ void RendererVulkan::BuildPipelines() {
     }
 }
 
-void RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
+bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
                                                  const Pica::FramebufferConfig& framebuffer) {
-    vk::Device device = instance.GetDevice();
-    if (texture.image_view) {
-        main_window.WaitPresent();
-        device.destroyImageView(texture.image_view);
+    try {
+        LOG_DEBUG(Render_Vulkan, "Configuring framebuffer texture {}x{} format={}",
+                  framebuffer.width.Value(), framebuffer.height.Value(),
+                  static_cast<u32>(framebuffer.color_format.Value()));
+
+        vk::Device device = instance.GetDevice();
+        if (texture.image_view) {
+            LOG_DEBUG(Render_Vulkan, "Destroying old image view");
+            main_window.WaitPresent();
+            device.destroyImageView(texture.image_view);
+        }
+        if (texture.image) {
+            LOG_DEBUG(Render_Vulkan, "Destroying old image");
+            main_window.WaitPresent();
+            vmaDestroyImage(instance.GetAllocator(), texture.image, texture.allocation);
+        }
+
+        const VideoCore::PixelFormat pixel_format =
+            VideoCore::PixelFormatFromGPUPixelFormat(framebuffer.color_format);
+        const vk::Format format = instance.GetTraits(pixel_format).native;
+        LOG_DEBUG(Render_Vulkan, "Using Vulkan format {}", vk::to_string(format));
+
+        const vk::ImageCreateInfo image_info = {
+            .imageType = vk::ImageType::e2D,
+            .format = format,
+            .extent = {framebuffer.width, framebuffer.height, 1},
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = vk::SampleCountFlagBits::e1,
+            .usage = vk::ImageUsageFlagBits::eSampled,
+        };
+
+        const VmaAllocationCreateInfo alloc_info = {
+            .flags = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
+            .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+            .requiredFlags = 0,
+            .preferredFlags = 0,
+            .pool = VK_NULL_HANDLE,
+            .pUserData = nullptr,
+        };
+
+        VkImage unsafe_image{};
+        VkImageCreateInfo unsafe_image_info = static_cast<VkImageCreateInfo>(image_info);
+
+        LOG_DEBUG(Render_Vulkan, "Creating image...");
+        VkResult result = vmaCreateImage(instance.GetAllocator(), &unsafe_image_info, &alloc_info,
+                                         &unsafe_image, &texture.allocation, nullptr);
+        if (result != VK_SUCCESS) [[unlikely]] {
+            LOG_CRITICAL(Render_Vulkan, "Failed allocating texture with error {}", result);
+            return false;
+        }
+        texture.image = vk::Image{unsafe_image};
+        LOG_DEBUG(Render_Vulkan, "Image created successfully");
+
+        const vk::ImageViewCreateInfo view_info = {
+            .image = texture.image,
+            .viewType = vk::ImageViewType::e2D,
+            .format = format,
+            .subresourceRange{
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        LOG_DEBUG(Render_Vulkan, "Creating image view...");
+        texture.image_view = device.createImageView(view_info);
+        LOG_DEBUG(Render_Vulkan, "Image view created successfully");
+
+        texture.width = framebuffer.width;
+        texture.height = framebuffer.height;
+        texture.format = framebuffer.color_format;
+
+        LOG_DEBUG(Render_Vulkan, "Framebuffer texture configured successfully");
+        return true;
+    } catch (const vk::SystemError& error) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error in ConfigureFramebufferTexture: {}",
+                     error.what());
+        return false;
+    } catch (const std::exception& error) {
+        LOG_CRITICAL(Render_Vulkan, "Error in ConfigureFramebufferTexture: {}", error.what());
+        return false;
     }
-    if (texture.image) {
-        main_window.WaitPresent();
-        vmaDestroyImage(instance.GetAllocator(), texture.image, texture.allocation);
-    }
-
-    const VideoCore::PixelFormat pixel_format =
-        VideoCore::PixelFormatFromGPUPixelFormat(framebuffer.color_format);
-    const vk::Format format = instance.GetTraits(pixel_format).native;
-    const vk::ImageCreateInfo image_info = {
-        .imageType = vk::ImageType::e2D,
-        .format = format,
-        .extent = {framebuffer.width, framebuffer.height, 1},
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = vk::SampleCountFlagBits::e1,
-        .usage = vk::ImageUsageFlagBits::eSampled,
-    };
-
-    const VmaAllocationCreateInfo alloc_info = {
-        .flags = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = 0,
-        .preferredFlags = 0,
-        .pool = VK_NULL_HANDLE,
-        .pUserData = nullptr,
-    };
-
-    VkImage unsafe_image{};
-    VkImageCreateInfo unsafe_image_info = static_cast<VkImageCreateInfo>(image_info);
-
-    VkResult result = vmaCreateImage(instance.GetAllocator(), &unsafe_image_info, &alloc_info,
-                                     &unsafe_image, &texture.allocation, nullptr);
-    if (result != VK_SUCCESS) [[unlikely]] {
-        LOG_CRITICAL(Render_Vulkan, "Failed allocating texture with error {}", result);
-        UNREACHABLE();
-    }
-    texture.image = vk::Image{unsafe_image};
-
-    const vk::ImageViewCreateInfo view_info = {
-        .image = texture.image,
-        .viewType = vk::ImageViewType::e2D,
-        .format = format,
-        .subresourceRange{
-            .aspectMask = vk::ImageAspectFlagBits::eColor,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-    texture.image_view = device.createImageView(view_info);
-
-    texture.width = framebuffer.width;
-    texture.height = framebuffer.height;
-    texture.format = framebuffer.color_format;
 }
 
 void RendererVulkan::FillScreen(Common::Vec3<u8> color, const TextureInfo& texture) {
@@ -819,15 +888,6 @@ void RendererVulkan::DrawBottomScreen(const Layout::FramebufferLayout& layout,
 
 void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& layout,
                                  bool flipped) {
-    if (settings.bg_color_update_requested.exchange(false)) {
-        clear_color.float32[0] = Settings::values.bg_red.GetValue();
-        clear_color.float32[1] = Settings::values.bg_green.GetValue();
-        clear_color.float32[2] = Settings::values.bg_blue.GetValue();
-    }
-    if (settings.shader_update_requested.exchange(false)) {
-        ReloadPipeline();
-    }
-
     try {
         if (!frame) {
             LOG_CRITICAL(Render_Vulkan, "Null frame passed to DrawScreens");
@@ -836,6 +896,22 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
 
         LOG_DEBUG(Render_Vulkan, "Starting DrawScreens with frame size: {}x{}", layout.width,
                   layout.height);
+
+        // Validate screen info textures
+        for (size_t i = 0; i < screen_infos.size(); i++) {
+            if (!screen_infos[i].texture.image || !screen_infos[i].texture.image_view) {
+                LOG_ERROR(Render_Vulkan, "Invalid texture at screen_infos[{}]", i);
+                return;
+            }
+        }
+        if (settings.bg_color_update_requested.exchange(false)) {
+            clear_color.float32[0] = Settings::values.bg_red.GetValue();
+            clear_color.float32[1] = Settings::values.bg_green.GetValue();
+            clear_color.float32[2] = Settings::values.bg_blue.GetValue();
+        }
+        if (settings.shader_update_requested.exchange(false)) {
+            ReloadPipeline();
+        }
 
         PrepareDraw(frame, layout);
 

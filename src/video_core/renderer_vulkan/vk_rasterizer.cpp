@@ -445,17 +445,28 @@ void RasterizerVulkan::SetupIndexArray() {
 }
 
 void RasterizerVulkan::DrawTriangles() {
+    LOG_DEBUG(Render_Vulkan, "Starting DrawTriangles with batch size {}", vertex_batch.size());
+
     if (vertex_batch.empty()) {
+        LOG_DEBUG(Render_Vulkan, "Empty vertex batch, skipping draw");
         return;
     }
 
-    pipeline_info.rasterization.topology.Assign(Pica::PipelineRegs::TriangleTopology::List);
-    pipeline_info.vertex_layout = software_layout;
+    try {
+        pipeline_info.rasterization.topology.Assign(Pica::PipelineRegs::TriangleTopology::List);
+        pipeline_info.vertex_layout = software_layout;
 
-    pipeline_cache.UseTrivialVertexShader();
-    pipeline_cache.UseTrivialGeometryShader();
+        pipeline_cache.UseTrivialVertexShader();
+        pipeline_cache.UseTrivialGeometryShader();
 
-    Draw(false, false);
+        LOG_DEBUG(Render_Vulkan, "Pipeline configured, attempting draw");
+        bool draw_result = Draw(false, false);
+        LOG_DEBUG(Render_Vulkan, "Draw completed with result: {}", draw_result);
+    } catch (const vk::SystemError& e) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error in DrawTriangles: {}", e.what());
+    } catch (const std::exception& e) {
+        LOG_CRITICAL(Render_Vulkan, "Error in DrawTriangles: {}", e.what());
+    }
 }
 
 bool RasterizerVulkan::Draw(bool accelerate, bool is_indexed) {
