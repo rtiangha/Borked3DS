@@ -28,8 +28,6 @@
 
 namespace Vulkan {
 
-using namespace Vulkan;
-
 constexpr u32 VERTEX_BUFFER_SIZE = sizeof(ScreenRectVertex) * 8192;
 
 constexpr std::array<f32, 4 * 4> MakeOrthographicMatrix(u32 width, u32 height) {
