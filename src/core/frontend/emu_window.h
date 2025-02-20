@@ -8,7 +8,7 @@
 #include <memory>
 #include <tuple>
 #include <utility>
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 
 #include "common/common_types.h"
 #include "core/3ds.h"

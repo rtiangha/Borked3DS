@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <vk_mem_alloc.h>
-#include <vulkan/vulkan.hpp>
 #include "common/logging/log.h"
 #include "video_core/pica/regs_external.h"
 #include "video_core/pica/regs_framebuffer.h"
