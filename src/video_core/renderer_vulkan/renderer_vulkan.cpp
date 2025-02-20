@@ -259,6 +259,12 @@ bool RendererVulkan::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
             screen_info.image_view = screen_info.texture.image_view;
             screen_info.texcoords = {0.f, 0.f, 1.f, 1.f};
             LOG_ERROR(Render_Vulkan, "Failed to accelerate display");
+
+            // Add a check to ensure the image is valid
+            if (!screen_info.texture.image) {
+                LOG_CRITICAL(Render_Vulkan, "Invalid image handle in screen_info.texture.image");
+                return false;
+            }
             return false;
         }
 
