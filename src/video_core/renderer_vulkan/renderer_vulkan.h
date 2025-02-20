@@ -88,7 +88,7 @@ private:
     void CompileShaders();
     void BuildLayouts();
     void BuildPipelines();
-    void ConfigureFramebufferTexture(TextureInfo& texture,
+    bool ConfigureFramebufferTexture(TextureInfo& texture,
                                      const Pica::FramebufferConfig& framebuffer);
     void ConfigureRenderPipeline();
     void PrepareRendertarget();
@@ -108,7 +108,7 @@ private:
                           Layout::DisplayOrientation orientation);
     void DrawSingleScreenStereo(u32 screen_id_l, u32 screen_id_r, float x, float y, float w,
                                 float h, Layout::DisplayOrientation orientation);
-    void LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer, ScreenInfo& screen_info,
+    bool LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer, ScreenInfo& screen_info,
                             bool right_eye);
     void FillScreen(Common::Vec3<u8> color, const TextureInfo& texture);
 
