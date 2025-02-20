@@ -6,11 +6,13 @@
 #pragma once
 
 #include "video_core/rasterizer_accelerated.h"
+#include "video_core/renderer_vulkan/renderer_vulkan.h"
 #include "video_core/renderer_vulkan/vk_descriptor_update_queue.h"
 #include "video_core/renderer_vulkan/vk_pipeline_cache.h"
 #include "video_core/renderer_vulkan/vk_render_manager.h"
 #include "video_core/renderer_vulkan/vk_stream_buffer.h"
 #include "video_core/renderer_vulkan/vk_texture_runtime.h"
+#include "video_core/renderer_vulkan/vk_types.h"
 
 namespace Frontend {
 class EmuWindow;
@@ -28,8 +30,6 @@ struct FramebufferConfig;
 } // namespace Pica
 
 namespace Vulkan {
-
-struct ScreenInfo;
 
 class Instance;
 class Scheduler;
