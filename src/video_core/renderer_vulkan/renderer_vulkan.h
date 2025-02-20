@@ -51,10 +51,10 @@ struct ScreenInfo {
     vk::ImageView image_view;
 };
 
-struct PresentUniformData {
+struct alignas(16) PresentUniformData {
     std::array<f32, 4 * 4> modelview;
-    Common::Vec4f i_resolution;
-    Common::Vec4f o_resolution;
+    alignas(16) Common::Vec4f i_resolution;
+    alignas(16) Common::Vec4f o_resolution;
     int screen_id_l = 0;
     int screen_id_r = 0;
     int layer = 0;
