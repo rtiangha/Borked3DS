@@ -26,6 +26,8 @@ struct RenderPass {
     vk::Rect2D render_area;
     vk::ClearValue clear;
     u32 do_clear;
+    vk::ImageLayout color_layout = vk::ImageLayout::eColorAttachmentOptimal;
+    vk::ImageLayout depth_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
     bool operator==(const RenderPass& other) const noexcept {
         return std::tie(framebuffer, render_pass, render_area, do_clear) ==
@@ -34,6 +36,9 @@ struct RenderPass {
                std::memcmp(&clear, &other.clear, sizeof(vk::ClearValue)) == 0;
     }
 };
+
+/// Helper function to maintain compatability
+vk::AccessFlags GetAccessMask(vk::ImageLayout layout);
 
 class RenderManager {
     static constexpr u32 NumColorFormats = 13;
@@ -44,7 +49,9 @@ public:
     ~RenderManager();
 
     /// Begins a new renderpass with the provided framebuffer as render target.
-    void BeginRendering(const Framebuffer* framebuffer, Common::Rectangle<u32> draw_rect);
+    void BeginRendering(const Framebuffer* framebuffer, Common::Rectangle<u32> draw_rect,
+                        vk::ImageLayout color_layout = vk::ImageLayout::eUndefined,
+                        vk::ImageLayout depth_layout = vk::ImageLayout::eUndefined);
 
     /// Begins a new renderpass with the provided render state.
     void BeginRendering(const RenderPass& new_pass);
@@ -70,6 +77,7 @@ private:
     std::array<vk::ImageAspectFlags, 2> aspects;
     RenderPass pass{};
     u32 num_draws{};
+    std::vector<vk::ImageLayout> current_layouts;
 };
 
 } // namespace Vulkan

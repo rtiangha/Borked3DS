@@ -39,6 +39,10 @@ struct Handle {
     vk::UniqueImageView image_view;
 };
 
+/// Returns subresource range
+vk::ImageSubresourceRange MakeSubresourceRange(vk::ImageAspectFlags aspect, u32 level, u32 levels,
+                                               u32 layer);
+
 /**
  * Provides texture manipulation functions to the rasterizer cache
  * Separating this into a class makes it easier to abstract graphics API code
@@ -153,6 +157,9 @@ public:
     /// Returns a framebuffer handle for rendering to this surface
     vk::Framebuffer Framebuffer() noexcept;
 
+    /// Add synchronization for depth/stencil aspects
+    void SyncDualAspect();
+
     /// Uploads pixel data in staging to a rectangle region of the surface texture
     void Upload(const VideoCore::BufferTextureCopy& upload, const VideoCore::StagingData& staging);
 
@@ -162,6 +169,9 @@ public:
     /// Downloads pixel data to staging from a rectangle region of the surface texture
     void Download(const VideoCore::BufferTextureCopy& download,
                   const VideoCore::StagingData& staging);
+
+    /// Used to transfer layouts across pipeline barriers
+    void TransitionLayout(vk::ImageLayout new_layout, u32 index = 0);
 
     /// Scales up the surface to match the new resolution scale.
     void ScaleUp(u32 new_scale);
@@ -175,6 +185,17 @@ public:
     /// Returns the pipeline stage flags indicative of the surface
     vk::PipelineStageFlags PipelineStageFlags() const noexcept;
 
+    /// Gets/Sets the current layout
+    vk::ImageLayout CurrentLayout(u32 index = 0) const noexcept {
+        return current_layouts[index];
+    }
+    void SetLayout(vk::ImageLayout layout, u32 index = 0) {
+        current_layouts[index] = layout;
+    }
+
+    /// Gets the current stage of the pipeline
+    vk::PipelineStageFlags GetPipelineStage(vk::ImageLayout layout, bool is_src_stage);
+
 private:
     /// Performs blit between the scaled/unscaled images
     void BlitScale(const VideoCore::TextureBlit& blit, bool up_scale);
@@ -182,6 +203,8 @@ private:
     /// Downloads scaled depth stencil data
     void DepthStencilDownload(const VideoCore::BufferTextureCopy& download,
                               const VideoCore::StagingData& staging);
+
+    std::array<vk::ImageLayout, 3> current_layouts{vk::ImageLayout::eGeneral};
 
 public:
     TextureRuntime* runtime;

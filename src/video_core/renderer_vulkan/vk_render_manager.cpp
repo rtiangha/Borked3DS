@@ -4,6 +4,8 @@
 // Refer to the license.txt file included.
 
 #include <limits>
+#include <boost/container/small_vector.hpp>
+
 #include "common/assert.h"
 #include "video_core/rasterizer_cache/pixel_format.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
@@ -23,28 +25,72 @@ RenderManager::RenderManager(const Instance& instance, Scheduler& scheduler)
 
 RenderManager::~RenderManager() = default;
 
-void RenderManager::BeginRendering(const Framebuffer* framebuffer,
-                                   Common::Rectangle<u32> draw_rect) {
+void RenderManager::BeginRendering(const Framebuffer* framebuffer, Common::Rectangle<u32> draw_rect,
+                                   vk::ImageLayout color_layout, vk::ImageLayout depth_layout) {
     const vk::Rect2D render_area = {
-        .offset{
-            .x = static_cast<s32>(draw_rect.left),
-            .y = static_cast<s32>(draw_rect.bottom),
-        },
-        .extent{
-            .width = draw_rect.GetWidth(),
-            .height = draw_rect.GetHeight(),
-        },
+        .offset{.x = static_cast<s32>(draw_rect.left), .y = static_cast<s32>(draw_rect.bottom)},
+        .extent{.width = draw_rect.GetWidth(), .height = draw_rect.GetHeight()},
     };
-    const RenderPass new_pass = {
-        .framebuffer = framebuffer->Handle(),
-        .render_pass = framebuffer->RenderPass(),
-        .render_area = render_area,
-        .clear = {},
-        .do_clear = false,
-    };
+
+    RenderPass new_pass = {.framebuffer = framebuffer->Handle(),
+                           .render_pass = framebuffer->RenderPass(),
+                           .render_area = render_area,
+                           .clear = {},
+                           .do_clear = false,
+                           .color_layout = color_layout,
+                           .depth_layout = depth_layout};
+
+    // Default layouts if needed
+    if (color_layout == vk::ImageLayout::eUndefined) {
+        new_pass.color_layout = vk::ImageLayout::eColorAttachmentOptimal;
+    }
+    if (depth_layout == vk::ImageLayout::eUndefined) {
+        new_pass.depth_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+    }
+
     images = framebuffer->Images();
     aspects = framebuffer->Aspects();
-    BeginRendering(new_pass);
+
+    scheduler.Record([this, new_pass](vk::CommandBuffer cmdbuf) {
+        boost::container::small_vector<vk::ImageMemoryBarrier, 4> barriers; // Fixed declaration
+
+        for (size_t i = 0; i < images.size(); ++i) {
+            const auto aspect = aspects[i];
+            const auto old_layout = current_layouts[i];
+            const auto new_layout = (aspect & vk::ImageAspectFlagBits::eColor)
+                                        ? new_pass.color_layout
+                                        : new_pass.depth_layout;
+
+            if (old_layout != new_layout) {
+                barriers.emplace_back(vk::ImageMemoryBarrier{
+                    .srcAccessMask = GetAccessMask(old_layout),
+                    .dstAccessMask = GetAccessMask(new_layout),
+                    .oldLayout = old_layout,
+                    .newLayout = new_layout,
+                    .image = images[i],
+                    .subresourceRange =
+                        MakeSubresourceRange(aspect, 0, VK_REMAINING_MIP_LEVELS, 0)});
+                current_layouts[i] = new_layout;
+            }
+        }
+
+        if (!barriers.empty()) {
+            cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                                   vk::PipelineStageFlagBits::eAllCommands,
+                                   vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
+        }
+
+        const vk::RenderPassBeginInfo renderpass_begin_info = {.renderPass = new_pass.render_pass,
+                                                               .framebuffer = new_pass.framebuffer,
+                                                               .renderArea = new_pass.render_area,
+                                                               .clearValueCount =
+                                                                   new_pass.do_clear ? 1u : 0u,
+                                                               .pClearValues = &new_pass.clear};
+        cmdbuf.beginRenderPass(renderpass_begin_info, vk::SubpassContents::eInline);
+    });
+
+    pass = new_pass;
+    num_draws = 1;
 }
 
 void RenderManager::BeginRendering(const RenderPass& new_pass) {
@@ -54,18 +100,65 @@ void RenderManager::BeginRendering(const RenderPass& new_pass) {
     }
 
     EndRendering();
-    scheduler.Record([info = new_pass](vk::CommandBuffer cmdbuf) {
+
+    scheduler.Record([this, new_pass](vk::CommandBuffer cmdbuf) {
+        // Transition images to required layouts
+        boost::container::small_vector<vk::ImageMemoryBarrier, 4> barriers;
+        for (size_t i = 0; i < images.size(); ++i) {
+            const auto aspect = aspects[i];
+            const auto old_layout = current_layouts[i];
+            const auto new_layout = (aspect & vk::ImageAspectFlagBits::eColor)
+                                        ? new_pass.color_layout
+                                        : new_pass.depth_layout;
+
+            if (old_layout != new_layout) {
+                barriers.emplace_back(vk::ImageMemoryBarrier{
+                    .srcAccessMask = GetAccessMask(old_layout),
+                    .dstAccessMask = GetAccessMask(new_layout),
+                    .oldLayout = old_layout,
+                    .newLayout = new_layout,
+                    .image = images[i],
+                    .subresourceRange =
+                        MakeSubresourceRange(aspect, 0, VK_REMAINING_MIP_LEVELS, 0)});
+                current_layouts[i] = new_layout;
+            }
+        }
+
+        if (!barriers.empty()) {
+            cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                                   vk::PipelineStageFlagBits::eAllCommands,
+                                   vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
+        }
+
         const vk::RenderPassBeginInfo renderpass_begin_info = {
-            .renderPass = info.render_pass,
-            .framebuffer = info.framebuffer,
-            .renderArea = info.render_area,
-            .clearValueCount = info.do_clear ? 1u : 0u,
-            .pClearValues = &info.clear,
+            .renderPass = new_pass.render_pass,
+            .framebuffer = new_pass.framebuffer,
+            .renderArea = new_pass.render_area,
+            .clearValueCount = new_pass.do_clear ? 1u : 0u,
+            .pClearValues = &new_pass.clear,
         };
         cmdbuf.beginRenderPass(renderpass_begin_info, vk::SubpassContents::eInline);
     });
 
     pass = new_pass;
+    num_draws = 1;
+}
+
+vk::AccessFlags GetAccessMask(vk::ImageLayout layout) {
+    switch (layout) {
+    case vk::ImageLayout::eColorAttachmentOptimal:
+        return vk::AccessFlagBits::eColorAttachmentWrite;
+    case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+        return vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+    case vk::ImageLayout::eShaderReadOnlyOptimal:
+        return vk::AccessFlagBits::eShaderRead;
+    case vk::ImageLayout::eTransferSrcOptimal:
+        return vk::AccessFlagBits::eTransferRead;
+    case vk::ImageLayout::eTransferDstOptimal:
+        return vk::AccessFlagBits::eTransferWrite;
+    default:
+        return vk::AccessFlags{};
+    }
 }
 
 void RenderManager::EndRendering() {
@@ -117,6 +210,13 @@ void RenderManager::EndRendering() {
                                vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr,
                                num_barriers, barriers.data());
     });
+
+    // Track final layouts
+    for (size_t i = 0; i < images.size(); ++i) {
+        const auto aspect = aspects[i];
+        current_layouts[i] =
+            (aspect & vk::ImageAspectFlagBits::eColor) ? pass.color_layout : pass.depth_layout;
+    }
 
     // Reset state.
     pass.render_pass = VK_NULL_HANDLE;

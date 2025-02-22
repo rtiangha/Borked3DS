@@ -7,10 +7,13 @@
 
 #include <compare>
 #include "common/hash.h"
+#include "video_core/pica/regs_framebuffer.h" // For CompareFunc
 #include "video_core/pica/regs_texturing.h"
 
 namespace VideoCore {
 
+// Force struct packing to eliminate padding
+#pragma pack(push, 1)
 struct SamplerParams {
     using TextureConfig = Pica::TexturingRegs::TextureConfig;
     TextureConfig::TextureFilter mag_filter;
@@ -18,10 +21,14 @@ struct SamplerParams {
     TextureConfig::TextureFilter mip_filter;
     TextureConfig::WrapMode wrap_s;
     TextureConfig::WrapMode wrap_t;
+    TextureConfig::WrapMode wrap_r;
     u32 border_color = 0;
     u32 lod_min = 0;
     u32 lod_max = 0;
     s32 lod_bias = 0;
+    u32 max_anisotropy = 1;
+    bool compare_enabled = false;
+    Pica::FramebufferRegs::CompareFunc compare_op = Pica::FramebufferRegs::CompareFunc::Always;
 
     auto operator<=>(const SamplerParams&) const noexcept = default;
 
@@ -29,6 +36,7 @@ struct SamplerParams {
         return Common::ComputeHash64(this, sizeof(SamplerParams));
     }
 };
+#pragma pack(pop)
 static_assert(std::has_unique_object_representations_v<SamplerParams>,
               "SamplerParams is not suitable for hashing");
 
