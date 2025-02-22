@@ -448,6 +448,8 @@ bool Instance::CreateDevice() {
     };
 
     const std::array extension_support = {
+        ExtensionSupport{VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME, false,
+                         &mirror_clamp_supported},
         ExtensionSupport{VK_KHR_SWAPCHAIN_EXTENSION_NAME, true, nullptr},
         ExtensionSupport{VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME, false, &image_format_list},
         ExtensionSupport{VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME, false,
@@ -698,6 +700,7 @@ void Instance::CollectToolingInfo() {
     LOG_INFO(Render_Vulkan, "VK_DRIVER: {}", driver_name);
     LOG_INFO(Render_Vulkan, "VK_DEVICE: {}", model_name);
     LOG_INFO(Render_Vulkan, "VK_VERSION: {}", api_version);
+    LOG_INFO(Render_Vulkan, "Mirror Clamp Supported: {}", mirror_clamp_supported ? "Yes" : "No");
     const auto tools = physical_device.getToolPropertiesEXT();
     for (const vk::PhysicalDeviceToolProperties& tool : tools) {
         const std::string_view name = tool.name;

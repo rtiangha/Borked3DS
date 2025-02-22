@@ -284,10 +284,35 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
         return false;
     }
 
+    // Validate aspects
+    const auto src_aspect = source.Aspect();
+    const auto dst_aspect = dest.Aspect();
+    if (!(src_aspect & (vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)) ||
+        !(dst_aspect & (vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil))) {
+        LOG_ERROR(Render_Vulkan, "Invalid depth/stencil aspects for blit");
+        return false;
+    }
+
     const vk::Rect2D dst_render_area = {
         .offset = {0, 0},
         .extent = {dest.GetScaledWidth(), dest.GetScaledHeight()},
     };
+
+    // Transition source images to read-only layout
+    scheduler.Record([&source](vk::CommandBuffer cmdbuf) {
+        const std::array barriers = {vk::ImageMemoryBarrier{
+            .srcAccessMask = source.AccessFlags(),
+            .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+            .oldLayout = vk::ImageLayout::eGeneral,
+            .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            .image = source.Image(),
+            .subresourceRange =
+                MakeSubresourceRange(source.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
+        }};
+        cmdbuf.pipelineBarrier(source.PipelineStageFlags(),
+                               vk::PipelineStageFlagBits::eFragmentShader,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
+    });
 
     const auto descriptor_set = two_textures_provider.Commit();
     update_queue.AddImageSampler(descriptor_set, 0, 0, source.DepthView(), nearest_sampler);
@@ -298,17 +323,52 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
         .render_pass =
             renderpass_cache.GetRenderpass(PixelFormat::Invalid, dest.pixel_format, false),
         .render_area = dst_render_area,
+        .depth_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
     };
+
+    // Transition destination to attachment optimal layout
     renderpass_cache.BeginRendering(depth_pass);
 
-    scheduler.Record([blit, descriptor_set, this](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([blit, descriptor_set, &dest, this](vk::CommandBuffer cmdbuf) {
         const vk::PipelineLayout layout = two_textures_pipeline_layout;
+
+        // Add destination barrier
+        const vk::ImageMemoryBarrier dest_barrier{
+            .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            .dstAccessMask = dest.AccessFlags(),
+            .oldLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .newLayout = vk::ImageLayout::eGeneral,
+            .image = dest.Image(),
+            .subresourceRange = MakeSubresourceRange(dest.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
+        };
 
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, depth_blit_pipeline);
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, descriptor_set, {});
         BindBlitState(cmdbuf, layout, blit);
         cmdbuf.draw(3, 1, 0, 0);
+
+        // Transition destination back to general layout
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eLateFragmentTests,
+                               dest.PipelineStageFlags(), vk::DependencyFlagBits::eByRegion, {}, {},
+                               dest_barrier);
     });
+
+    // Transition source back to general layout
+    scheduler.Record([&source](vk::CommandBuffer cmdbuf) {
+        const std::array barriers = {vk::ImageMemoryBarrier{
+            .srcAccessMask = vk::AccessFlagBits::eShaderRead,
+            .dstAccessMask = source.AccessFlags(),
+            .oldLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            .newLayout = vk::ImageLayout::eGeneral,
+            .image = source.Image(),
+            .subresourceRange =
+                MakeSubresourceRange(source.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
+        }};
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
+                               source.PipelineStageFlags(), vk::DependencyFlagBits::eByRegion, {},
+                               {}, barriers);
+    });
+
     scheduler.MakeDirty(StateFlags::Pipeline);
     return true;
 }

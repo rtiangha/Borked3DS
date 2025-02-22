@@ -5,9 +5,12 @@
 
 #pragma once
 
+#include <array>
+
 #include "common/assert.h"
 #include "video_core/pica/regs_internal.h"
 #include "video_core/renderer_vulkan/vk_common.h"
+#include "video_core/renderer_vulkan/vk_instance.h"
 
 namespace PicaToVK {
 
@@ -39,22 +42,27 @@ inline vk::SamplerMipmapMode TextureMipFilterMode(TextureFilter mip) {
     return vk::SamplerMipmapMode::eLinear;
 }
 
-inline vk::SamplerAddressMode WrapMode(Pica::TexturingRegs::TextureConfig::WrapMode mode) {
+inline vk::SamplerAddressMode WrapMode(Pica::TexturingRegs::TextureConfig::WrapMode mode,
+                                       const Vulkan::Instance& instance) {
     static constexpr std::array<vk::SamplerAddressMode, 8> wrap_mode_table{{
-        vk::SamplerAddressMode::eClampToEdge,
-        vk::SamplerAddressMode::eClampToBorder,
-        vk::SamplerAddressMode::eRepeat,
-        vk::SamplerAddressMode::eMirroredRepeat,
-        // TODO(wwylele): ClampToEdge2 and ClampToBorder2 are not properly implemented here. See the
-        // comments in enum WrapMode.
-        vk::SamplerAddressMode::eClampToEdge,
-        vk::SamplerAddressMode::eClampToBorder,
-        vk::SamplerAddressMode::eRepeat,
-        vk::SamplerAddressMode::eRepeat,
+        vk::SamplerAddressMode::eClampToEdge,       // 0: ClampToEdge
+        vk::SamplerAddressMode::eClampToBorder,     // 1: ClampToBorder
+        vk::SamplerAddressMode::eRepeat,            // 2: Repeat
+        vk::SamplerAddressMode::eMirroredRepeat,    // 3: MirroredRepeat
+        vk::SamplerAddressMode::eMirrorClampToEdge, // 4: ClampToEdgeMirror
+        vk::SamplerAddressMode::eClampToBorder,     // 5: ClampToBorderMirror (fallback)
+        vk::SamplerAddressMode::eMirroredRepeat,    // 6: RepeatMirror
+        vk::SamplerAddressMode::eRepeat             // 7: Unknown
     }};
 
     const auto index = static_cast<std::size_t>(mode);
     ASSERT_MSG(index < wrap_mode_table.size(), "Unknown texture wrap mode {}", index);
+
+    if (index >= 4 && !instance.IsMirrorClampSupported()) {
+        LOG_WARNING(Render_Vulkan, "Mirror clamp extensions not supported, using fallback");
+        return vk::SamplerAddressMode::eClampToEdge;
+    }
+
     return wrap_mode_table[index];
 }
 

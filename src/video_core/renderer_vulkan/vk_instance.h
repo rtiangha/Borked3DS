@@ -105,6 +105,11 @@ public:
         return debug_utils_supported;
     }
 
+    /// Returns true when VK_KHR_sampler_mirror_clamp_to_edge is supported.
+    bool IsMirrorClampSupported() const {
+        return mirror_clamp_supported;
+    }
+
     /// Returns true if logic operations need shader emulation
     bool NeedsLogicOpEmulation() const {
         return !features.logicOp;
@@ -342,6 +347,7 @@ private:
     bool debug_utils_supported{};
     bool has_nsight_graphics{};
     bool has_renderdoc{};
+    bool mirror_clamp_supported{};
 };
 
 } // namespace Vulkan
