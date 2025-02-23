@@ -333,21 +333,6 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
     scheduler.Record([blit, descriptor_set, &dest, dst_old_layout, this](vk::CommandBuffer cmdbuf) {
         const vk::PipelineLayout layout = two_textures_pipeline_layout;
 
-        // Add destination barrier
-        const vk::ImageMemoryBarrier dest_barrier{
-            .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-            .dstAccessMask = dest.AccessFlags(),
-            .oldLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-            .newLayout = vk::ImageLayout::eGeneral,
-            .image = dest.Image(),
-            .subresourceRange = MakeSubresourceRange(dest.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
-        };
-
-        cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, depth_blit_pipeline);
-        cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, descriptor_set, {});
-        BindBlitState(cmdbuf, layout, blit);
-        cmdbuf.draw(3, 1, 0, 0);
-
         // Transition destination back to original layout
         const vk::ImageMemoryBarrier dest_barrier{
             .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
