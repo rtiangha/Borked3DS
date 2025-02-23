@@ -278,7 +278,7 @@ void BindBlitState(vk::CommandBuffer cmdbuf, vk::PipelineLayout layout,
 }
 
 bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
-                                 const VideoCore::TextureBlit& blit) {
+                                  const VideoCore::TextureBlit& blit) {
     if (!instance.IsShaderStencilExportSupported()) {
         LOG_ERROR(Render_Vulkan, "Unable to emulate depth stencil images");
         return false;
@@ -306,12 +306,12 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
             .oldLayout = src_old_layout,
             .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
             .image = source.Image(),
-            .subresourceRange = MakeSubresourceRange(source.Aspect(), 0, 
-                                                    VK_REMAINING_MIP_LEVELS, 0),
+            .subresourceRange =
+                MakeSubresourceRange(source.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
         }};
         cmdbuf.pipelineBarrier(source.PipelineStageFlags(),
-                             vk::PipelineStageFlagBits::eFragmentShader,
-                             vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
+                               vk::PipelineStageFlagBits::eFragmentShader,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
     });
     source.TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
@@ -323,16 +323,14 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
     const auto dst_old_layout = dest.CurrentLayout();
     const RenderPass depth_pass = {
         .framebuffer = dest.Framebuffer(),
-        .render_pass = renderpass_cache.GetRenderpass(PixelFormat::Invalid, 
-                                                     dest.pixel_format, false),
+        .render_pass =
+            renderpass_cache.GetRenderpass(PixelFormat::Invalid, dest.pixel_format, false),
         .render_area = dst_render_area,
         .depth_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
     };
     renderpass_cache.BeginRendering(depth_pass);
 
-    scheduler.Record([blit, descriptor_set, &dest, dst_old_layout, this](vk::CommandBuffer cmdbuf) {
-        const vk::PipelineLayout layout = two_textures_pipeline_layout;
-
+    scheduler.Record([&dest, dst_old_layout, this](vk::CommandBuffer cmdbuf) {
         // Transition destination back to original layout
         const vk::ImageMemoryBarrier dest_barrier{
             .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
@@ -340,12 +338,11 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
             .oldLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
             .newLayout = dst_old_layout,
             .image = dest.Image(),
-            .subresourceRange = MakeSubresourceRange(dest.Aspect(), 0, 
-                                                    VK_REMAINING_MIP_LEVELS, 0),
+            .subresourceRange = MakeSubresourceRange(dest.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
         };
         cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eLateFragmentTests,
-                             dest.PipelineStageFlags(),
-                             vk::DependencyFlagBits::eByRegion, {}, {}, dest_barrier);
+                               dest.PipelineStageFlags(), vk::DependencyFlagBits::eByRegion, {}, {},
+                               dest_barrier);
     });
 
     // Transition source back to original layout
