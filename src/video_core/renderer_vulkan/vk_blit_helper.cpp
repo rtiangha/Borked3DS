@@ -278,13 +278,12 @@ void BindBlitState(vk::CommandBuffer cmdbuf, vk::PipelineLayout layout,
 }
 
 bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
-                                  const VideoCore::TextureBlit& blit) {
+                                 const VideoCore::TextureBlit& blit) {
     if (!instance.IsShaderStencilExportSupported()) {
         LOG_ERROR(Render_Vulkan, "Unable to emulate depth stencil images");
         return false;
     }
 
-    // Validate aspects
     const auto src_aspect = source.Aspect();
     const auto dst_aspect = dest.Aspect();
     if (!(src_aspect & (vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)) ||
@@ -298,38 +297,40 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
         .extent = {dest.GetScaledWidth(), dest.GetScaledHeight()},
     };
 
-    // Transition source images to read-only layout
-    scheduler.Record([&source](vk::CommandBuffer cmdbuf) {
+    // Transition source from current layout to read-only
+    const auto src_old_layout = source.CurrentLayout();
+    scheduler.Record([&source, src_old_layout](vk::CommandBuffer cmdbuf) {
         const std::array barriers = {vk::ImageMemoryBarrier{
             .srcAccessMask = source.AccessFlags(),
             .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-            .oldLayout = vk::ImageLayout::eGeneral,
+            .oldLayout = src_old_layout,
             .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
             .image = source.Image(),
-            .subresourceRange =
-                MakeSubresourceRange(source.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
+            .subresourceRange = MakeSubresourceRange(source.Aspect(), 0, 
+                                                    VK_REMAINING_MIP_LEVELS, 0),
         }};
         cmdbuf.pipelineBarrier(source.PipelineStageFlags(),
-                               vk::PipelineStageFlagBits::eFragmentShader,
-                               vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
+                             vk::PipelineStageFlagBits::eFragmentShader,
+                             vk::DependencyFlagBits::eByRegion, {}, {}, barriers);
     });
+    source.TransitionLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
     const auto descriptor_set = two_textures_provider.Commit();
     update_queue.AddImageSampler(descriptor_set, 0, 0, source.DepthView(), nearest_sampler);
     update_queue.AddImageSampler(descriptor_set, 1, 0, source.StencilView(), nearest_sampler);
 
+    // Transition destination to attachment optimal
+    const auto dst_old_layout = dest.CurrentLayout();
     const RenderPass depth_pass = {
         .framebuffer = dest.Framebuffer(),
-        .render_pass =
-            renderpass_cache.GetRenderpass(PixelFormat::Invalid, dest.pixel_format, false),
+        .render_pass = renderpass_cache.GetRenderpass(PixelFormat::Invalid, 
+                                                     dest.pixel_format, false),
         .render_area = dst_render_area,
         .depth_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
     };
-
-    // Transition destination to attachment optimal layout
     renderpass_cache.BeginRendering(depth_pass);
 
-    scheduler.Record([blit, descriptor_set, &dest, this](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([blit, descriptor_set, &dest, dst_old_layout, this](vk::CommandBuffer cmdbuf) {
         const vk::PipelineLayout layout = two_textures_pipeline_layout;
 
         // Add destination barrier
@@ -347,27 +348,24 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
         BindBlitState(cmdbuf, layout, blit);
         cmdbuf.draw(3, 1, 0, 0);
 
-        // Transition destination back to general layout
+        // Transition destination back to original layout
+        const vk::ImageMemoryBarrier dest_barrier{
+            .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            .dstAccessMask = dest.AccessFlags(),
+            .oldLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .newLayout = dst_old_layout,
+            .image = dest.Image(),
+            .subresourceRange = MakeSubresourceRange(dest.Aspect(), 0, 
+                                                    VK_REMAINING_MIP_LEVELS, 0),
+        };
         cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eLateFragmentTests,
-                               dest.PipelineStageFlags(), vk::DependencyFlagBits::eByRegion, {}, {},
-                               dest_barrier);
+                             dest.PipelineStageFlags(),
+                             vk::DependencyFlagBits::eByRegion, {}, {}, dest_barrier);
     });
 
-    // Transition source back to general layout
-    scheduler.Record([&source](vk::CommandBuffer cmdbuf) {
-        const std::array barriers = {vk::ImageMemoryBarrier{
-            .srcAccessMask = vk::AccessFlagBits::eShaderRead,
-            .dstAccessMask = source.AccessFlags(),
-            .oldLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-            .newLayout = vk::ImageLayout::eGeneral,
-            .image = source.Image(),
-            .subresourceRange =
-                MakeSubresourceRange(source.Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
-        }};
-        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
-                               source.PipelineStageFlags(), vk::DependencyFlagBits::eByRegion, {},
-                               {}, barriers);
-    });
+    // Transition source back to original layout
+    source.TransitionLayout(src_old_layout);
+    dest.TransitionLayout(dst_old_layout);
 
     scheduler.MakeDirty(StateFlags::Pipeline);
     return true;

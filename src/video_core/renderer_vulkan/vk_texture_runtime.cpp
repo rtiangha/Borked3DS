@@ -606,16 +606,6 @@ bool TextureRuntime::BlitTextures(Surface& source, Surface& dest,
                          1},
         };
 
-        const vk::ImageBlit blit_region = {
-            .srcSubresource = {params.aspect, blit.src_level, blit.src_layer, 1},
-            .srcOffsets = source_offsets,
-            .dstSubresource = {params.aspect, blit.dst_level, blit.dst_layer, 1},
-            .dstOffsets = dest_offsets,
-        };
-
-        cmdbuf.blitImage(src_image, vk::ImageLayout::eTransferSrcOptimal, dst_image,
-                         vk::ImageLayout::eTransferDstOptimal, blit_region, filter);
-
         // Restore original layouts
         const std::array post_barriers = {
             vk::ImageMemoryBarrier{
@@ -1077,11 +1067,12 @@ vk::ImageView Surface::CopyImageView() noexcept {
                     .subresourceRange =
                         MakeSubresourceRange(Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
                 };
+            }
             cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, PipelineStageFlags(),
                                    vk::DependencyFlagBits::eByRegion, {}, {}, barrier);
-        });
-    }
-    return copy_handle.image_view.get();
+    });
+}
+return copy_handle.image_view.get();
 }
 
 vk::ImageView Surface::ImageView(u32 index) const noexcept {
