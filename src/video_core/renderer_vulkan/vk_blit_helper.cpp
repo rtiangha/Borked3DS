@@ -330,7 +330,7 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
     };
     renderpass_cache.BeginRendering(depth_pass);
 
-    scheduler.Record([&dest, dst_old_layout, this](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([&dest, dst_old_layout](vk::CommandBuffer cmdbuf) {
         // Transition destination back to original layout
         const vk::ImageMemoryBarrier dest_barrier{
             .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
