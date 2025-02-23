@@ -490,6 +490,9 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
         .dst_image = dest.Image(),
     };
 
+    const auto src_old_layout = source.CurrentLayout();
+    const auto dst_old_layout = dest.CurrentLayout();
+
     boost::container::small_vector<vk::ImageCopy, 2> vk_copies;
     std::ranges::transform(copies, std::back_inserter(vk_copies), [&](const auto& copy) {
         return vk::ImageCopy{
@@ -513,21 +516,13 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
         };
     });
 
-    scheduler.Record([params, copies = std::move(vk_copies)](vk::CommandBuffer cmdbuf) {
-        const bool self_copy = params.src_image == params.dst_image;
-        const vk::ImageLayout new_src_layout =
-            self_copy ? vk::ImageLayout::eGeneral : vk::ImageLayout::eTransferSrcOptimal;
-        const vk::ImageLayout new_dst_layout =
-            self_copy ? vk::ImageLayout::eGeneral : vk::ImageLayout::eTransferDstOptimal;
-
+    scheduler.Record([=, copies = std::move(vk_copies)](vk::CommandBuffer cmdbuf) {
         const std::array pre_barriers = {
             vk::ImageMemoryBarrier{
                 .srcAccessMask = params.src_access,
                 .dstAccessMask = vk::AccessFlagBits::eTransferRead,
-                .oldLayout = vk::ImageLayout::eGeneral,
-                .newLayout = new_src_layout,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .oldLayout = src_old_layout,
+                .newLayout = vk::ImageLayout::eTransferSrcOptimal,
                 .image = params.src_image,
                 .subresourceRange =
                     MakeSubresourceRange(params.aspect, 0, VK_REMAINING_MIP_LEVELS, 0),
@@ -535,23 +530,20 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
             vk::ImageMemoryBarrier{
                 .srcAccessMask = params.dst_access,
                 .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-                .oldLayout = vk::ImageLayout::eGeneral,
-                .newLayout = new_dst_layout,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .oldLayout = dst_old_layout,
+                .newLayout = vk::ImageLayout::eTransferDstOptimal,
                 .image = params.dst_image,
                 .subresourceRange =
                     MakeSubresourceRange(params.aspect, 0, VK_REMAINING_MIP_LEVELS, 0),
             },
         };
+
         const std::array post_barriers = {
             vk::ImageMemoryBarrier{
-                .srcAccessMask = vk::AccessFlagBits::eNone,
-                .dstAccessMask = vk::AccessFlagBits::eNone,
-                .oldLayout = new_src_layout,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+                .dstAccessMask = params.src_access,
+                .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
+                .newLayout = src_old_layout,
                 .image = params.src_image,
                 .subresourceRange =
                     MakeSubresourceRange(params.aspect, 0, VK_REMAINING_MIP_LEVELS, 0),
@@ -559,10 +551,8 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
             vk::ImageMemoryBarrier{
                 .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
                 .dstAccessMask = params.dst_access,
-                .oldLayout = new_dst_layout,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+                .newLayout = dst_old_layout,
                 .image = params.dst_image,
                 .subresourceRange =
                     MakeSubresourceRange(params.aspect, 0, VK_REMAINING_MIP_LEVELS, 0),
@@ -572,43 +562,37 @@ bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
         cmdbuf.pipelineBarrier(params.pipeline_flags, vk::PipelineStageFlagBits::eTransfer,
                                vk::DependencyFlagBits::eByRegion, {}, {}, pre_barriers);
 
-        cmdbuf.copyImage(params.src_image, new_src_layout, params.dst_image, new_dst_layout,
-                         copies);
+        cmdbuf.copyImage(params.src_image, vk::ImageLayout::eTransferSrcOptimal, params.dst_image,
+                         vk::ImageLayout::eTransferDstOptimal, copies);
 
         cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, params.pipeline_flags,
                                vk::DependencyFlagBits::eByRegion, {}, {}, post_barriers);
     });
 
+    source.TransitionLayout(src_old_layout);
+    dest.TransitionLayout(dst_old_layout);
     return true;
 }
 
 bool TextureRuntime::BlitTextures(Surface& source, Surface& dest,
                                   const VideoCore::TextureBlit& blit) {
-    // Validate blit compatibility
     const auto& src_traits = instance.GetTraits(source.pixel_format);
     const auto& dst_traits = instance.GetTraits(dest.pixel_format);
     if (!src_traits.blit_support || !dst_traits.blit_support) {
-        LOG_ERROR(Render_Vulkan, "Blit not supported for formats {} -> {}",
+        LOG_ERROR(Render_Vulkan, "Blit not supported for formats {}->{}",
                   VideoCore::PixelFormatAsString(source.pixel_format),
                   VideoCore::PixelFormatAsString(dest.pixel_format));
         return false;
     }
 
-    // Transition layouts for blit
-    source.TransitionLayout(vk::ImageLayout::eTransferSrcOptimal, 0);
-    dest.TransitionLayout(vk::ImageLayout::eTransferDstOptimal, 0);
+    const auto src_old_layout = source.CurrentLayout();
+    const auto dst_old_layout = dest.CurrentLayout();
+    source.TransitionLayout(vk::ImageLayout::eTransferSrcOptimal);
+    dest.TransitionLayout(vk::ImageLayout::eTransferDstOptimal);
 
-    const RecordParams params = {
-        .aspect = source.Aspect(),
-        .filter = src_traits.blit_support ? vk::Filter::eLinear : vk::Filter::eNearest,
-        .pipeline_flags = source.PipelineStageFlags() | dest.PipelineStageFlags(),
-        .src_access = source.AccessFlags(),
-        .dst_access = dest.AccessFlags(),
-        .src_image = source.Image(),
-        .dst_image = dest.Image(),
-    };
-
-    scheduler.Record([params, blit](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([blit, src_image = source.Image(), dst_image = dest.Image(),
+                      filter = src_traits.blit_support ? vk::Filter::eLinear : vk::Filter::eNearest,
+                      aspect = source.Aspect()](vk::CommandBuffer cmdbuf) {
         const std::array source_offsets = {
             vk::Offset3D{static_cast<s32>(blit.src_rect.left),
                          static_cast<s32>(blit.src_rect.bottom), 0},
@@ -629,27 +613,49 @@ bool TextureRuntime::BlitTextures(Surface& source, Surface& dest,
             .dstOffsets = dest_offsets,
         };
 
-        cmdbuf.blitImage(params.src_image, vk::ImageLayout::eTransferSrcOptimal, params.dst_image,
-                         vk::ImageLayout::eTransferDstOptimal, blit_region, params.filter);
+        cmdbuf.blitImage(src_image, vk::ImageLayout::eTransferSrcOptimal, dst_image,
+                         vk::ImageLayout::eTransferDstOptimal, blit_region, filter);
+
+        // Restore original layouts
+        const std::array post_barriers = {
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+                .dstAccessMask = source.AccessFlags(),
+                .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
+                .newLayout = src_old_layout,
+                .image = src_image,
+                .subresourceRange = MakeSubresourceRange(aspect, 0, VK_REMAINING_MIP_LEVELS, 0),
+            },
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                .dstAccessMask = dest.AccessFlags(),
+                .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+                .newLayout = dst_old_layout,
+                .image = dst_image,
+                .subresourceRange = MakeSubresourceRange(aspect, 0, VK_REMAINING_MIP_LEVELS, 0),
+            }};
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                               vk::PipelineStageFlagBits::eAllCommands,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, post_barriers);
     });
 
-    // Transition back to GENERAL for general use
-    source.TransitionLayout(vk::ImageLayout::eGeneral, 0);
-    dest.TransitionLayout(vk::ImageLayout::eGeneral, 0);
+    source.TransitionLayout(src_old_layout);
+    dest.TransitionLayout(dst_old_layout);
     return true;
 }
 
-void TextureRuntime::GenerateMipmaps(Surface& surface) {
-    if (VideoCore::IsCustomFormatCompressed(surface.custom_format)) {
+void Surface::GenerateMipmaps() {
+    if (VideoCore::IsCustomFormatCompressed(custom_format)) {
         LOG_ERROR(Render_Vulkan, "Generating mipmaps for compressed formats unsupported!");
         return;
     }
 
-    surface.TransitionLayout(vk::ImageLayout::eTransferSrcOptimal, 0);
+    const auto original_layout = CurrentLayout();
+    TransitionLayout(vk::ImageLayout::eTransferSrcOptimal);
 
-    auto [width, height] = surface.RealExtent();
-    for (u32 i = 1; i < surface.levels; i++) {
-        surface.TransitionLayout(vk::ImageLayout::eTransferDstOptimal, i);
+    auto [width, height] = RealExtent();
+    for (u32 i = 1; i < levels; i++) {
+        TransitionLayout(vk::ImageLayout::eTransferDstOptimal, i);
 
         const VideoCore::TextureBlit blit = {
             .src_level = i - 1,
@@ -657,14 +663,14 @@ void TextureRuntime::GenerateMipmaps(Surface& surface) {
             .src_rect = {0, height, width, 0},
             .dst_rect = {0, height >> 1, width >> 1, 0},
         };
-        BlitTextures(surface, surface, blit);
+        BlitTextures(*this, *this, blit);
 
-        surface.TransitionLayout(vk::ImageLayout::eGeneral, i - 1);
+        TransitionLayout(vk::ImageLayout::eGeneral, i - 1);
         width = std::max(width >> 1, 1u);
         height = std::max(height >> 1, 1u);
     }
 
-    surface.TransitionLayout(vk::ImageLayout::eGeneral, surface.levels - 1);
+    TransitionLayout(original_layout, levels - 1);
 }
 
 bool TextureRuntime::NeedsConversion(VideoCore::PixelFormat format) const {
@@ -822,8 +828,8 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
     ASSERT_MSG(traits.transfer_support, "Surface does not support transfer operations!");
     runtime->renderpass_cache.EndRendering();
 
-    const u32 index = 0; // Main surface handle
-    TransitionLayout(vk::ImageLayout::eTransferDstOptimal, index);
+    const auto original_layout = CurrentLayout();
+    TransitionLayout(vk::ImageLayout::eTransferDstOptimal);
 
     const bool is_depth_stencil =
         (traits.aspect & (vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)) !=
@@ -875,6 +881,7 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
         };
         BlitScale(blit, true);
     }
+    TransitionLayout(original_layout);
 }
 
 void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
@@ -923,7 +930,8 @@ void Surface::Download(const VideoCore::BufferTextureCopy& download,
     SCOPE_EXIT({ runtime->download_buffer.Commit(staging.size); });
     runtime->renderpass_cache.EndRendering();
 
-    const u32 index = res_scale != 1 ? 1 : 0;
+    const auto original_layout = CurrentLayout();
+
     if (pixel_format == PixelFormat::D24S8) {
         runtime->blit_helper.DepthToBuffer(*this, runtime->download_buffer.Handle(), download);
         return;
@@ -939,7 +947,7 @@ void Surface::Download(const VideoCore::BufferTextureCopy& download,
         BlitScale(blit, false);
     }
 
-    TransitionLayout(vk::ImageLayout::eTransferSrcOptimal, index);
+    TransitionLayout(vk::ImageLayout::eTransferSrcOptimal);
 
     scheduler->Record([buffer = runtime->download_buffer.Handle(), image = Image(index),
                        aspect = traits.aspect, download](vk::CommandBuffer cmdbuf) {
@@ -958,13 +966,16 @@ void Surface::Download(const VideoCore::BufferTextureCopy& download,
         cmdbuf.copyImageToBuffer(image, vk::ImageLayout::eTransferSrcOptimal, buffer, copy);
     });
 
-    TransitionLayout(vk::ImageLayout::eGeneral, index);
+    TransitionLayout(original_layout);
 }
 
 void Surface::ScaleUp(u32 new_scale) {
     if (res_scale == new_scale || new_scale == 1) {
         return;
     }
+
+    const auto original_layout = CurrentLayout();
+    TransitionLayout(vk::ImageLayout::eTransferSrcOptimal);
 
     res_scale = new_scale;
 
@@ -1002,6 +1013,7 @@ void Surface::ScaleUp(u32 new_scale) {
         };
         BlitScale(blit, true);
     }
+    TransitionLayout(original_layout);
 }
 
 u32 Surface::GetInternalBytesPerPixel() const {
@@ -1050,106 +1062,25 @@ vk::Image Surface::Image(u32 index) const noexcept {
 }
 
 vk::ImageView Surface::CopyImageView() noexcept {
-    vk::ImageLayout copy_layout = vk::ImageLayout::eGeneral;
     if (!copy_handle.image) {
-        vk::ImageCreateFlags flags{};
-        if (texture_type == VideoCore::TextureType::CubeMap) {
-            flags |= vk::ImageCreateFlagBits::eCubeCompatible;
-        }
-        copy_handle =
-            MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
-                       traits.native, traits.usage, flags, traits.aspect, false);
-        copy_layout = vk::ImageLayout::eUndefined;
+        const auto current_layout = CurrentLayout();
+        TransitionLayout(vk::ImageLayout::eTransferSrcOptimal);
+
+        scheduler->Record([this, current_layout](vk::CommandBuffer cmdbuf) {
+            std::array barrier = {
+                vk::ImageMemoryBarrier{
+                    .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+                    .dstAccessMask = AccessFlags(),
+                    .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
+                    .newLayout = current_layout,
+                    .image = Image(),
+                    .subresourceRange =
+                        MakeSubresourceRange(Aspect(), 0, VK_REMAINING_MIP_LEVELS, 0),
+                };
+            cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, PipelineStageFlags(),
+                                   vk::DependencyFlagBits::eByRegion, {}, {}, barrier);
+        });
     }
-
-    runtime->renderpass_cache.EndRendering();
-
-    const RecordParams params = {
-        .aspect = Aspect(),
-        .pipeline_flags = PipelineStageFlags(),
-        .src_access = AccessFlags(),
-        .src_image = Image(),
-        .dst_image = copy_handle.image,
-    };
-
-    scheduler->Record([params, copy_layout, levels = this->levels, width = GetScaledWidth(),
-                       height = GetScaledHeight()](vk::CommandBuffer cmdbuf) {
-        std::array pre_barriers = {
-            vk::ImageMemoryBarrier{
-                .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-                .dstAccessMask = vk::AccessFlagBits::eTransferRead,
-                .oldLayout = vk::ImageLayout::eGeneral,
-                .newLayout = vk::ImageLayout::eTransferSrcOptimal,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = params.src_image,
-                .subresourceRange = MakeSubresourceRange(params.aspect, 0, levels, 0),
-            },
-            vk::ImageMemoryBarrier{
-                .srcAccessMask = vk::AccessFlagBits::eShaderRead,
-                .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-                .oldLayout = copy_layout,
-                .newLayout = vk::ImageLayout::eTransferDstOptimal,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = params.dst_image,
-                .subresourceRange = MakeSubresourceRange(params.aspect, 0, levels, 0),
-            },
-        };
-        std::array post_barriers = {
-            vk::ImageMemoryBarrier{
-                .srcAccessMask = vk::AccessFlagBits::eTransferRead,
-                .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-                .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = params.src_image,
-                .subresourceRange = MakeSubresourceRange(params.aspect, 0, levels, 0),
-            },
-            vk::ImageMemoryBarrier{
-                .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-                .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-                .oldLayout = vk::ImageLayout::eTransferDstOptimal,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = params.dst_image,
-                .subresourceRange = MakeSubresourceRange(params.aspect, 0, levels, 0),
-            },
-        };
-
-        boost::container::small_vector<vk::ImageCopy, 3> image_copies;
-        for (u32 level = 0; level < levels; level++) {
-            image_copies.push_back(vk::ImageCopy{
-                .srcSubresource{
-                    .aspectMask = vk::ImageAspectFlagBits::eColor,
-                    .mipLevel = level,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
-                .srcOffset = {0, 0, 0},
-                .dstSubresource{
-                    .aspectMask = vk::ImageAspectFlagBits::eColor,
-                    .mipLevel = level,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
-                .dstOffset = {0, 0, 0},
-                .extent = {width >> level, height >> level, 1},
-            });
-        }
-
-        cmdbuf.pipelineBarrier(params.pipeline_flags, vk::PipelineStageFlagBits::eTransfer,
-                               vk::DependencyFlagBits::eByRegion, {}, {}, pre_barriers);
-
-        cmdbuf.copyImage(params.src_image, vk::ImageLayout::eTransferSrcOptimal, params.dst_image,
-                         vk::ImageLayout::eTransferDstOptimal, image_copies);
-
-        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, params.pipeline_flags,
-                               vk::DependencyFlagBits::eByRegion, {}, {}, post_barriers);
-    });
-
     return copy_handle.image_view.get();
 }
 
