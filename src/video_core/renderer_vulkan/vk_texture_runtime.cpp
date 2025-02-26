@@ -505,6 +505,9 @@ void TextureRuntime::ClearTextureWithRenderpass(Surface& surface,
 
 bool TextureRuntime::CopyTextures(Surface& source, Surface& dest,
                                   std::span<const VideoCore::TextureCopy> copies) {
+    ASSERT(source.Image() && dest.Image() && "Source and destination images must be valid");
+    ASSERT(!copies.empty() && "At least one copy region must be specified");
+
     renderpass_cache.EndRendering();
 
     const RecordParams params = {
@@ -857,6 +860,12 @@ Surface::~Surface() {
 
 void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
                      const VideoCore::StagingData& staging) {
+    ASSERT(runtime && "TextureRuntime must be valid");
+    ASSERT(handles[0].image && "Surface image must be initialized");
+    ASSERT(staging.size >= upload.texture_rect.GetWidth() * upload.texture_rect.GetHeight() *
+                               GetInternalBytesPerPixel() &&
+           "Staging buffer too small");
+
     runtime->renderpass_cache.EndRendering();
 
     const RecordParams params = {
@@ -1304,6 +1313,10 @@ vk::ImageView Surface::ImageView(u32 index) const noexcept {
 
 vk::ImageView Surface::FramebufferView() noexcept {
     is_framebuffer = true;
+    auto view = ImageView();
+    if (!view) {
+        LOG_ERROR(Render_Vulkan, "Framebuffer view is invalid for surface");
+    }
     return ImageView();
 }
 
