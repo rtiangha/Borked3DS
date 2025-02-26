@@ -16,6 +16,7 @@
 #endif
 
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <boost/container/static_vector.hpp>
 #include <fmt/format.h>
@@ -29,6 +30,7 @@
 namespace Vulkan {
 
 namespace {
+static std::mutex log_mutex;
 static VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsCallback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT severity, vk::DebugUtilsMessageTypeFlagsEXT type,
     const vk::DebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {
@@ -57,6 +59,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsCallback(
         level = Common::Log::Level::Info;
     }
 
+    std::lock_guard<std::mutex> lock(log_mutex);
     LOG_GENERIC(Common::Log::Class::Render_Vulkan, level, "{}: {}",
                 callback_data->pMessageIdName ? callback_data->pMessageIdName : "<null>",
                 callback_data->pMessage ? callback_data->pMessage : "<null>");
@@ -129,6 +132,7 @@ std::shared_ptr<Common::DynamicLibrary> OpenLibrary(
 vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::EmuWindow& emu_window) {
     const auto& window_info = emu_window.GetWindowInfo();
     vk::SurfaceKHR surface{};
+    vk::Result result;
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     if (window_info.type == Frontend::WindowSystemType::Windows) {
@@ -136,10 +140,11 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::EmuWindow& e
             .hinstance = nullptr,
             .hwnd = static_cast<HWND>(window_info.render_surface),
         };
-
-        if (instance.createWin32SurfaceKHR(&win32_ci, nullptr, &surface) != vk::Result::eSuccess) {
-            LOG_CRITICAL(Render_Vulkan, "Failed to initialize Win32 surface");
-            UNREACHABLE();
+        result = instance.createWin32SurfaceKHR(&win32_ci, nullptr, &surface);
+        if (result != vk::Result::eSuccess) {
+            LOG_CRITICAL(Render_Vulkan, "Failed to initialize Win32 surface: {}",
+                         vk::to_string(result));
+            return nullptr; // Or throw an exception
         }
     }
 #elif defined(VK_USE_PLATFORM_XLIB_KHR) || defined(VK_USE_PLATFORM_WAYLAND_KHR)
@@ -149,9 +154,11 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::EmuWindow& e
             .window = reinterpret_cast<Window>(window_info.render_surface),
         };
 
-        if (instance.createXlibSurfaceKHR(&xlib_ci, nullptr, &surface) != vk::Result::eSuccess) {
-            LOG_ERROR(Render_Vulkan, "Failed to initialize Xlib surface");
-            UNREACHABLE();
+        result = instance.createXlibSurfaceKHR(&xlib_ci, nullptr, &surface);
+        if (result != vk::Result::eSuccess) {
+            LOG_CRITICAL(Render_Vulkan, "Failed to initialize Xlib surface: {}",
+                         vk::to_string(result));
+            return nullptr; // Or throw an exception
         }
     } else if (window_info.type == Frontend::WindowSystemType::Wayland) {
         const vk::WaylandSurfaceCreateInfoKHR wayland_ci = {
@@ -159,10 +166,11 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::EmuWindow& e
             .surface = static_cast<wl_surface*>(window_info.render_surface),
         };
 
-        if (instance.createWaylandSurfaceKHR(&wayland_ci, nullptr, &surface) !=
-            vk::Result::eSuccess) {
-            LOG_ERROR(Render_Vulkan, "Failed to initialize Wayland surface");
-            UNREACHABLE();
+        result = instance.createWaylandSurfaceKHR(&wayland_ci, nullptr, &surface);
+        if (result != vk::Result::eSuccess) {
+            LOG_CRITICAL(Render_Vulkan, "Failed to initialize Wayland surface: {}",
+                         vk::to_string(result));
+            return nullptr; // Or throw an exception
         }
     }
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
@@ -171,9 +179,11 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::EmuWindow& e
             .pLayer = static_cast<const CAMetalLayer*>(window_info.render_surface),
         };
 
-        if (instance.createMetalSurfaceEXT(&macos_ci, nullptr, &surface) != vk::Result::eSuccess) {
-            LOG_CRITICAL(Render_Vulkan, "Failed to initialize MacOS surface");
-            UNREACHABLE();
+        result = instance.createMetalSurfaceEXT(&macos_ci, nullptr, &surface);
+        if (result != vk::Result::eSuccess) {
+            LOG_CRITICAL(Render_Vulkan, "Failed to initialize MacOS surface: {}",
+                         vk::to_string(result));
+            return nullptr; // Or throw an exception
         }
     }
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
@@ -182,10 +192,11 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::EmuWindow& e
             .window = reinterpret_cast<ANativeWindow*>(window_info.render_surface),
         };
 
-        if (instance.createAndroidSurfaceKHR(&android_ci, nullptr, &surface) !=
-            vk::Result::eSuccess) {
-            LOG_CRITICAL(Render_Vulkan, "Failed to initialize Android surface");
-            UNREACHABLE();
+        result = instance.createAndroidSurfaceKHR(&android_ci, nullptr, &surface);
+        if (result != vk::Result::eSuccess) {
+            LOG_CRITICAL(Render_Vulkan, "Failed to initialize Android surface: {}",
+                         vk::to_string(result));
+            return nullptr; // Or throw an exception
         }
     }
 #endif
@@ -359,11 +370,16 @@ vk::UniqueInstance CreateInstance(const Common::DynamicLibrary& library,
     }
 #endif
 
-    auto instance = vk::createInstanceUnique(instance_ci);
+    try {
+        auto instance = vk::createInstanceUnique(instance_ci);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(*instance);
 
-    return instance;
+        return instance;
+    } catch (const vk::SystemError& err) {
+        LOG_CRITICAL(Render_Vulkan, "Failed to create Vulkan instance: {}", err.what());
+        throw; // Re-throw for higher-level handling or adjust for a fallback
+    }
 }
 
 vk::UniqueDebugUtilsMessengerEXT CreateDebugMessenger(vk::Instance instance) {
