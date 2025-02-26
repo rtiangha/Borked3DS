@@ -180,13 +180,16 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
     const vk::MemoryRequirements mem_requirements =
         device.getImageMemoryRequirements(temp_image.get());
 
-    const std::array<VmaAllocationCreateFlags, 1> alloc_flags = {
+    // Try different memory configurations
+    const std::array<VmaAllocationCreateFlags, 3> alloc_flags = {
         VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
-    };
+        VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT |
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT};
 
-    const std::array<VmaMemoryUsage, 1> memory_usages = {
-        VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-    };
+    const std::array<VmaMemoryUsage, 3> memory_usages = {VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                                                         VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
+                                                         VMA_MEMORY_USAGE_AUTO};
 
     VkImage unsafe_image{};
     VmaAllocation allocation{};
