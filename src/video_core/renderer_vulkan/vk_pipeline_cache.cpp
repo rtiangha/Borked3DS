@@ -194,6 +194,7 @@ void PipelineCache::SaveDiskCache() {
 bool PipelineCache::BindPipeline(const PipelineInfo& info, bool wait_built) {
     BORKED3DS_PROFILE("Vulkan", "Pipeline Bind");
 
+    std::lock_guard<std::mutex> lock(pipeline_mutex);
     u64 shader_hash = 0;
     for (u32 i = 0; i < MAX_SHADER_STAGES; i++) {
         shader_hash = Common::HashCombine(shader_hash, shader_hashes[i]);

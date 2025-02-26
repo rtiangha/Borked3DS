@@ -4,6 +4,7 @@
 // Refer to the license.txt file included.
 
 #pragma once
+#include <mutex>
 
 #include "common/common_types.h"
 #include "common/math_util.h"
@@ -136,6 +137,8 @@ private:
     std::array<ScreenInfo, 3> screen_infos{};
     PresentUniformData draw_info{};
     vk::ClearColorValue clear_color{};
+
+    std::mutex screen_info_mutex;
 };
 
 } // namespace Vulkan

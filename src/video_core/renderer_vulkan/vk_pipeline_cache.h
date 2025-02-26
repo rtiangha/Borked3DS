@@ -6,6 +6,8 @@
 #pragma once
 
 #include <bitset>
+#include <mutex>
+
 #include <tsl/robin_map.h>
 
 #include "video_core/renderer_vulkan/vk_graphics_pipeline.h"
@@ -122,6 +124,7 @@ private:
     std::unordered_map<u64, Shader> programmable_vertex_cache;
     std::unordered_map<Pica::Shader::Generator::PicaFixedGSConfig, Shader> fixed_geometry_shaders;
     std::unordered_map<Pica::Shader::FSConfig, Shader> fragment_shaders;
+    std::mutex pipeline_mutex;
     Shader trivial_vertex_shader;
 };
 

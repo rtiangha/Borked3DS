@@ -175,6 +175,10 @@ void RendererVulkan::PrepareRendertarget() {
 }
 
 void RendererVulkan::PrepareDraw(Frame* frame, const Layout::FramebufferLayout& layout) {
+    if (!frame->framebuffer) {
+        LOG_ERROR(Render_Vulkan, "Invalid framebuffer handle");
+        return;
+    }
     const auto sampler = present_samplers[!Settings::values.filter_mode.GetValue()];
     const auto present_set = present_heap.Commit();
 
@@ -974,6 +978,7 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
                   layout.height);
 
         // Validate screen info textures
+        std::lock_guard<std::mutex> lock(screen_info_mutex);
         for (size_t i = 0; i < screen_infos.size(); i++) {
             if (!screen_infos[i].texture.image || !screen_infos[i].texture.image_view) {
                 LOG_ERROR(Render_Vulkan, "Invalid texture at screen_infos[{}]", i);

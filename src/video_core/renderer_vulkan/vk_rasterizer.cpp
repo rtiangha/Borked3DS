@@ -159,6 +159,10 @@ void RasterizerVulkan::SyncFixedState() {
 }
 
 void RasterizerVulkan::SetupVertexArray() {
+    if (!stream_buffer.Handle()) {
+        LOG_ERROR(Render_Vulkan, "Invalid stream buffer handle");
+        return;
+    }
     const auto [vs_input_index_min, vs_input_index_max, vs_input_size] = vertex_info;
     auto [array_ptr, array_offset, invalidate] = stream_buffer.Map(vs_input_size, 16);
 
@@ -1105,39 +1109,47 @@ void RasterizerVulkan::UploadUniforms(bool accelerate_draw) {
 
     const u32 uniform_size =
         uniform_size_aligned_vs_pica + uniform_size_aligned_vs + uniform_size_aligned_fs;
-    auto [uniforms, offset, invalidate] =
-        uniform_buffer.Map(uniform_size, uniform_buffer_alignment);
+    try {
+        auto [uniforms, offset, invalidate] =
+            uniform_buffer.Map(uniform_size, uniform_buffer_alignment);
 
-    u32 used_bytes = 0;
+        u32 used_bytes = 0;
 
-    if (sync_vs || invalidate) {
-        std::memcpy(uniforms + used_bytes, &vs_uniform_block_data.data,
-                    sizeof(vs_uniform_block_data.data));
+        if (sync_vs || invalidate) {
+            if (memcmp(&vs_uniform_block_data.data, uniforms + used_bytes,
+                       sizeof(vs_uniform_block_data.data)) != 0) {
+                std::memcpy(uniforms + used_bytes, &vs_uniform_block_data.data,
+                            sizeof(vs_uniform_block_data.data));
 
-        pipeline_cache.UpdateRange(1, offset + used_bytes);
-        vs_uniform_block_data.dirty = false;
-        used_bytes += uniform_size_aligned_vs;
+                pipeline_cache.UpdateRange(1, offset + used_bytes);
+            }
+            vs_uniform_block_data.dirty = false;
+            used_bytes += uniform_size_aligned_vs;
+        }
+
+        if (sync_fs || invalidate) {
+            std::memcpy(uniforms + used_bytes, &fs_uniform_block_data.data,
+                        sizeof(fs_uniform_block_data.data));
+
+            pipeline_cache.UpdateRange(2, offset + used_bytes);
+            fs_uniform_block_data.dirty = false;
+            used_bytes += uniform_size_aligned_fs;
+        }
+
+        if (sync_vs_pica) {
+            VSPicaUniformData vs_uniforms;
+            vs_uniforms.uniforms.SetFromRegs(regs.vs, pica.vs_setup);
+            std::memcpy(uniforms + used_bytes, &vs_uniforms, sizeof(vs_uniforms));
+
+            pipeline_cache.UpdateRange(0, offset + used_bytes);
+            used_bytes += uniform_size_aligned_vs_pica;
+        }
+
+        uniform_buffer.Commit(used_bytes);
+    } catch (const vk::SystemError& err) {
+        LOG_ERROR(Render_Vulkan, "Failed to map uniform buffer: {}", err.what());
+        // May also trigger a fallback or abort rendering
     }
-
-    if (sync_fs || invalidate) {
-        std::memcpy(uniforms + used_bytes, &fs_uniform_block_data.data,
-                    sizeof(fs_uniform_block_data.data));
-
-        pipeline_cache.UpdateRange(2, offset + used_bytes);
-        fs_uniform_block_data.dirty = false;
-        used_bytes += uniform_size_aligned_fs;
-    }
-
-    if (sync_vs_pica) {
-        VSPicaUniformData vs_uniforms;
-        vs_uniforms.uniforms.SetFromRegs(regs.vs, pica.vs_setup);
-        std::memcpy(uniforms + used_bytes, &vs_uniforms, sizeof(vs_uniforms));
-
-        pipeline_cache.UpdateRange(0, offset + used_bytes);
-        used_bytes += uniform_size_aligned_vs_pica;
-    }
-
-    uniform_buffer.Commit(used_bytes);
 }
 
 } // namespace Vulkan
