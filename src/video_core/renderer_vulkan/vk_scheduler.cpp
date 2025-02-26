@@ -169,6 +169,7 @@ void Scheduler::SubmitExecution(vk::Semaphore signal_semaphore, vk::Semaphore wa
     state = StateFlags::AllDirty;
     const u64 signal_value = master_semaphore->NextTick();
 
+    current_cmdbuf.end(); // Ensure buffer is ended before submission
     on_submit();
 
     Record([signal_semaphore, wait_semaphore, signal_value, this](vk::CommandBuffer cmdbuf) {
