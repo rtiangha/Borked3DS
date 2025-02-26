@@ -290,6 +290,12 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
     };
 
     const auto descriptor_set = two_textures_provider.Commit();
+
+    if (!descriptor_set) {
+        LOG_ERROR(Render_Vulkan, "Failed to allocate descriptor set");
+        return false;
+    }
+
     update_queue.AddImageSampler(descriptor_set, 0, 0, source.DepthView(), nearest_sampler);
     update_queue.AddImageSampler(descriptor_set, 1, 0, source.StencilView(), nearest_sampler);
 
@@ -301,9 +307,13 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
     };
     renderpass_cache.BeginRendering(depth_pass);
 
+    if (!depth_blit_pipeline) {
+        LOG_ERROR(Render_Vulkan, "Depth blit pipeline is not available");
+        return false;
+    }
+
     scheduler.Record([blit, descriptor_set, this](vk::CommandBuffer cmdbuf) {
         const vk::PipelineLayout layout = two_textures_pipeline_layout;
-
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, depth_blit_pipeline);
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, descriptor_set, {});
         BindBlitState(cmdbuf, layout, blit);
@@ -315,6 +325,11 @@ bool BlitHelper::BlitDepthStencil(Surface& source, Surface& dest,
 
 bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
                                       const VideoCore::TextureCopy& copy) {
+    if (source.pixel_format != PixelFormat::D24S8) {
+        LOG_ERROR(Render_Vulkan, "Source format must be D24S8");
+        return false;
+    }
+
     const auto descriptor_set = compute_provider.Commit();
     update_queue.AddImageSampler(descriptor_set, 0, 0, source.DepthView(), VK_NULL_HANDLE,
                                  vk::ImageLayout::eDepthStencilReadOnlyOptimal);
@@ -509,8 +524,9 @@ vk::Pipeline BlitHelper::MakeComputePipeline(vk::ShaderModule shader, vk::Pipeli
         result.result == vk::Result::eSuccess) {
         return result.value;
     } else {
-        LOG_CRITICAL(Render_Vulkan, "Compute pipeline creation failed!");
-        UNREACHABLE();
+        LOG_ERROR(Render_Vulkan, "Compute pipeline creation failed: {}",
+                  vk::to_string(result.result));
+        return VK_NULL_HANDLE;
     }
 }
 
