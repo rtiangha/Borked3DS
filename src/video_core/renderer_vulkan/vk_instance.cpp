@@ -644,6 +644,9 @@ bool Instance::CreateDevice() {
     } catch (vk::ExtensionNotPresentError& err) {
         LOG_CRITICAL(Render_Vulkan, "Some required extensions are not available {}", err.what());
         return false;
+    } catch (const vk::SystemError& err) {
+        LOG_CRITICAL(Render_Vulkan, "Device creation failed: {}", err.what());
+        return false;
     }
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*device);
