@@ -47,21 +47,27 @@ void MasterSemaphoreTimeline::Wait(u64 tick) {
         return;
     }
 
-    // If none of the above is hit, fallback to a regular wait
-    const vk::SemaphoreWaitInfoKHR wait_info = {
-        .semaphoreCount = 1,
-        .pSemaphores = &semaphore.get(),
-        .pValues = &tick,
-    };
+    try {
+        // If none of the above is hit, fallback to a regular wait
+        const vk::SemaphoreWaitInfoKHR wait_info = {
+            .semaphoreCount = 1,
+            .pSemaphores = &semaphore.get(),
+            .pValues = &tick,
+        };
 
-    while (instance.GetDevice().waitSemaphoresKHR(&wait_info, WAIT_TIMEOUT) !=
-           vk::Result::eSuccess) {
+        while (instance.GetDevice().waitSemaphoresKHR(&wait_info, WAIT_TIMEOUT) !=
+               vk::Result::eSuccess) {
+        }
+        Refresh();
+    } catch (const vk::SystemError& err) {
+        LOG_ERROR(Render_Vulkan, "Failed to wait for semaphore: {}", err.what());
+        // Optionally retry or escalate the error
     }
-    Refresh();
 }
 
 void MasterSemaphoreTimeline::SubmitWork(vk::CommandBuffer cmdbuf, vk::Semaphore wait,
                                          vk::Semaphore signal, u64 signal_value) {
+    ASSERT(semaphore && "Semaphore must be initialized");
     cmdbuf.end();
 
     const u32 num_signal_semaphores = signal ? 2U : 1U;
@@ -99,6 +105,9 @@ void MasterSemaphoreTimeline::SubmitWork(vk::CommandBuffer cmdbuf, vk::Semaphore
         instance.GetGraphicsQueue().submit(submit_info);
     } catch (vk::DeviceLostError& err) {
         UNREACHABLE_MSG("Device lost during submit: {}", err.what());
+    } catch (const vk::SystemError& err) {
+        LOG_ERROR(Render_Vulkan, "Failed to submit work: {}", err.what());
+        // Handle gracefully, e.g., by marking the submission as failed
     }
 }
 
@@ -174,7 +183,10 @@ void MasterSemaphoreFence::WaitThread(std::stop_token token) {
         }
 
         const vk::Result result = device.waitForFences(fence, true, WAIT_TIMEOUT);
-        if (result != vk::Result::eSuccess) {
+        if (result == vk::Result::eErrorDeviceLost) {
+            LOG_CRITICAL(Render_Vulkan, "Device lost during fence wait");
+            // Trigger device reset or shutdown
+        } else if (result != vk::Result::eSuccess) {
             UNREACHABLE_MSG("Fence wait failed with error {}", vk::to_string(result));
         }
 
