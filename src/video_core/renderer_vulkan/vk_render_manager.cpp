@@ -25,6 +25,7 @@ RenderManager::~RenderManager() = default;
 
 void RenderManager::BeginRendering(const Framebuffer* framebuffer,
                                    Common::Rectangle<u32> draw_rect) {
+    ASSERT(framebuffer && "Framebuffer cannot be null");
     const vk::Rect2D render_area = {
         .offset{
             .x = static_cast<s32>(draw_rect.left),
@@ -41,9 +42,9 @@ void RenderManager::BeginRendering(const Framebuffer* framebuffer,
         .render_area = render_area,
         .clear = {},
         .do_clear = false,
+        .images = framebuffer->Images(),   // Set images from framebuffer
+        .aspects = framebuffer->Aspects(), // Set aspects from framebuffer
     };
-    images = framebuffer->Images();
-    aspects = framebuffer->Aspects();
     BeginRendering(new_pass);
 }
 
@@ -54,16 +55,21 @@ void RenderManager::BeginRendering(const RenderPass& new_pass) {
     }
 
     EndRendering();
-    scheduler.Record([info = new_pass](vk::CommandBuffer cmdbuf) {
-        const vk::RenderPassBeginInfo renderpass_begin_info = {
-            .renderPass = info.render_pass,
-            .framebuffer = info.framebuffer,
-            .renderArea = info.render_area,
-            .clearValueCount = info.do_clear ? 1u : 0u,
-            .pClearValues = &info.clear,
-        };
-        cmdbuf.beginRenderPass(renderpass_begin_info, vk::SubpassContents::eInline);
-    });
+    try {
+        scheduler.Record([info = new_pass](vk::CommandBuffer cmdbuf) {
+            const vk::RenderPassBeginInfo renderpass_begin_info = {
+                .renderPass = info.render_pass,
+                .framebuffer = info.framebuffer,
+                .renderArea = info.render_area,
+                .clearValueCount = info.do_clear ? 1u : 0u,
+                .pClearValues = &info.clear,
+            };
+            cmdbuf.beginRenderPass(renderpass_begin_info, vk::SubpassContents::eInline);
+        });
+    } catch (const vk::SystemError& err) {
+        LOG_ERROR(Render_Vulkan, "Failed to create render pass: {}", err.what());
+        throw; // Re-throw or handle gracefully based on requirements
+    }
 
     pass = new_pass;
 }
@@ -73,55 +79,57 @@ void RenderManager::EndRendering() {
         return;
     }
 
-    scheduler.Record([images = images, aspects = aspects](vk::CommandBuffer cmdbuf) {
-        u32 num_barriers = 0;
-        vk::PipelineStageFlags pipeline_flags{};
-        std::array<vk::ImageMemoryBarrier, 2> barriers;
-        for (u32 i = 0; i < images.size(); i++) {
-            if (!images[i]) {
-                continue;
+    try {
+        scheduler.Record([images = pass.images, aspects = pass.aspects](vk::CommandBuffer cmdbuf) {
+            u32 num_barriers = 0;
+            vk::PipelineStageFlags pipeline_flags{};
+            std::array<vk::ImageMemoryBarrier, 2> barriers;
+            ASSERT(images.size() == aspects.size());
+            for (u32 i = 0; i < images.size(); i++) {
+                if (!images[i]) {
+                    continue;
+                }
+                const bool is_color =
+                    static_cast<bool>(aspects[i] & vk::ImageAspectFlagBits::eColor);
+                if (is_color) {
+                    pipeline_flags |= vk::PipelineStageFlagBits::eColorAttachmentOutput;
+                } else {
+                    pipeline_flags |= vk::PipelineStageFlagBits::eEarlyFragmentTests |
+                                      vk::PipelineStageFlagBits::eLateFragmentTests;
+                }
+                barriers[num_barriers++] = vk::ImageMemoryBarrier{
+                    .srcAccessMask = is_color ? vk::AccessFlagBits::eColorAttachmentWrite
+                                              : vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+                    .dstAccessMask =
+                        vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferRead,
+                    .oldLayout = vk::ImageLayout::eGeneral,
+                    .newLayout = vk::ImageLayout::eGeneral,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = images[i],
+                    .subresourceRange{
+                        .aspectMask = aspects[i],
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                    },
+                };
             }
-            const bool is_color = static_cast<bool>(aspects[i] & vk::ImageAspectFlagBits::eColor);
-            if (is_color) {
-                pipeline_flags |= vk::PipelineStageFlagBits::eColorAttachmentOutput;
-            } else {
-                pipeline_flags |= vk::PipelineStageFlagBits::eEarlyFragmentTests |
-                                  vk::PipelineStageFlagBits::eLateFragmentTests;
+            cmdbuf.endRenderPass();
+            if (num_barriers == 0) {
+                return;
             }
-            barriers[num_barriers++] = vk::ImageMemoryBarrier{
-                .srcAccessMask = is_color ? vk::AccessFlagBits::eColorAttachmentWrite
-                                          : vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-                .dstAccessMask =
-                    vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferRead,
-                .oldLayout = vk::ImageLayout::eGeneral,
-                .newLayout = vk::ImageLayout::eGeneral,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = images[i],
-                .subresourceRange{
-                    .aspectMask = aspects[i],
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
-                },
-            };
-        }
-        cmdbuf.endRenderPass();
-        if (num_barriers == 0) {
-            return;
-        }
-        cmdbuf.pipelineBarrier(pipeline_flags,
-                               vk::PipelineStageFlagBits::eFragmentShader |
-                                   vk::PipelineStageFlagBits::eTransfer,
-                               vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr,
-                               num_barriers, barriers.data());
-    });
-
-    // Reset state.
-    pass.render_pass = VK_NULL_HANDLE;
-    images = {};
-    aspects = {};
+            cmdbuf.pipelineBarrier(pipeline_flags,
+                                   vk::PipelineStageFlagBits::eFragmentShader |
+                                       vk::PipelineStageFlagBits::eTransfer,
+                                   vk::DependencyFlagBits::eByRegion, 0, nullptr, 0, nullptr,
+                                   num_barriers, barriers.data());
+        });
+    } catch (const vk::SystemError& err) {
+        LOG_ERROR(Render_Vulkan, "Failed to end render pass: {}", err.what());
+        throw; // Re-throw or handle gracefully based on requirements
+    }
 
     // The Mali guide recommends flushing at the end of each major renderpass
     // Testing has shown this has a significant effect on rendering performance
@@ -129,6 +137,9 @@ void RenderManager::EndRendering() {
         scheduler.Flush();
         num_draws = 0;
     }
+
+    // Reset state.
+    pass = {};
 }
 
 vk::RenderPass RenderManager::GetRenderpass(VideoCore::PixelFormat color,
@@ -213,16 +224,21 @@ vk::UniqueRenderPass RenderManager::CreateRenderPass(vk::Format color, vk::Forma
         .pDepthStencilAttachment = use_depth ? &depth_attachment_ref : nullptr,
     };
 
-    const vk::RenderPassCreateInfo renderpass_info = {
-        .attachmentCount = attachment_count,
-        .pAttachments = attachments.data(),
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-        .dependencyCount = 0,
-        .pDependencies = nullptr,
-    };
+    try {
+        const vk::RenderPassCreateInfo renderpass_info = {
+            .attachmentCount = attachment_count,
+            .pAttachments = attachments.data(),
+            .subpassCount = 1,
+            .pSubpasses = &subpass,
+            .dependencyCount = 0,
+            .pDependencies = nullptr,
+        };
 
-    return instance.GetDevice().createRenderPassUnique(renderpass_info);
+        return instance.GetDevice().createRenderPassUnique(renderpass_info);
+    } catch (const vk::SystemError& err) {
+        LOG_ERROR(Render_Vulkan, "Failed to create render pass: {}", err.what());
+        throw; // Re-throw or handle gracefully based on requirements
+    }
 }
 
 } // namespace Vulkan
