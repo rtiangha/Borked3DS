@@ -271,7 +271,14 @@ public:
     /// Returns true if commands should be flushed at the end of each major renderpass
     bool ShouldFlush() const {
         return driver_id == vk::DriverIdKHR::eArmProprietary ||
-               driver_id == vk::DriverIdKHR::eQualcommProprietary;
+               driver_id == vk::DriverIdKHR::eQualcommProprietary ||
+               driver_id == vk::DriverIdKHR::eImaginationProprietary ||
+               driver_id == vk::DriverIdKHR::eBroadcomProprietary ||
+               driver_id == vk::DriverIdKHR::eVerisiliconProprietary ||
+               driver_id == vk::DriverIdKHR::eMesaTurnip ||
+               driver_id == vk::DriverIdKHR::eMesaV3Dv ||
+               driver_id == vk::DriverIdKHR::eMesaPanvk ||
+               driver_id == vk::DriverIdKHR::eSamsungProprietary;
     }
 
 private:
