@@ -327,7 +327,7 @@ void RasterizerVulkan::SetupFixedAttribs() {
 bool RasterizerVulkan::SetupVertexShader() {
     BORKED3DS_PROFILE("Vulkan", "Vertex Shader Setup");
     return pipeline_cache.UseProgrammableVertexShader(regs, pica.vs_setup,
-                                                      pipeline_info.vertex_layout);
+                                                      pipeline_info.vertex_layout, accurate_mul);
 }
 
 bool RasterizerVulkan::SetupGeometryShader() {
