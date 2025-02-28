@@ -1266,6 +1266,7 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
     private fun updateShowPerfStatsOverlay() {
         if (EmulationMenuSettings.showPerfStatsOverlay) {
             val FPS = 1
+            val FRAMETIME = 2
             val SPEED = 3
             perfStatsUpdater = Runnable {
                 val sb = StringBuilder()
