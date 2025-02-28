@@ -57,6 +57,7 @@ enum class BooleanSetting(
     DUMP_COMMAND_BUFFERS("dump_command_buffers", Settings.SECTION_DEBUG, false),
     SWAP_SCREEN("swap_screen", Settings.SECTION_LAYOUT, false),
     SHOW_FPS("show_fps", Settings.SECTION_LAYOUT, true),
+    SHOW_FRAMETIME("show_frametime", Settings.SECTION_LAYOUT, false),
     SHOW_SPEED("show_speed", Settings.SECTION_LAYOUT, false),
     SHOW_APP_RAM_USAGE("show_app_ram_usage", Settings.SECTION_LAYOUT, false),
     SHOW_SYSTEM_RAM_USAGE("show_system_ram_usage", Settings.SECTION_LAYOUT, false),
