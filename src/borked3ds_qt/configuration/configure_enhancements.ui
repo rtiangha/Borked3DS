@@ -433,24 +433,28 @@
        </layout>
       </item>
       <item>
-       <widget class="QCheckBox" name="swap_eyes_3d">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Swaps which eye is shown where. Combine with 'Side by Side' Stereoscopic 3D Mode and cross your eyes to experience 3D with no equipment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>Swap Eyes</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-        <widget class="QCheckBox" name="disable_right_eye_render">
-          <property name="text">
-            <string>Disable Right Eye Rendering</string>
-          </property>
+       <layout class="QGridLayout" name="gridLayout_1">
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="swap_eyes_3d">
           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Disable Right Eye Rendering&lt;/p&gt;&lt;p&gt;Disables rendering the right eye image when not using stereoscopic mode. Greatly improves performance in some games, but can cause flickering in others.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Swaps which eye is shown where. Combine with 'Side by Side' Stereoscopic 3D Mode and cross your eyes to experience 3D with no equipment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
-        </widget>
+          <property name="text">
+           <string>Swap Eyes</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+          <widget class="QCheckBox" name="disable_right_eye_render">
+            <property name="text">
+              <string>Disable Right Eye Rendering</string>
+            </property>
+            <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Disable Right Eye Rendering&lt;/p&gt;&lt;p&gt;Disables rendering the right eye image when not using stereoscopic mode. Greatly improves performance in some games, but can cause flickering in others.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+          </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -460,7 +464,7 @@
      <property name="title">
       <string>Utility</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_1">
+     <layout class="QGridLayout" name="gridLayout_2">
       <item row="1" column="0">
        <widget class="QCheckBox" name="toggle_custom_textures">
         <property name="toolTip">
