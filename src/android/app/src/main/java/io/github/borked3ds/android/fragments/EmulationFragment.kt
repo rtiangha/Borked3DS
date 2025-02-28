@@ -168,7 +168,8 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
         }
 
         emulationViewModel.initializeEmulationState(game.path)
-        emulationState = emulationViewModel.getEmulationState() ?: throw IllegalStateException("EmulationState not initialized")
+        emulationState = emulationViewModel.getEmulationState()
+            ?: throw IllegalStateException("EmulationState not initialized")
         emulationActivity = requireActivity() as EmulationActivity
         screenAdjustmentUtil = ScreenAdjustmentUtil(
             emulationActivity,
@@ -1271,7 +1272,13 @@ class EmulationFragment : Fragment(), SurfaceHolder.Callback, Choreographer.Fram
                 val perfStats = NativeLibrary.getPerfStats()
                 if (perfStats[FPS] > 0) {
                     if (BooleanSetting.SHOW_FPS.boolean) {
-                        sb.append(String.format("FPS: %d", (perfStats[FPS] + 0.5).toInt()))
+                        sb.append(
+                            String.format(
+                                "FPS: %d FT: %.2fms",
+                                (perfStats[FPS] + 0.5).toInt(),
+                                (perfStats[FRAMETIME] * 1000.0f).toFloat()
+                            )
+                        )
                     }
 
                     if (BooleanSetting.SHOW_SPEED.boolean) {

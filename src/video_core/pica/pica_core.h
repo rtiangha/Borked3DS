@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "common/common_types.h"
 #include "core/hle/service/gsp/gsp_interrupt.h"
 #include "video_core/pica/geometry_pipeline.h"
 #include "video_core/pica/packed_attribute.h"
@@ -37,7 +38,7 @@ public:
 
     void SetInterruptHandler(Service::GSP::InterruptHandler& signal_interrupt);
 
-    void ProcessCmdList(PAddr list, u32 size);
+    void ProcessCmdList(PAddr list, u32 size, bool ignore_list);
 
 private:
     void InitializeRegs();
@@ -271,6 +272,16 @@ private:
         ar & primitive_assembler;
         ar & cmd_list;
     }
+
+public:
+    struct RenderPropertiesGuess {
+        u32 vp_height;
+        PAddr paddr;
+        bool vp_heigh_found = false;
+        bool paddr_found = false;
+    };
+
+    RenderPropertiesGuess GuessCmdRenderProperties(PAddr list, u32 size);
 
 private:
     Memory::MemorySystem& memory;
