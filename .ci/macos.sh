@@ -1,16 +1,23 @@
 #!/bin/bash -ex
 
-# Build MoltenVK
-cd externals/MoltenVK
-./fetchDependencies --macos
-xcodebuild build -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)" -configuration "Release"
-cd ../..
-mkdir -p build/externals/MoltenVK/MoltenVK
-mv externals/MoltenVK/Package/Release/MoltenVK/dynamic/dylib build/externals/MoltenVK/MoltenVK/
-cd build/externals
-tar cf MoltenVK.tar MoltenVK
-rm -rf MoltenVK
-cd ..
+BUILD_MOLTENVK=true
+
+if [ "$BUILD_MOLTENVK" = true ]; then
+    export EXTRA_CMAKE_FLAGS=(-DBORKED3DS_USE_EXTERNAL_MOLTENVK=ON)
+    # Build MoltenVK
+    cd externals/MoltenVK
+    ./fetchDependencies --macos
+    xcodebuild build -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)" -configuration "Release"
+    cd ../..
+    mkdir -p build/externals/MoltenVK/MoltenVK
+    mv externals/MoltenVK/Package/Release/MoltenVK build/externals/MoltenVK/
+    cd build/externals
+    tar cf MoltenVK.tar MoltenVK
+    rm -rf MoltenVK
+    cd ..
+else
+    mkdir build && cd build
+fi
 
 # Build Borked3DS
 cmake .. -GNinja \
@@ -23,7 +30,7 @@ cmake .. -GNinja \
     -DUSE_SYSTEM_VULKAN_HEADERS=OFF \
     -DUSE_SYSTEM_VMA=OFF \
     -DBORKED3DS_USE_EXTERNAL_VULKAN_SPIRV_TOOLS=ON \
-    -DBORKED3DS_USE_EXTERNAL_MOLTENVK=ON \
+    "${EXTRA_CMAKE_FLAGS[@]}" \
     -DBORKED3DS_ENABLE_COMPATIBILITY_REPORTING=OFF \
     -DUSE_DISCORD_PRESENCE=ON
 ninja
