@@ -86,8 +86,11 @@ constexpr std::array<PixelFormatInfo, PIXEL_FORMAT_COUNT> FORMAT_MAP = {{
 }};
 
 constexpr u32 GetFormatBpp(PixelFormat format) {
+    if (format == PixelFormat::Invalid) {
+        return 0; // Safe default for invalid formats
+    }
     const std::size_t index = static_cast<std::size_t>(format);
-    ASSERT(index < FORMAT_MAP.size());
+    ASSERT_MSG(index < FORMAT_MAP.size(), "Invalid pixel format {}", static_cast<u32>(format));
     return FORMAT_MAP[index].bits_per_block;
 }
 
@@ -98,8 +101,11 @@ constexpr u32 GetFormatBytesPerPixel(PixelFormat format) {
 }
 
 constexpr SurfaceType GetFormatType(PixelFormat format) {
+    if (format == PixelFormat::Invalid) {
+        return SurfaceType::Invalid;
+    }
     const std::size_t index = static_cast<std::size_t>(format);
-    ASSERT(index < FORMAT_MAP.size());
+    ASSERT_MSG(index < FORMAT_MAP.size(), "Invalid pixel format {}", static_cast<u32>(format));
     return FORMAT_MAP[index].type;
 }
 
