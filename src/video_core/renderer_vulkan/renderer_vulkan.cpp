@@ -140,9 +140,12 @@ void RendererVulkan::PrepareRendertarget() {
                     continue;
                 }
             }
-            if (!LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1)) {
-                LOG_ERROR(Render_Vulkan, "Failed to load framebuffer for screen {}", i);
-                continue;
+            // Proceed only if texture is valid
+            if (texture.image && texture.image_view) {
+                if (!LoadFBToScreenInfo(framebuffer, screen_infos[i], i == 1)) {
+                    LOG_ERROR(Render_Vulkan, "Failed to load framebuffer for screen {}", i);
+                    continue;
+                }
             }
         }
         LOG_DEBUG(Render_Vulkan, "PrepareRendertarget completed successfully");
@@ -501,6 +504,7 @@ bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
                                          &unsafe_image, &texture.allocation, nullptr);
         if (result != VK_SUCCESS) [[unlikely]] {
             LOG_CRITICAL(Render_Vulkan, "Failed allocating texture with error {}", result);
+            texture = {}; // Reset texture info to avoid using invalid handles
             return false;
         }
         texture.image = vk::Image{unsafe_image};
@@ -532,9 +536,11 @@ bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
     } catch (const vk::SystemError& error) {
         LOG_CRITICAL(Render_Vulkan, "Vulkan error in ConfigureFramebufferTexture: {}",
                      error.what());
+        texture = {};
         return false;
     } catch (const std::exception& error) {
         LOG_CRITICAL(Render_Vulkan, "Error in ConfigureFramebufferTexture: {}", error.what());
+        texture = {};
         return false;
     }
 }
