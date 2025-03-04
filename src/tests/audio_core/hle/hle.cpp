@@ -16,6 +16,16 @@
 #include "core/memory.h"
 
 TEST_CASE("DSP LLE vs HLE", "[audio_core][hle]") {
+    // Check for the required file first
+    FileUtil::SetUserPath();
+    // see tests/audio_core/lle/lle.cpp for details on dspaudio.cdc
+    std::string firm_filepath =
+        FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir) + "3ds" DIR_SEP "dspaudio.cdc";
+
+    if (!FileUtil::Exists(firm_filepath)) {
+        SKIP("Test requires dspaudio.cdc");
+    }
+
     Core::System system;
     Memory::MemorySystem hle_memory{system};
     Core::Timing hle_core_timing(1, 100);
@@ -31,15 +41,6 @@ TEST_CASE("DSP LLE vs HLE", "[audio_core][hle]") {
 
     // Initialise LLE
     {
-        FileUtil::SetUserPath();
-        // see tests/audio_core/lle/lle.cpp for details on dspaudio.cdc
-        std::string firm_filepath =
-            FileUtil::GetUserPath(FileUtil::UserPath::SDMCDir) + "3ds" DIR_SEP "dspaudio.cdc";
-
-        if (!FileUtil::Exists(firm_filepath)) {
-            SKIP("Test requires dspaudio.cdc");
-        }
-
         FileUtil::IOFile firm_file(firm_filepath, "rb");
 
         std::vector<u8> firm_file_buf(firm_file.GetSize());
