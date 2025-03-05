@@ -182,7 +182,7 @@ jobs:
       - name: Install Clang PPA
         uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main
+          repo: deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main
           repo-name: llvm
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install GCC PPA
@@ -190,7 +190,7 @@ jobs:
       - name: Update deb repositories 
         run: sudo apt-get update 
       - name: Install New Packages
-        run: sudo apt-get -y install ccache gcc-14 clang-19 clang-tools-19 clang-19-doc libxcb-xkb-dev libclang-common-19-dev libclang-19-dev libclang1-19 clang-format-19 python3-clang-19 clangd-19 clang-tidy-19 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
+        run: sudo apt-get -y install ccache gcc-14 clang-20 clang-tools-20 clang-20-doc libxcb-xkb-dev libclang-common-20-dev libclang-20-dev libclang1-20 clang-format-20 python3-clang-20 clangd-20 clang-tidy-20 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
       - name: Get latest CMake and Ninja
         uses: lukka/get-cmake@latest
         with:
