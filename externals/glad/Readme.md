@@ -25,9 +25,11 @@ Currently, the list of installed extensions are:
 * GL_EXT_clear_texture,
 * GL_EXT_clip_cull_distance,
 * GL_EXT_shader_framebuffer_fetch,
+* GL_EXT_texture_buffer,
 * GL_EXT_texture_compression_bptc,
 * GL_EXT_texture_compression_s3tc,
 * GL_INTEL_fragment_shader_ordering,
+* GL_KHR_texture_compression_astc_ldr,
 * GL_NV_blend_minmax_factor,
 * GL_NV_fragment_shader_interlock
 

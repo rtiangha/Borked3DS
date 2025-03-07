@@ -53,12 +53,14 @@ int GLAD_GL_ARB_texture_compression_bptc = 0;
 int GLAD_GL_EXT_shader_framebuffer_fetch = 0;
 int GLAD_GL_EXT_texture_compression_s3tc = 0;
 int GLAD_GL_INTEL_fragment_shader_ordering = 0;
+int GLAD_GL_KHR_texture_compression_astc_ldr = 0;
 int GLAD_GL_NV_blend_minmax_factor = 0;
 int GLAD_GL_NV_fragment_shader_interlock = 0;
 int GLAD_GL_ARM_shader_framebuffer_fetch = 0;
 int GLAD_GL_EXT_buffer_storage = 0;
 int GLAD_GL_EXT_clear_texture = 0;
 int GLAD_GL_EXT_clip_cull_distance = 0;
+int GLAD_GL_EXT_texture_buffer = 0;
 int GLAD_GL_EXT_texture_compression_bptc = 0;
 
 
@@ -613,6 +615,8 @@ PFNGLGETNUNIFORMUIVPROC glad_glGetnUniformuiv = NULL;
 PFNGLMEMORYBARRIERBYREGIONPROC glad_glMemoryBarrierByRegion = NULL;
 PFNGLPRIMITIVEBOUNDINGBOXPROC glad_glPrimitiveBoundingBox = NULL;
 PFNGLREADNPIXELSPROC glad_glReadnPixels = NULL;
+PFNGLTEXBUFFEREXTPROC glad_glTexBufferEXT = NULL;
+PFNGLTEXBUFFERRANGEEXTPROC glad_glTexBufferRangeEXT = NULL;
 
 
 static void glad_gl_load_GL_VERSION_1_0( GLADuserptrloadfunc load, void* userptr) {
@@ -1599,6 +1603,11 @@ static void glad_gl_load_GL_EXT_clear_texture( GLADuserptrloadfunc load, void* u
     glad_glClearTexImageEXT = (PFNGLCLEARTEXIMAGEEXTPROC) load(userptr, "glClearTexImageEXT");
     glad_glClearTexSubImageEXT = (PFNGLCLEARTEXSUBIMAGEEXTPROC) load(userptr, "glClearTexSubImageEXT");
 }
+static void glad_gl_load_GL_EXT_texture_buffer( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_GL_EXT_texture_buffer) return;
+    glad_glTexBufferEXT = (PFNGLTEXBUFFEREXTPROC) load(userptr, "glTexBufferEXT");
+    glad_glTexBufferRangeEXT = (PFNGLTEXBUFFERRANGEEXTPROC) load(userptr, "glTexBufferRangeEXT");
+}
 
 
 
@@ -1704,6 +1713,7 @@ static int glad_gl_find_extensions_gl(void) {
     GLAD_GL_EXT_shader_framebuffer_fetch = glad_gl_has_extension(exts, exts_i, "GL_EXT_shader_framebuffer_fetch");
     GLAD_GL_EXT_texture_compression_s3tc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_s3tc");
     GLAD_GL_INTEL_fragment_shader_ordering = glad_gl_has_extension(exts, exts_i, "GL_INTEL_fragment_shader_ordering");
+    GLAD_GL_KHR_texture_compression_astc_ldr = glad_gl_has_extension(exts, exts_i, "GL_KHR_texture_compression_astc_ldr");
     GLAD_GL_NV_blend_minmax_factor = glad_gl_has_extension(exts, exts_i, "GL_NV_blend_minmax_factor");
     GLAD_GL_NV_fragment_shader_interlock = glad_gl_has_extension(exts, exts_i, "GL_NV_fragment_shader_interlock");
 
@@ -1803,12 +1813,14 @@ static int glad_gl_find_extensions_gles2(void) {
 
     GLAD_GL_EXT_shader_framebuffer_fetch = glad_gl_has_extension(exts, exts_i, "GL_EXT_shader_framebuffer_fetch");
     GLAD_GL_EXT_texture_compression_s3tc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_s3tc");
+    GLAD_GL_KHR_texture_compression_astc_ldr = glad_gl_has_extension(exts, exts_i, "GL_KHR_texture_compression_astc_ldr");
     GLAD_GL_NV_blend_minmax_factor = glad_gl_has_extension(exts, exts_i, "GL_NV_blend_minmax_factor");
     GLAD_GL_NV_fragment_shader_interlock = glad_gl_has_extension(exts, exts_i, "GL_NV_fragment_shader_interlock");
     GLAD_GL_ARM_shader_framebuffer_fetch = glad_gl_has_extension(exts, exts_i, "GL_ARM_shader_framebuffer_fetch");
     GLAD_GL_EXT_buffer_storage = glad_gl_has_extension(exts, exts_i, "GL_EXT_buffer_storage");
     GLAD_GL_EXT_clear_texture = glad_gl_has_extension(exts, exts_i, "GL_EXT_clear_texture");
     GLAD_GL_EXT_clip_cull_distance = glad_gl_has_extension(exts, exts_i, "GL_EXT_clip_cull_distance");
+    GLAD_GL_EXT_texture_buffer = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_buffer");
     GLAD_GL_EXT_texture_compression_bptc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_bptc");
 
     glad_gl_free_extensions(exts_i);
@@ -1863,6 +1875,7 @@ int gladLoadGLES2UserPtr( GLADuserptrloadfunc load, void *userptr) {
     if (!glad_gl_find_extensions_gles2()) return 0;
     glad_gl_load_GL_EXT_buffer_storage(load, userptr);
     glad_gl_load_GL_EXT_clear_texture(load, userptr);
+    glad_gl_load_GL_EXT_texture_buffer(load, userptr);
 
 
 
