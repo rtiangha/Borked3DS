@@ -3,6 +3,9 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
+#include "common/logging/log.h"
 #include "common/scope_exit.h"
 #include "common/settings.h"
 #include "video_core/custom_textures/material.h"
@@ -60,6 +63,19 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES = {{
     {GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_6x6, GL_UNSIGNED_BYTE},
     {GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x6, GL_UNSIGNED_BYTE},
 }};
+
+#ifndef __ANDROID__
+static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
+    DEFAULT_TUPLE,
+    {GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RG_RGTC2, GL_COMPRESSED_RG_RGTC2, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_ASTC_4x4_KHR, GL_COMPRESSED_RGBA_ASTC_4x4_KHR, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_ASTC_6x6_KHR, GL_COMPRESSED_RGBA_ASTC_6x6_KHR, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_ASTC_8x6_KHR, GL_COMPRESSED_RGBA_ASTC_8x6_KHR, GL_UNSIGNED_BYTE},
+}};
+#endif
 
 [[nodiscard]] GLbitfield MakeBufferMask(SurfaceType type) {
     switch (type) {
@@ -167,7 +183,16 @@ const FormatTuple& TextureRuntime::GetFormatTuple(PixelFormat pixel_format) cons
 
 const FormatTuple& TextureRuntime::GetFormatTuple(VideoCore::CustomPixelFormat pixel_format) {
     const std::size_t format_index = static_cast<std::size_t>(pixel_format);
+
+#ifdef __ANDROID__
     return CUSTOM_TUPLES[format_index];
+#else
+    if (Settings::values.use_gles.GetValue()) {
+        return CUSTOM_TUPLES_KHR[format_index];
+    } else {
+        return CUSTOM_TUPLES[format_index];
+    }
+#endif
 }
 
 bool TextureRuntime::Reinterpret(Surface& source, Surface& dest,

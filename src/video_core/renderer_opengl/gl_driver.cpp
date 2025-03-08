@@ -178,6 +178,7 @@ void Driver::CheckExtensionSupport() {
     arb_shader_image_load_store = GLAD_GL_ARB_shader_image_load_store;
     arb_texture_compression_bptc = GLAD_GL_ARB_texture_compression_bptc;
     ext_texture_compression_bptc = GLAD_GL_EXT_texture_compression_bptc;
+    ext_texture_buffer = !is_gles || GLAD_GL_EXT_texture_buffer;
     clip_cull_distance = !is_gles || GLAD_GL_EXT_clip_cull_distance;
     ext_texture_compression_s3tc = GLAD_GL_EXT_texture_compression_s3tc;
     ext_shader_framebuffer_fetch = GLAD_GL_EXT_shader_framebuffer_fetch;
@@ -186,7 +187,7 @@ void Driver::CheckExtensionSupport() {
     nv_fragment_shader_interlock = GLAD_GL_NV_fragment_shader_interlock;
     intel_fragment_shader_ordering = GLAD_GL_INTEL_fragment_shader_ordering;
     blend_minmax_factor = GLAD_GL_AMD_blend_minmax_factor || GLAD_GL_NV_blend_minmax_factor;
-    is_suitable = GLAD_GL_VERSION_4_3 || GLAD_GL_ES_VERSION_3_2;
+    is_suitable = GLAD_GL_VERSION_4_3 || GLAD_GL_ES_VERSION_3_1;
 }
 
 void Driver::FindBugs() {

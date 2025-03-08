@@ -16,8 +16,10 @@ namespace OpenGL {
 
 GLuint LoadShader(std::string_view source, GLenum type) {
     std::string preamble;
+
     if (GLES) {
-        preamble = R"(#version 320 es
+#ifdef __ANDROID__
+        preamble = R"(#version 310 es
 
 #if defined(GL_ANDROID_extension_pack_es31a)
 #extension GL_ANDROID_extension_pack_es31a : enable
@@ -26,7 +28,21 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 #if defined(GL_EXT_clip_cull_distance)
 #extension GL_EXT_clip_cull_distance : enable
 #endif // defined(GL_EXT_clip_cull_distance)
+
 )";
+#else
+        preamble = "#version 310 es\n"
+                   "#if defined(GL_EXT_clip_cull_distance)\n"
+                   "#extension GL_EXT_clip_cull_distance : enable\n"
+                   "#endif //defined(GL_EXT_clip_cull_distance)\n"
+                   "#if defined(GL_KHR_texture_compression_astc_ldr)\n"
+                   "#extension GL_KHR_texture_compression_astc_ldr : enable\n"
+                   "#endif //defined(GL_KHR_texture_compression_astc_ldr)\n"
+                   "#if defined(GL_EXT_texture_buffer)\n"
+                   "#extension GL_EXT_texture_buffer : enable\n"
+                   "#endif //defined(GL_EXT_texture_buffer)\n";
+
+#endif
     } else {
         preamble = "#version 430 core\n"
                    "#if defined(GL_ARB_shader_image_load_store)\n"

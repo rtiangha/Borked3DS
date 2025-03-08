@@ -3,13 +3,17 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
 #include "common/alignment.h"
 #include "common/assert.h"
 #include "common/literals.h"
 #include "common/logging/log.h"
 #include "common/math_util.h"
 #include "common/profiling.h"
+#include "common/settings.h"
 #include "video_core/pica/pica_core.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_rasterizer.h"
 #include "video_core/renderer_opengl/pica_to_gl.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
@@ -84,8 +88,16 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
       vertex_buffer{driver, GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE},
       uniform_buffer{driver, GL_UNIFORM_BUFFER, UNIFORM_BUFFER_SIZE},
       index_buffer{driver, GL_ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE},
-      texture_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, false)},
-      texture_lf_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, true)} {
+      texture_buffer{driver,
+                     static_cast<GLenum>(Settings::values.use_gles.GetValue()
+                                             ? GL_TEXTURE_BUFFER_EXT
+                                             : GL_TEXTURE_BUFFER),
+                     TextureBufferSize(driver, false)},
+      texture_lf_buffer{driver,
+                        static_cast<GLenum>(Settings::values.use_gles.GetValue()
+                                                ? GL_TEXTURE_BUFFER_EXT
+                                                : GL_TEXTURE_BUFFER),
+                        TextureBufferSize(driver, true)} {
 
     // Clipping plane 0 is always enabled for PICA fixed clip plane z <= 0
     state.clip_distance[0] = true;
@@ -146,11 +158,22 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
     state.texture_buffer_lut_rgba.texture_buffer = texture_buffer_lut_rgba.handle;
     state.Apply();
     glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
-    glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
-    glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
-    glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_buffer.GetHandle());
-    glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
-    glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, texture_buffer.GetHandle());
+
+    if (Settings::values.use_gles.GetValue()) {
+        LOG_DEBUG(Render_OpenGL, "use_gles == TRUE");
+        glTexBuffer(GL_TEXTURE_BUFFER_EXT, GL_RG32F, texture_lf_buffer.GetHandle());
+        glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+        glTexBuffer(GL_TEXTURE_BUFFER_EXT, GL_RG32F, texture_buffer.GetHandle());
+        glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+        glTexBuffer(GL_TEXTURE_BUFFER_EXT, GL_RGBA32F, texture_buffer.GetHandle());
+    } else {
+        LOG_DEBUG(Render_OpenGL, "use_gles == FALSE");
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
+        glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_buffer.GetHandle());
+        glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, texture_buffer.GetHandle());
+    }
 
     // Bind index buffer for hardware shader path
     state.draw.vertex_array = hw_vao.handle;
@@ -930,7 +953,12 @@ void RasterizerOpenGL::SyncAndUploadLUTsLF() {
     }
 
     std::size_t bytes_used = 0;
-    glBindBuffer(GL_TEXTURE_BUFFER, texture_lf_buffer.GetHandle());
+
+    if (Settings::values.use_gles.GetValue()) {
+        glBindBuffer(GL_TEXTURE_BUFFER_EXT, texture_lf_buffer.GetHandle());
+    } else {
+        glBindBuffer(GL_TEXTURE_BUFFER, texture_lf_buffer.GetHandle());
+    }
     const auto [buffer, offset, invalidate] =
         texture_lf_buffer.Map(max_size, sizeof(Common::Vec4f));
 
@@ -997,7 +1025,13 @@ void RasterizerOpenGL::SyncAndUploadLUTs() {
     }
 
     std::size_t bytes_used = 0;
-    glBindBuffer(GL_TEXTURE_BUFFER, texture_buffer.GetHandle());
+
+    if (Settings::values.use_gles.GetValue()) {
+        glBindBuffer(GL_TEXTURE_BUFFER_EXT, texture_buffer.GetHandle());
+    } else {
+        glBindBuffer(GL_TEXTURE_BUFFER, texture_buffer.GetHandle());
+    }
+
     const auto [buffer, offset, invalidate] = texture_buffer.Map(max_size, sizeof(Common::Vec4f));
 
     // helper function for SyncProcTexNoiseLUT/ColorMap/AlphaMap
