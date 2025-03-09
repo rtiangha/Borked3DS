@@ -59,17 +59,32 @@ static void GLAD_API_PTR DebugHandler(GLenum source, GLenum type, GLuint id, GLe
                                       GLsizei length, const GLchar* message,
                                       const void* user_param) {
     auto level = Common::Log::Level::Info;
-    switch (severity) {
-    case GL_DEBUG_SEVERITY_HIGH:
-        level = Common::Log::Level::Critical;
-        break;
-    case GL_DEBUG_SEVERITY_MEDIUM:
-        level = Common::Log::Level::Warning;
-        break;
-    case GL_DEBUG_SEVERITY_NOTIFICATION:
-    case GL_DEBUG_SEVERITY_LOW:
-        level = Common::Log::Level::Debug;
-        break;
+    if (Settings::values.use_gles.GetValue()) {
+        switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH_KHR:
+            level = Common::Log::Level::Critical;
+            break;
+        case GL_DEBUG_SEVERITY_MEDIUM_KHR:
+            level = Common::Log::Level::Warning;
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION_KHR:
+        case GL_DEBUG_SEVERITY_LOW_KHR:
+            level = Common::Log::Level::Debug;
+            break;
+        }
+    } else {
+        switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH:
+            level = Common::Log::Level::Critical;
+            break;
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            level = Common::Log::Level::Warning;
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+        case GL_DEBUG_SEVERITY_LOW:
+            level = Common::Log::Level::Debug;
+            break;
+        }
     }
     LOG_GENERIC(Common::Log::Class::Render_OpenGL, level, "{} {} {}: {}", GetSource(source),
                 GetType(type), id, message);
@@ -78,8 +93,18 @@ static void GLAD_API_PTR DebugHandler(GLenum source, GLenum type, GLuint id, GLe
 Driver::Driver() {
     const bool enable_debug = Settings::values.renderer_debug.GetValue();
     if (enable_debug) {
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        glDebugMessageCallback(DebugHandler, nullptr);
+
+        if (Settings::values.use_gles.GetValue()) {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+        } else {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        }
+
+        if (Settings::values.use_gles.GetValue()) {
+            glDebugMessageCallbackKHR(DebugHandler, nullptr);
+        } else {
+            glDebugMessageCallback(DebugHandler, nullptr);
+        }
     }
 
     ReportDriverInfo();

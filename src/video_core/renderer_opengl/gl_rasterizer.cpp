@@ -88,16 +88,8 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
       vertex_buffer{driver, GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE},
       uniform_buffer{driver, GL_UNIFORM_BUFFER, UNIFORM_BUFFER_SIZE},
       index_buffer{driver, GL_ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE},
-      texture_buffer{driver,
-                     static_cast<GLenum>(Settings::values.use_gles.GetValue()
-                                             ? GL_TEXTURE_BUFFER_EXT
-                                             : GL_TEXTURE_BUFFER),
-                     TextureBufferSize(driver, false)},
-      texture_lf_buffer{driver,
-                        static_cast<GLenum>(Settings::values.use_gles.GetValue()
-                                                ? GL_TEXTURE_BUFFER_EXT
-                                                : GL_TEXTURE_BUFFER),
-                        TextureBufferSize(driver, true)} {
+      texture_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, false)},
+      texture_lf_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, true)} {
 
     // Clipping plane 0 is always enabled for PICA fixed clip plane z <= 0
     state.clip_distance[0] = true;
@@ -160,14 +152,12 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
     glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
 
     if (Settings::values.use_gles.GetValue()) {
-        LOG_DEBUG(Render_OpenGL, "use_gles == TRUE");
-        glTexBuffer(GL_TEXTURE_BUFFER_EXT, GL_RG32F, texture_lf_buffer.GetHandle());
+        glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
         glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
-        glTexBuffer(GL_TEXTURE_BUFFER_EXT, GL_RG32F, texture_buffer.GetHandle());
+        glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_buffer.GetHandle());
         glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
-        glTexBuffer(GL_TEXTURE_BUFFER_EXT, GL_RGBA32F, texture_buffer.GetHandle());
+        glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RGBA32F, texture_buffer.GetHandle());
     } else {
-        LOG_DEBUG(Render_OpenGL, "use_gles == FALSE");
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
         glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_buffer.GetHandle());
@@ -954,11 +944,7 @@ void RasterizerOpenGL::SyncAndUploadLUTsLF() {
 
     std::size_t bytes_used = 0;
 
-    if (Settings::values.use_gles.GetValue()) {
-        glBindBuffer(GL_TEXTURE_BUFFER_EXT, texture_lf_buffer.GetHandle());
-    } else {
-        glBindBuffer(GL_TEXTURE_BUFFER, texture_lf_buffer.GetHandle());
-    }
+    glBindBuffer(GL_TEXTURE_BUFFER, texture_lf_buffer.GetHandle());
     const auto [buffer, offset, invalidate] =
         texture_lf_buffer.Map(max_size, sizeof(Common::Vec4f));
 
@@ -1026,11 +1012,7 @@ void RasterizerOpenGL::SyncAndUploadLUTs() {
 
     std::size_t bytes_used = 0;
 
-    if (Settings::values.use_gles.GetValue()) {
-        glBindBuffer(GL_TEXTURE_BUFFER_EXT, texture_buffer.GetHandle());
-    } else {
-        glBindBuffer(GL_TEXTURE_BUFFER, texture_buffer.GetHandle());
-    }
+    glBindBuffer(GL_TEXTURE_BUFFER, texture_buffer.GetHandle());
 
     const auto [buffer, offset, invalidate] = texture_buffer.Map(max_size, sizeof(Common::Vec4f));
 

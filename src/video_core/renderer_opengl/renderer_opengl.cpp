@@ -3,6 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
 #include "common/logging/log.h"
 #include "common/profiling.h"
 #include "common/settings.h"
@@ -266,7 +268,12 @@ void RendererOpenGL::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
         state.Apply();
 
         glActiveTexture(GL_TEXTURE0);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
+
+        if (Settings::values.use_gles.GetValue()) {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, (GLint)pixel_stride);
+        } else {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
+        }
 
         // Update existing texture
         // TODO: Test what happens on hardware when you change the framebuffer dimensions so that

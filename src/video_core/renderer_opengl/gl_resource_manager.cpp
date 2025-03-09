@@ -4,6 +4,7 @@
 // Refer to the license.txt file included.
 
 #include "common/profiling.h"
+#include "common/settings.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/renderer_opengl/gl_shader_util.h"
 #include "video_core/renderer_opengl/gl_state.h"
@@ -141,7 +142,11 @@ void OGLPipeline::Create() {
     if (handle != 0)
         return;
 
-    glGenProgramPipelines(1, &handle);
+    if (Settings::values.use_gles.GetValue()) {
+        glGenProgramPipelinesEXT(1, &handle);
+    } else {
+        glGenProgramPipelines(1, &handle);
+    }
 }
 
 void OGLPipeline::Release() {
@@ -173,14 +178,23 @@ void OGLVertexArray::Create() {
     if (handle != 0)
         return;
 
-    glGenVertexArrays(1, &handle);
+    if (Settings::values.use_gles.GetValue()) {
+        glGenVertexArraysOES(1, &handle);
+    } else {
+        glGenVertexArrays(1, &handle);
+    }
 }
 
 void OGLVertexArray::Release() {
     if (handle == 0)
         return;
 
-    glDeleteVertexArrays(1, &handle);
+    if (Settings::values.use_gles.GetValue()) {
+        glDeleteVertexArraysOES(1, &handle);
+    } else {
+        glDeleteVertexArrays(1, &handle);
+    }
+
     OpenGLState::GetCurState().ResetVertexArray(handle).Apply();
     handle = 0;
 }

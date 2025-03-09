@@ -9,6 +9,7 @@
 #include <glad/gl.h>
 #include "common/assert.h"
 #include "common/logging/log.h"
+#include "common/settings.h"
 #include "video_core/renderer_opengl/gl_shader_util.h"
 #include "video_core/renderer_opengl/gl_vars.h"
 
@@ -35,13 +36,12 @@ GLuint LoadShader(std::string_view source, GLenum type) {
                    "#if defined(GL_EXT_clip_cull_distance)\n"
                    "#extension GL_EXT_clip_cull_distance : enable\n"
                    "#endif //defined(GL_EXT_clip_cull_distance)\n"
-                   "#if defined(GL_KHR_texture_compression_astc_ldr)\n"
-                   "#extension GL_KHR_texture_compression_astc_ldr : enable\n"
-                   "#endif //defined(GL_KHR_texture_compression_astc_ldr)\n"
-                   "#if defined(GL_EXT_texture_buffer)\n"
-                   "#extension GL_EXT_texture_buffer : enable\n"
-                   "#endif //defined(GL_EXT_texture_buffer)\n";
-
+                   "#if defined(GL_EXT_geometry_shader)\n"
+                   "#extension GL_EXT_geometry_shader : enable\n"
+                   "#endif //defined(GL_EXT_geometry_shader)\n"
+                   "#if defined(GL_EXT_separate_shader_objects)\n"
+                   "#extension GL_EXT_separate_shader_objects : enable\n"
+                   "#endif //defined(GL_EXT_separate_shader_objects)\n";
 #endif
     } else {
         preamble = "#version 430 core\n"
@@ -51,20 +51,36 @@ GLuint LoadShader(std::string_view source, GLenum type) {
     }
 
     std::string_view debug_type;
-    switch (type) {
-    case GL_VERTEX_SHADER:
-        debug_type = "vertex";
-        break;
-    case GL_GEOMETRY_SHADER:
-        debug_type = "geometry";
-        break;
-    case GL_FRAGMENT_SHADER:
-        debug_type = "fragment";
-        break;
-    default:
-        UNREACHABLE();
-    }
 
+    if (Settings::values.use_gles.GetValue()) {
+        switch (type) {
+        case GL_VERTEX_SHADER:
+            debug_type = "vertex";
+            break;
+        case GL_GEOMETRY_SHADER_EXT:
+            debug_type = "geometry";
+            break;
+        case GL_FRAGMENT_SHADER:
+            debug_type = "fragment";
+            break;
+        default:
+            UNREACHABLE();
+        }
+    } else {
+        switch (type) {
+        case GL_VERTEX_SHADER:
+            debug_type = "vertex";
+            break;
+        case GL_GEOMETRY_SHADER:
+            debug_type = "geometry";
+            break;
+        case GL_FRAGMENT_SHADER:
+            debug_type = "fragment";
+            break;
+        default:
+            UNREACHABLE();
+        }
+    }
     std::array<const GLchar*, 2> src_arr{preamble.data(), source.data()};
     std::array<GLint, 2> lengths{static_cast<GLint>(preamble.size()),
                                  static_cast<GLint>(source.size())};
@@ -105,10 +121,19 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
     }
 
     if (separable_program) {
-        glProgramParameteri(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        if (Settings::values.use_gles.GetValue()) {
+            glProgramParameteriEXT(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        } else {
+            glProgramParameteri(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        }
     }
 
-    glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+    if (Settings::values.use_gles.GetValue()) {
+        glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+    } else {
+        glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+    }
+
     glLinkProgram(program_id);
 
     // Check the program

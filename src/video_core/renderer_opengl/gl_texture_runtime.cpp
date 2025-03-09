@@ -122,7 +122,11 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     if (!debug_name.empty()) {
-        glObjectLabel(GL_TEXTURE, texture.handle, -1, debug_name.data());
+        if (Settings::values.use_gles.GetValue()) {
+            glObjectLabelKHR(GL_TEXTURE, texture.handle, -1, debug_name.data());
+        } else {
+            glObjectLabel(GL_TEXTURE, texture.handle, -1, debug_name.data());
+        }
     }
 
     return texture;
@@ -188,8 +192,10 @@ const FormatTuple& TextureRuntime::GetFormatTuple(VideoCore::CustomPixelFormat p
     return CUSTOM_TUPLES[format_index];
 #else
     if (Settings::values.use_gles.GetValue()) {
+        LOG_DEBUG(Render_OpenGL, "use_gles == TRUE");
         return CUSTOM_TUPLES_KHR[format_index];
     } else {
+        LOG_DEBUG(Render_OpenGL, "use_gles == FALSE");
         return CUSTOM_TUPLES[format_index];
     }
 #endif
@@ -238,9 +244,17 @@ bool TextureRuntime::ClearTextureWithoutFbo(Surface& surface,
     default:
         UNREACHABLE_MSG("Unknown surface type {}", surface.type);
     }
-    glClearTexSubImage(surface.Handle(), clear.texture_level, clear.texture_rect.left,
-                       clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
-                       clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
+
+    if (Settings::values.use_gles.GetValue()) {
+        glClearTexSubImageEXT(surface.Handle(), clear.texture_level, clear.texture_rect.left,
+                              clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
+                              clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
+    } else {
+        glClearTexSubImage(surface.Handle(), clear.texture_level, clear.texture_rect.left,
+                           clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
+                           clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
+    }
+
     return true;
 }
 
@@ -418,7 +432,12 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
 
     const u32 unscaled_width = upload.texture_rect.GetWidth();
     const u32 unscaled_height = upload.texture_rect.GetHeight();
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+
+    if (Settings::values.use_gles.GetValue()) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, unscaled_width);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+    }
 
     glActiveTexture(TEMP_UNIT);
     glBindTexture(GL_TEXTURE_2D, Handle(0));
@@ -427,7 +446,11 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
                     upload.texture_rect.bottom, unscaled_width, unscaled_height, tuple.format,
                     tuple.type, staging.mapped.data());
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    if (Settings::values.use_gles.GetValue()) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    }
 
     const VideoCore::TextureBlit blit = {
         .src_level = upload.texture_level,
@@ -447,7 +470,12 @@ void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
     const Common::Rectangle filter_rect{0U, height, width, 0U};
 
     glActiveTexture(TEMP_UNIT);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+
+    if (Settings::values.use_gles.GetValue()) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, width);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+    }
 
     const auto upload = [&](u32 index, VideoCore::CustomTexture* texture) {
         glBindTexture(GL_TEXTURE_2D, Handle(index));
@@ -478,7 +506,11 @@ void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
         upload(i + 1, texture);
     }
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    if (Settings::values.use_gles.GetValue()) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    }
 }
 
 void Surface::Download(const VideoCore::BufferTextureCopy& download,
@@ -487,7 +519,12 @@ void Surface::Download(const VideoCore::BufferTextureCopy& download,
 
     const u32 unscaled_width = download.texture_rect.GetWidth();
     const u32 unscaled_height = download.texture_rect.GetHeight();
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+
+    if (Settings::values.use_gles.GetValue()) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, unscaled_width);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+    }
 
     // Scale down upscaled data before downloading it
     if (res_scale != 1) {
@@ -710,15 +747,26 @@ DebugScope::DebugScope(TextureRuntime& runtime, Common::Vec4f, std::string_view 
     if (!Settings::values.renderer_debug) {
         return;
     }
-    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, local_scope_depth,
-                     static_cast<GLsizei>(label.size()), label.data());
+
+    if (Settings::values.use_gles.GetValue()) {
+        glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION_KHR, local_scope_depth,
+                            static_cast<GLsizei>(label.size()), label.data());
+    } else {
+        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, local_scope_depth,
+                         static_cast<GLsizei>(label.size()), label.data());
+    }
 }
 
 DebugScope::~DebugScope() {
     if (!Settings::values.renderer_debug) {
         return;
     }
-    glPopDebugGroup();
+
+    if (Settings::values.use_gles.GetValue()) {
+        glPopDebugGroupKHR();
+    } else {
+        glPopDebugGroup();
+    }
     global_scope_depth--;
 }
 

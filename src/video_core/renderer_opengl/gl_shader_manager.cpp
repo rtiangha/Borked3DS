@@ -10,6 +10,7 @@
 #include <thread>
 #include <unordered_map>
 #include <variant>
+#include <glad/gl.h>
 #include "common/settings.h"
 #include "core/frontend/emu_window.h"
 #include "video_core/pica/shader_setup.h"
@@ -53,7 +54,11 @@ static OGLProgram GeneratePrecompiledProgram(const ShaderDiskCacheDump& dump,
     auto shader = OGLProgram();
     shader.handle = glCreateProgram();
     if (separable) {
-        glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        if (Settings::values.use_gles.GetValue()) {
+            glProgramParameteriEXT(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        } else {
+            glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        }
     }
     glProgramBinary(shader.handle, dump.binary_format, dump.binary.data(),
                     static_cast<GLsizei>(dump.binary.size()));
@@ -254,7 +259,7 @@ using ProgrammableVertexShaders =
     ShaderDoubleCache<PicaVSConfig, &GLSL::GenerateVertexShader, GL_VERTEX_SHADER>;
 
 using FixedGeometryShaders =
-    ShaderCache<PicaFixedGSConfig, &GLSL::GenerateFixedGeometryShader, GL_GEOMETRY_SHADER>;
+    ShaderCache<PicaFixedGSConfig, &GLSL::GenerateFixedGeometryShader, GL_GEOMETRY_SHADER_EXT>;
 
 using FragmentShaders = ShaderCache<FSConfig, &GLSL::GenerateFragmentShader, GL_FRAGMENT_SHADER>;
 
@@ -405,14 +410,27 @@ void ShaderProgramManager::UseFragmentShader(const Pica::RegsInternal& regs,
 void ShaderProgramManager::ApplyTo(OpenGLState& state, bool accurate_mul) {
     if (impl->separable) {
         if (driver.HasBug(DriverBug::ShaderStageChangeFreeze)) {
-            glUseProgramStages(
-                impl->pipeline.handle,
-                GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            if (Settings::values.use_gles.GetValue()) {
+                glUseProgramStagesEXT(
+                    impl->pipeline.handle,
+                    GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT_EXT | GL_FRAGMENT_SHADER_BIT, 0);
+            } else {
+                glUseProgramStages(
+                    impl->pipeline.handle,
+                    GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            }
         }
 
-        glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
-        glUseProgramStages(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT, impl->current.gs);
-        glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        if (Settings::values.use_gles.GetValue()) {
+            glUseProgramStagesEXT(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
+            glUseProgramStagesEXT(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT_EXT,
+                                  impl->current.gs);
+            glUseProgramStagesEXT(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        } else {
+            glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
+            glUseProgramStages(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT, impl->current.gs);
+            glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        }
         state.draw.shader_program = 0;
         state.draw.program_pipeline = impl->pipeline.handle;
     } else {

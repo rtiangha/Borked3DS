@@ -320,7 +320,11 @@ void OpenGLState::Apply() const {
 
     // Vertex array
     if (draw.vertex_array != cur_state.draw.vertex_array) {
-        glBindVertexArray(draw.vertex_array);
+        if (Settings::values.use_gles.GetValue()) {
+            glBindVertexArrayOES(draw.vertex_array);
+        } else {
+            glBindVertexArray(draw.vertex_array);
+        }
     }
 
     // Vertex buffer
@@ -340,7 +344,11 @@ void OpenGLState::Apply() const {
 
     // Program pipeline
     if (draw.program_pipeline != cur_state.draw.program_pipeline) {
-        glBindProgramPipeline(draw.program_pipeline);
+        if (Settings::values.use_gles.GetValue()) {
+            glBindProgramPipelineEXT(draw.program_pipeline);
+        } else {
+            glBindProgramPipeline(draw.program_pipeline);
+        }
     }
 
     // Scissor test
