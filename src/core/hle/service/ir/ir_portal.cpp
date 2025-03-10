@@ -30,7 +30,7 @@ void IRPortal::OnReceive(std::span<const u8> data) {
 
 void IRPortal::HandlePortalCommand(std::span<const u8> data) {
     // Data to be queued to be sent back via the Interrupt Transfer (if needed)
-    std::array<u8, 64> response = {};
+    std::array<u8, 32> response = {};
 
     // The first byte of the Control Request is always a char for Skylanders
     // (offset by 3 for infrared commands)
@@ -176,7 +176,7 @@ void SkylanderPortal::SetLEDs(u8 side, u8 red, u8 green, u8 blue) {
     }
 }
 
-std::array<u8, 64> SkylanderPortal::GetStatus() {
+std::array<u8, 32> SkylanderPortal::GetStatus() {
     std::lock_guard lock(sky_mutex);
 
     u32 status = 0;
@@ -197,7 +197,7 @@ std::array<u8, 64> SkylanderPortal::GetStatus() {
         status |= s.status;
     }
 
-    std::array<u8, 64> response = {0x53,   0x00, 0x00, 0x00, 0x00, m_interrupt_counter++,
+    std::array<u8, 32> response = {0x53,   0x00, 0x00, 0x00, 0x00, m_interrupt_counter++,
                                    active, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0x00,   0x00, 0x00, 0x00, 0x00, 0x00,
                                    0x00,   0x00, 0x00, 0x00, 0x00, 0x00,

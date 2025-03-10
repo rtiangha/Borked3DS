@@ -163,6 +163,8 @@ private:
      */
     void SendIrNop(Kernel::HLERequestContext& ctx);
 
+    void ReceiveIrnopLarge(Kernel::HLERequestContext& ctx);
+
     /**
      * ReleaseReceivedData function
      * Release a specified amount of packet from the receive buffer. This is called after the

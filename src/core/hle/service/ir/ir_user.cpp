@@ -159,6 +159,19 @@ public:
         return true;
     }
 
+    bool Get(u32 size, std::vector<u8>& buffer) {
+        if (info.packet_count == 0)
+            return false;
+
+        PacketInfo packet = GetPacketInfo(info.begin_index);
+
+        u8* buf = GetDataBufferPointer(packet.offset);
+        for (u8 i = 0; i < packet.size; i++) {
+            buffer.push_back(buf[i]);
+        }
+        return true;
+    }
+
 private:
     struct BufferInfo {
         u32_le begin_index;
@@ -308,6 +321,33 @@ void IR_USER::InitializeIrNopShared(Kernel::HLERequestContext& ctx) {
              send_buff_packet_count, baud_rate);
 }
 
+void IR_USER::InitializeIrNop(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    const u32 shared_buff_size = rp.Pop<u32>();
+    const u32 recv_buff_size = rp.Pop<u32>();
+    const u32 recv_buff_packet_count = rp.Pop<u32>();
+    const u32 send_buff_size = rp.Pop<u32>();
+    const u32 send_buff_packet_count = rp.Pop<u32>();
+    const u8 baud_rate = rp.Pop<u8>();
+    shared_memory = rp.PopObject<Kernel::SharedMemory>();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
+
+    shared_memory->SetName("IR_USER: shared memory");
+
+    receive_buffer = std::make_unique<BufferManager>(shared_memory, 0x10, 0x20,
+                                                     recv_buff_packet_count, recv_buff_size);
+
+    rb.Push(ResultSuccess);
+
+    LOG_INFO(Service_IR,
+             "called, shared_buff_size={}, recv_buff_size={}, "
+             "recv_buff_packet_count={}, send_buff_size={}, "
+             "send_buff_packet_count={}, baud_rate={}",
+             shared_buff_size, recv_buff_size, recv_buff_packet_count, send_buff_size,
+             send_buff_packet_count, baud_rate);
+}
+
 void IR_USER::RequireConnection(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     const u8 device_id = rp.Pop<u8>();
@@ -421,11 +461,12 @@ void IR_USER::GetConnectionStatusEvent(Kernel::HLERequestContext& ctx) {
 }
 
 void IR_USER::GetConnectionStatus(Kernel::HLERequestContext& ctx) {
-    IPC::RequestBuilder rb(ctx, 0x13, 1, 0);
+    IPC::RequestBuilder rb(ctx, 0x13, 1, 2);
 
     if (connected_portal) {
         conn_status_event->Signal();
         rb.Push(ResultSuccess);
+        rb.Push(2);
     } else {
         LOG_ERROR(Service_IR, "not connected");
         rb.Push(Result(static_cast<ErrorDescription>(0x13), ErrorModule::IR,
@@ -479,6 +520,24 @@ void IR_USER::SendIrNop(Kernel::HLERequestContext& ctx) {
     LOG_INFO(Service_IR, "called, data={}", fmt::format("{:02x}", fmt::join(buffer, " ")));
 }
 
+void IR_USER::ReceiveIrnopLarge(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
+    const u32 size = rp.Pop<u32>();
+    std::vector<u8> buffer = rp.PopStaticBuffer();
+
+    IPC::RequestBuilder rb = rp.MakeBuilder(1, 2);
+
+    if (receive_buffer && receive_buffer->Get(size, buffer)) {
+        receive_event->Release(1);
+        rb.Push(ResultSuccess);
+    } else {
+        rb.Push(Result(static_cast<ErrorDescription>(13), ErrorModule::IR,
+                       ErrorSummary::InvalidState, ErrorLevel::Status));
+    }
+
+    LOG_INFO(Service_IR, "called, data={}", fmt::format("{:02x}", fmt::join(buffer, " ")));
+}
+
 void IR_USER::ReleaseReceivedData(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
     u32 count = rp.Pop<u32>();
@@ -519,7 +578,7 @@ void IR_USER::GetLatestSendErrorResult(Kernel::HLERequestContext& ctx) {
 IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
     const FunctionInfo functions[] = {
         // clang-format off
-        {0x0001, nullptr, "InitializeIrNop"},
+        {0x0001, &IR_USER::InitializeIrNop, "InitializeIrNop"},
         {0x0002, &IR_USER::FinalizeIrNop, "FinalizeIrNop"},
         {0x0003, nullptr, "ClearReceiveBuffer"},
         {0x0004, nullptr, "ClearSendBuffer"},
@@ -534,7 +593,7 @@ IR_USER::IR_USER(Core::System& system) : ServiceFramework("ir:USER", 1) {
         {0x000D, &IR_USER::SendIrNop, "SendIrNop"},
         {0x000E, nullptr, "SendIrNopLarge"},
         {0x000F, nullptr, "ReceiveIrnop"},
-        {0x0010, nullptr, "ReceiveIrnopLarge"},
+        {0x0010, &IR_USER::ReceiveIrnopLarge, "ReceiveIrnopLarge"},
         {0x0011, nullptr, "GetLatestReceiveErrorResult"},
         {0x0012, nullptr, "GetLatestSendErrorResult"},
         {0x0013, &IR_USER::GetConnectionStatus, "GetConnectionStatus"},
