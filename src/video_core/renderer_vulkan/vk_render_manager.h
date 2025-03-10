@@ -26,6 +26,8 @@ struct RenderPass {
     vk::Rect2D render_area;
     vk::ClearValue clear;
     u32 do_clear;
+    std::array<vk::Image, 2> images;
+    std::array<vk::ImageAspectFlags, 2> aspects;
 
     bool operator==(const RenderPass& other) const noexcept {
         return std::tie(framebuffer, render_pass, render_area, do_clear) ==
@@ -66,8 +68,6 @@ private:
     Scheduler& scheduler;
     vk::UniqueRenderPass cached_renderpasses[NumColorFormats + 1][NumDepthFormats + 1][2];
     std::mutex cache_mutex;
-    std::array<vk::Image, 2> images;
-    std::array<vk::ImageAspectFlags, 2> aspects;
     RenderPass pass{};
     u32 num_draws{};
 };
