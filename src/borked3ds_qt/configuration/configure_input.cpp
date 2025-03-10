@@ -300,13 +300,67 @@ ConfigureInput::ConfigureInput(Core::System& _system, QWidget* parent)
         connect(analog_map_stick[analog_id], &QPushButton::clicked, this, [this, analog_id]() {
             if (QMessageBox::information(
                     this, tr("Information"),
-                    tr("After pressing OK, first move your joystick horizontally, "
-                       "and then vertically."),
+                    tr("After pressing OK, move your joystick horizontally, then vertically."),
                     QMessageBox::Ok | QMessageBox::Cancel) == QMessageBox::Ok) {
                 HandleClick(
                     analog_map_stick[analog_id],
                     [this, analog_id](const Common::ParamPackage& params) {
-                        analogs_param[analog_id] = params;
+                        if (params.Get("engine", "") == "sdl" && params.Has("axis_x") &&
+                            params.Has("axis_y")) {
+                            // Start with the analog_from_button engine
+                            Common::ParamPackage new_analog_param = {
+                                {"engine", "analog_from_button"}};
+
+                            // Extract joystick details
+                            std::string guid = params.Get("guid", "0");
+                            int port = params.Get("port", 0);
+                            int axis_x = params.Get("axis_x", 0);
+                            int axis_y = params.Get("axis_y", 1);
+
+                            // Define mappings for all directions
+                            Common::ParamPackage left_param{{"engine", "sdl"},
+                                                            {"guid", guid},
+                                                            {"port", std::to_string(port)},
+                                                            {"axis", std::to_string(axis_x)},
+                                                            {"direction", "-"},
+                                                            {"threshold", "0.5"}};
+                            Common::ParamPackage right_param{{"engine", "sdl"},
+                                                             {"guid", guid},
+                                                             {"port", std::to_string(port)},
+                                                             {"axis", std::to_string(axis_x)},
+                                                             {"direction", "+"},
+                                                             {"threshold", "0.5"}};
+                            Common::ParamPackage up_param{{"engine", "sdl"},
+                                                          {"guid", guid},
+                                                          {"port", std::to_string(port)},
+                                                          {"axis", std::to_string(axis_y)},
+                                                          {"direction", "-"},
+                                                          {"threshold", "0.5"}};
+                            Common::ParamPackage down_param{{"engine", "sdl"},
+                                                            {"guid", guid},
+                                                            {"port", std::to_string(port)},
+                                                            {"axis", std::to_string(axis_y)},
+                                                            {"direction", "+"},
+                                                            {"threshold", "0.5"}};
+
+                            // Assign mappings to the new package
+                            SetAnalogButton(left_param, new_analog_param, "left");
+                            SetAnalogButton(right_param, new_analog_param, "right");
+                            SetAnalogButton(up_param, new_analog_param, "up");
+                            SetAnalogButton(down_param, new_analog_param, "down");
+
+                            // Preserve any existing modifier
+                            if (analogs_param[analog_id].Has("modifier")) {
+                                new_analog_param.Set("modifier",
+                                                     analogs_param[analog_id].Get("modifier", ""));
+                            }
+
+                            // Apply the new configuration
+                            analogs_param[analog_id] = std::move(new_analog_param);
+                        } else {
+                            // Fallback to original params if SDL input isn’t detected
+                            analogs_param[analog_id] = params;
+                        }
                         ApplyConfiguration();
                         Settings::SaveProfile(ui->profile->currentIndex());
                     },
