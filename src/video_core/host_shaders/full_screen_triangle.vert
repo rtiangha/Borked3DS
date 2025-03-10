@@ -20,11 +20,6 @@ layout(location = 0) out vec2 texcoord;
 #define UNIFORM(n) layout (location = n) uniform
 #endif
 
-BEGIN_PUSH_CONSTANTS
-UNIFORM(0) vec2 tex_scale;
-UNIFORM(1) vec2 tex_offset;
-END_PUSH_CONSTANTS
-
 // Define a custom fma function for GLSL ES 3.10
 #if defined(GL_ES) && __VERSION__ < 320
     vec2 custom_fma(vec2 a, vec2 b, vec2 c) {
@@ -34,6 +29,11 @@ END_PUSH_CONSTANTS
 #else
     #define FMA fma
 #endif
+
+BEGIN_PUSH_CONSTANTS
+UNIFORM(0) vec2 tex_scale;
+UNIFORM(1) vec2 tex_offset;
+END_PUSH_CONSTANTS
 
 void main() {
     float x = float((gl_VertexID & 1) << 2);

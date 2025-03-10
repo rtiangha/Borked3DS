@@ -18,9 +18,35 @@ namespace OpenGL {
 GLuint LoadShader(std::string_view source, GLenum type) {
     std::string preamble;
 
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (GLES) {
 #ifdef __ANDROID__
-        preamble = R"(#version 310 es
+
+        if (majorVersion == 3 && minorVersion == 1) {
+            preamble = R"(#version 310 es
+
+#if defined(GL_ANDROID_extension_pack_es31a)
+#extension GL_ANDROID_extension_pack_es31a : enable
+#endif // defined(GL_ANDROID_extension_pack_es31a)
+
+#if defined(GL_EXT_geometry_shader)
+#extension GL_EXT_geometry_shader : enable
+#endif //defined(GL_EXT_geometry_shader)
+
+#if defined(GL_EXT_separate_shader_objects)
+#extension GL_EXT_separate_shader_objects : enable
+#endif //defined(GL_EXT_separate_shader_objects)
+
+#if defined(GL_EXT_clip_cull_distance)
+#extension GL_EXT_clip_cull_distance : enable
+#endif // defined(GL_EXT_clip_cull_distance)
+)";
+
+        } else {
+            preamble = R"(#version 320 es
 
 #if defined(GL_ANDROID_extension_pack_es31a)
 #extension GL_ANDROID_extension_pack_es31a : enable
@@ -29,19 +55,28 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 #if defined(GL_EXT_clip_cull_distance)
 #extension GL_EXT_clip_cull_distance : enable
 #endif // defined(GL_EXT_clip_cull_distance)
-
 )";
+        }
+
 #else
-        preamble = "#version 310 es\n"
-                   "#if defined(GL_EXT_clip_cull_distance)\n"
-                   "#extension GL_EXT_clip_cull_distance : enable\n"
-                   "#endif //defined(GL_EXT_clip_cull_distance)\n"
-                   "#if defined(GL_EXT_geometry_shader)\n"
-                   "#extension GL_EXT_geometry_shader : enable\n"
-                   "#endif //defined(GL_EXT_geometry_shader)\n"
-                   "#if defined(GL_EXT_separate_shader_objects)\n"
-                   "#extension GL_EXT_separate_shader_objects : enable\n"
-                   "#endif //defined(GL_EXT_separate_shader_objects)\n";
+        if (majorVersion == 3 && minorVersion == 1) {
+            preamble = "#version 310 es\n"
+                       "#if defined(GL_EXT_geometry_shader)\n"
+                       "#extension GL_EXT_geometry_shader : enable\n"
+                       "#endif //defined(GL_EXT_geometry_shader)\n"
+                       "#if defined(GL_EXT_separate_shader_objects)\n"
+                       "#extension GL_EXT_separate_shader_objects : enable\n"
+                       "#endif //defined(GL_EXT_separate_shader_objects)\n"
+                       "#if defined(GL_EXT_clip_cull_distance)\n"
+                       "#extension GL_EXT_clip_cull_distance : enable\n"
+                       "#endif //defined(GL_EXT_clip_cull_distance)\n";
+        } else {
+            preamble = "#version 320 es\n"
+                       "#endif\n"
+                       "#if defined(GL_EXT_clip_cull_distance)\n"
+                       "#extension GL_EXT_clip_cull_distance : enable\n"
+                       "#endif //defined(GL_EXT_clip_cull_distance)\n";
+        }
 #endif
     } else {
         preamble = "#version 430 core\n"
