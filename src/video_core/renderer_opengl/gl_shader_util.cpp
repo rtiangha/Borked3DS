@@ -157,14 +157,32 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
 
     if (separable_program) {
         if (Settings::values.use_gles.GetValue()) {
-            glProgramParameteriEXT(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+            GLint major, minor;
+            glGetIntegerv(GL_MAJOR_VERSION, &major);
+            glGetIntegerv(GL_MINOR_VERSION, &minor);
+            if (major == 3 && minor >= 2) {
+                // GLES 3.2+: Use core function
+                glProgramParameteri(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+            } else if (GLAD_GL_EXT_separate_shader_objects) {
+                // GLES 3.1 with extension
+                glProgramParameteriEXT(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
+            } else {
+                LOG_ERROR(Render_OpenGL, "Separable programs not supported");
+                return 0;
+            }
         } else {
             glProgramParameteri(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
         }
     }
 
     if (Settings::values.use_gles.GetValue()) {
-        glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+        // Program binaries are core since GLES 3.0, but check context if EXT is required
+        if (GLAD_GL_EXT_separate_shader_objects) {
+            glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+        } else {
+            glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
+                                GL_TRUE); // Safe in GLES 3.0+
+        }
     } else {
         glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
     }
