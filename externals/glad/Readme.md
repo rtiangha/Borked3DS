@@ -52,3 +52,4 @@ Currently, the list of installed extensions are:
 * GL_KHR_debug
 * GL_ARB_separate_shader_objects
 * GL_EXT_geometry_shader
+* GL_OES_texture_view

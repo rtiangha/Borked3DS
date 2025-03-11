@@ -81,6 +81,7 @@ int GLAD_GL_OES_standard_derivatives = 0;
 int GLAD_GL_OES_texture_float = 0;
 int GLAD_GL_OES_texture_half_float = 0;
 int GLAD_GL_OES_texture_npot = 0;
+int GLAD_GL_OES_texture_view = 0;
 int GLAD_GL_OES_vertex_array_object = 0;
 
 
@@ -703,6 +704,7 @@ PFNGLPUSHDEBUGGROUPKHRPROC glad_glPushDebugGroupKHR = NULL;
 PFNGLREADNPIXELSPROC glad_glReadnPixels = NULL;
 PFNGLTEXBUFFEREXTPROC glad_glTexBufferEXT = NULL;
 PFNGLTEXBUFFERRANGEEXTPROC glad_glTexBufferRangeEXT = NULL;
+PFNGLTEXTUREVIEWOESPROC glad_glTextureViewOES = NULL;
 PFNGLUSEPROGRAMSTAGESEXTPROC glad_glUseProgramStagesEXT = NULL;
 PFNGLVALIDATEPROGRAMPIPELINEEXTPROC glad_glValidateProgramPipelineEXT = NULL;
 
@@ -1850,6 +1852,10 @@ static void glad_gl_load_GL_EXT_texture_buffer( GLADuserptrloadfunc load, void* 
     glad_glTexBufferEXT = (PFNGLTEXBUFFEREXTPROC) load(userptr, "glTexBufferEXT");
     glad_glTexBufferRangeEXT = (PFNGLTEXBUFFERRANGEEXTPROC) load(userptr, "glTexBufferRangeEXT");
 }
+static void glad_gl_load_GL_OES_texture_view( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_GL_OES_texture_view) return;
+    glad_glTextureViewOES = (PFNGLTEXTUREVIEWOESPROC) load(userptr, "glTextureViewOES");
+}
 static void glad_gl_load_GL_OES_vertex_array_object( GLADuserptrloadfunc load, void* userptr) {
     if(!GLAD_GL_OES_vertex_array_object) return;
     glad_glBindVertexArrayOES = (PFNGLBINDVERTEXARRAYOESPROC) load(userptr, "glBindVertexArrayOES");
@@ -2101,6 +2107,7 @@ static int glad_gl_find_extensions_gles2(void) {
     GLAD_GL_OES_texture_float = glad_gl_has_extension(exts, exts_i, "GL_OES_texture_float");
     GLAD_GL_OES_texture_half_float = glad_gl_has_extension(exts, exts_i, "GL_OES_texture_half_float");
     GLAD_GL_OES_texture_npot = glad_gl_has_extension(exts, exts_i, "GL_OES_texture_npot");
+    GLAD_GL_OES_texture_view = glad_gl_has_extension(exts, exts_i, "GL_OES_texture_view");
     GLAD_GL_OES_vertex_array_object = glad_gl_has_extension(exts, exts_i, "GL_OES_vertex_array_object");
 
     glad_gl_free_extensions(exts_i);
@@ -2161,6 +2168,7 @@ int gladLoadGLES2UserPtr( GLADuserptrloadfunc load, void *userptr) {
     glad_gl_load_GL_EXT_clear_texture(load, userptr);
     glad_gl_load_GL_EXT_geometry_shader(load, userptr);
     glad_gl_load_GL_EXT_texture_buffer(load, userptr);
+    glad_gl_load_GL_OES_texture_view(load, userptr);
     glad_gl_load_GL_OES_vertex_array_object(load, userptr);
 
 
