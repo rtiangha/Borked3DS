@@ -83,10 +83,23 @@ BlitHelper::BlitHelper(const Driver& driver_)
         state.texture_units[i].sampler = i == 2 ? nearest_sampler.handle : linear_sampler.handle;
     }
     if (driver.IsOpenGLES()) {
-        LOG_INFO(Render_OpenGL,
-                 "Texture views are unsupported, reinterpretation will do intermediate copy");
-        temp_tex.Create();
-        use_texture_view = false;
+        bool oes_texture_view = false;
+        GLint num_extensions;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+        for (GLint i = 0; i < num_extensions; ++i) {
+            const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
+            if (std::string_view(extension) == "GL_OES_texture_view") {
+                oes_texture_view = true;
+                LOG_INFO(Render_OpenGL, "GL_OES_texture_view is supported");
+                break;
+            }
+        }
+        if (!oes_texture_view) {
+            LOG_INFO(Render_OpenGL,
+                     "Texture views are unsupported, reinterpretation will do intermediate copy");
+            temp_tex.Create();
+            use_texture_view = false;
+        }
     }
 }
 
@@ -104,8 +117,13 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
     if (use_texture_view) {
         temp_tex.Create();
         glActiveTexture(GL_TEXTURE1);
-        glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8, 0, 1, 0,
-                      1);
+        if (Settings::values.use_gles.GetValue()) {
+            glTextureViewOES(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8,
+                             0, 1, 0, 1);
+        } else {
+            glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8, 0,
+                          1, 0, 1);
+        }
         CheckGLError("glTextureView");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         CheckGLError("glTexParameteri MAG_FILTER");
