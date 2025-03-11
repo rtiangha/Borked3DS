@@ -56,6 +56,14 @@ OGLProgram CreateProgram(std::string_view frag) {
 
 } // Anonymous namespace
 
+// Helper function to log OpenGL errors
+void CheckGLError(const char* operation) {
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG_ERROR(Render_OpenGL, "{} failed with error: 0x{:x}", operation, err);
+    }
+}
+
 BlitHelper::BlitHelper(const Driver& driver_)
     : driver{driver_}, linear_sampler{CreateSampler(GL_LINEAR)},
       nearest_sampler{CreateSampler(GL_NEAREST)},
@@ -98,8 +106,11 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
         glActiveTexture(GL_TEXTURE1);
         glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8, 0, 1, 0,
                       1);
+        CheckGLError("glTextureView");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        CheckGLError("glTexParameteri MAG_FILTER");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        CheckGLError("glTexParameteri MIN_FILTER");
     } else if (copy.extent.width > temp_extent.width || copy.extent.height > temp_extent.height) {
         temp_extent = copy.extent;
         temp_tex.Release();
@@ -109,19 +120,29 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
         glActiveTexture(GL_TEXTURE1);
         glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, temp_extent.width,
                        temp_extent.height);
+        CheckGLError("glTexStorage2D");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        CheckGLError("glTexParameteri MAG_FILTER");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        CheckGLError("glTexParameteri MIN_FILTER");
     }
     state.texture_units[1].texture_2d = temp_tex.handle;
     state.Apply();
 
     glActiveTexture(GL_TEXTURE1);
     if (!use_texture_view) {
+        LOG_DEBUG(Render_OpenGL,
+                  "glCopyImageSubData: src_handle={}, dst_handle={}, width={}, height={}, "
+                  "src_x={}, src_y={}",
+                  source.Handle(), temp_tex.handle, copy.extent.width, copy.extent.height,
+                  copy.src_offset.x, copy.src_offset.y);
         glCopyImageSubData(source.Handle(), GL_TEXTURE_2D, 0, copy.src_offset.x, copy.src_offset.y,
                            0, temp_tex.handle, GL_TEXTURE_2D, 0, copy.src_offset.x,
                            copy.src_offset.y, 0, copy.extent.width, copy.extent.height, 1);
+        CheckGLError("glCopyImageSubData");
     }
     glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+    CheckGLError("glTexParameteri DEPTH_STENCIL_TEXTURE_MODE");
 
     const Common::Rectangle src_rect{copy.src_offset.x, copy.src_offset.y + copy.extent.height,
                                      copy.src_offset.x + copy.extent.width, copy.src_offset.x};
