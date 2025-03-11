@@ -83,18 +83,7 @@ BlitHelper::BlitHelper(const Driver& driver_)
         state.texture_units[i].sampler = i == 2 ? nearest_sampler.handle : linear_sampler.handle;
     }
     if (driver.IsOpenGLES()) {
-        bool oes_texture_view = false;
-        GLint num_extensions;
-        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
-        for (GLint i = 0; i < num_extensions; ++i) {
-            const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
-            if (std::string_view(extension) == "GL_OES_texture_view") {
-                oes_texture_view = true;
-                LOG_INFO(Render_OpenGL, "GL_OES_texture_view is supported");
-                break;
-            }
-        }
-        if (!oes_texture_view) {
+        if (!GLAD_GL_OES_texture_view) {
             LOG_INFO(Render_OpenGL,
                      "Texture views are unsupported, reinterpretation will do intermediate copy");
             temp_tex.Create();
