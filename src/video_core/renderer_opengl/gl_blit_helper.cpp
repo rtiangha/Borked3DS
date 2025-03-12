@@ -138,15 +138,31 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
 
     glActiveTexture(GL_TEXTURE1);
     if (!use_texture_view) {
-        LOG_DEBUG(Render_OpenGL,
-                  "glCopyImageSubData: src_handle={}, dst_handle={}, width={}, height={}, "
-                  "src_x={}, src_y={}",
-                  source.Handle(), temp_tex.handle, copy.extent.width, copy.extent.height,
-                  copy.src_offset.x, copy.src_offset.y);
-        glCopyImageSubData(source.Handle(), GL_TEXTURE_2D, 0, copy.src_offset.x, copy.src_offset.y,
-                           0, temp_tex.handle, GL_TEXTURE_2D, 0, copy.src_offset.x,
-                           copy.src_offset.y, 0, copy.extent.width, copy.extent.height, 1);
-        CheckGLError("glCopyImageSubData");
+        if (Settings::values.use_gles.GetValue()) {
+            // Bind source texture and read data
+            glBindTexture(GL_TEXTURE_2D, source.Handle());
+            std::vector<u8> buffer(copy.extent.width * copy.extent.height *
+                                   4); // Assuming 4 bytes per pixel for GL_DEPTH24_STENCIL8
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, buffer.data());
+            CheckGLError("glGetTexImage");
+
+            // Bind temp texture and write data
+            glBindTexture(GL_TEXTURE_2D, temp_tex.handle);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, copy.extent.width, copy.extent.height,
+                            GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, buffer.data());
+            CheckGLError("glTexSubImage2D");
+        } else {
+            LOG_DEBUG(Render_OpenGL,
+                      "glCopyImageSubData: src_handle={}, dst_handle={}, width={}, height={}, "
+                      "src_x={}, src_y={}",
+                      source.Handle(), temp_tex.handle, copy.extent.width, copy.extent.height,
+                      copy.src_offset.x, copy.src_offset.y);
+            glCopyImageSubData(source.Handle(), GL_TEXTURE_2D, 0, copy.src_offset.x,
+                               copy.src_offset.y, 0, temp_tex.handle, GL_TEXTURE_2D, 0,
+                               copy.src_offset.x, copy.src_offset.y, 0, copy.extent.width,
+                               copy.extent.height, 1);
+            CheckGLError("glCopyImageSubData");
+        }
     }
     glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
     CheckGLError("glTexParameteri DEPTH_STENCIL_TEXTURE_MODE");
