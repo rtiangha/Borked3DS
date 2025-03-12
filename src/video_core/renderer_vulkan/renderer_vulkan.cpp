@@ -484,11 +484,15 @@ bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
             .usage = vk::ImageUsageFlagBits::eSampled,
         };
 
+        // Check memory requirements before allocation
+        const auto mem_reqs = device.getImageMemoryRequirements(VkImage{});
+
         const VmaAllocationCreateInfo alloc_info = {
             .flags = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
-            .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-            .requiredFlags = 0,
+            .usage = VMA_MEMORY_USAGE_AUTO,
+            .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             .preferredFlags = 0,
+            .memoryTypeBits = mem_reqs.memoryTypeBits,
             .pool = VK_NULL_HANDLE,
             .pUserData = nullptr,
         };
@@ -497,8 +501,19 @@ bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
         VkImageCreateInfo unsafe_image_info = static_cast<VkImageCreateInfo>(image_info);
 
         LOG_DEBUG(Render_Vulkan, "Creating image...");
-        VkResult result = vmaCreateImage(instance.GetAllocator(), &unsafe_image_info, &alloc_info,
-                                         &unsafe_image, &texture.allocation, nullptr);
+        VkResult result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+        for (auto usage : {VMA_MEMORY_USAGE_AUTO, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+                           VMA_MEMORY_USAGE_AUTO_PREFER_HOST}) {
+            VmaAllocationCreateInfo retry_alloc_info = alloc_info;
+            retry_alloc_info.usage = usage;
+
+            result = vmaCreateImage(instance.GetAllocator(), &unsafe_image_info, &retry_alloc_info,
+                                    &unsafe_image, &texture.allocation, nullptr);
+
+            if (result == VK_SUCCESS) {
+                break;
+            }
+        }
         if (result != VK_SUCCESS) [[unlikely]] {
             LOG_CRITICAL(Render_Vulkan, "Failed allocating texture with error {}", result);
             return false;

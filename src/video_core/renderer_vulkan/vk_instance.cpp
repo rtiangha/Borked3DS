@@ -18,6 +18,8 @@
 
 namespace Vulkan {
 
+VmaPool default_pool = VK_NULL_HANDLE;
+
 namespace {
 
 vk::Format MakeFormat(VideoCore::PixelFormat format) {
@@ -168,7 +170,12 @@ Instance::Instance(Frontend::EmuWindow& window, u32 physical_device_index)
 }
 
 Instance::~Instance() {
-    vmaDestroyAllocator(allocator);
+    if (default_pool != VK_NULL_HANDLE) {
+        vmaDestroyPool(allocator, default_pool);
+    }
+    if (allocator != VK_NULL_HANDLE) {
+        vmaDestroyAllocator(allocator);
+    }
 }
 
 const FormatTraits& Instance::GetTraits(VideoCore::PixelFormat pixel_format) const {
@@ -662,18 +669,32 @@ void Instance::CreateAllocator() {
         .vkGetDeviceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr,
     };
 
+    // Get device limits
+    const auto device_props = physical_device.getProperties();
+
     const VmaAllocatorCreateInfo allocator_info = {
+        .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
         .physicalDevice = physical_device,
         .device = *device,
+        .preferredLargeHeapBlockSize = 0, // Let VMA decide
+        .pAllocationCallbacks = nullptr,
+        .pDeviceMemoryCallbacks = nullptr,
+        .pHeapSizeLimit = nullptr,
         .pVulkanFunctions = &functions,
         .instance = *instance,
         .vulkanApiVersion = TargetVulkanApiVersion,
+        .pTypeExternalMemoryHandleTypes = nullptr,
     };
 
     const VkResult result = vmaCreateAllocator(&allocator_info, &allocator);
     if (result != VK_SUCCESS) {
         UNREACHABLE_MSG("Failed to initialize VMA with error {}", result);
     }
+
+    // Configure default pool creation
+    VmaPoolCreateInfo pool_info = {};
+    pool_info.blockSize = device_props.limits.maxMemoryAllocationCount / 8; // Conservative size
+    vmaCreatePool(allocator, &pool_info, &default_pool);
 }
 
 void Instance::CollectToolingInfo() {
