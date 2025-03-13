@@ -99,25 +99,31 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
     OpenGLState prev_state = OpenGLState::GetCurState();
     SCOPE_EXIT({ prev_state.Apply(); });
 
-    state.texture_units[0].texture_2d = source.Handle();
-    state.texture_units[0].sampler = 0;
-    state.texture_units[1].sampler = 0;
+    const bool is_gles = driver.IsOpenGLES();
+
+    if (is_gles) {
+        // OpenGL ES path - use single texture
+        state.texture_units[0].texture_2d = source.Handle();
+        state.texture_units[0].sampler = 0;
+    } else {
+        // Desktop OpenGL path - use separate textures
+        state.texture_units[0].texture_2d = source.Handle();
+        state.texture_units[0].sampler = 0;
+        state.texture_units[1].sampler = 0;
+    }
 
     if (use_texture_view) {
         temp_tex.Create();
         glActiveTexture(GL_TEXTURE1);
-        if (Settings::values.use_gles.GetValue()) {
-            glTextureViewOES(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8,
-                             0, 1, 0, 1);
+        if (is_gles) {
+            glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8_OES,
+                          0, 1, 0, 1);
         } else {
             glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8, 0,
                           1, 0, 1);
         }
-        CheckGLError("glTextureView");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        CheckGLError("glTexParameteri MAG_FILTER");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        CheckGLError("glTexParameteri MIN_FILTER");
     } else if (copy.extent.width > temp_extent.width || copy.extent.height > temp_extent.height) {
         temp_extent = copy.extent;
         temp_tex.Release();
@@ -125,47 +131,31 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
         state.texture_units[1].texture_2d = temp_tex.handle;
         state.Apply();
         glActiveTexture(GL_TEXTURE1);
-        glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, temp_extent.width,
-                       temp_extent.height);
-        CheckGLError("glTexStorage2D");
+        if (is_gles) {
+            glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8_OES, temp_extent.width,
+                           temp_extent.height);
+        } else {
+            glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, temp_extent.width,
+                           temp_extent.height);
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        CheckGLError("glTexParameteri MAG_FILTER");
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        CheckGLError("glTexParameteri MIN_FILTER");
     }
+
     state.texture_units[1].texture_2d = temp_tex.handle;
     state.Apply();
 
     glActiveTexture(GL_TEXTURE1);
     if (!use_texture_view) {
-        if (Settings::values.use_gles.GetValue()) {
-            // Bind source texture and read data
-            glBindTexture(GL_TEXTURE_2D, source.Handle());
-            std::vector<u8> buffer(copy.extent.width * copy.extent.height *
-                                   4); // Assuming 4 bytes per pixel for GL_DEPTH24_STENCIL8
-            glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, buffer.data());
-            CheckGLError("glGetTexImage");
-
-            // Bind temp texture and write data
-            glBindTexture(GL_TEXTURE_2D, temp_tex.handle);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, copy.extent.width, copy.extent.height,
-                            GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, buffer.data());
-            CheckGLError("glTexSubImage2D");
-        } else {
-            LOG_DEBUG(Render_OpenGL,
-                      "glCopyImageSubData: src_handle={}, dst_handle={}, width={}, height={}, "
-                      "src_x={}, src_y={}",
-                      source.Handle(), temp_tex.handle, copy.extent.width, copy.extent.height,
-                      copy.src_offset.x, copy.src_offset.y);
-            glCopyImageSubData(source.Handle(), GL_TEXTURE_2D, 0, copy.src_offset.x,
-                               copy.src_offset.y, 0, temp_tex.handle, GL_TEXTURE_2D, 0,
-                               copy.src_offset.x, copy.src_offset.y, 0, copy.extent.width,
-                               copy.extent.height, 1);
-            CheckGLError("glCopyImageSubData");
-        }
+        glCopyImageSubData(source.Handle(), GL_TEXTURE_2D, 0, copy.src_offset.x, copy.src_offset.y,
+                           0, temp_tex.handle, GL_TEXTURE_2D, 0, copy.src_offset.x,
+                           copy.src_offset.y, 0, copy.extent.width, copy.extent.height, 1);
     }
-    glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
-    CheckGLError("glTexParameteri DEPTH_STENCIL_TEXTURE_MODE");
+
+    // Only set depth stencil texture mode for desktop OpenGL
+    if (!is_gles) {
+        glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+    }
 
     const Common::Rectangle src_rect{copy.src_offset.x, copy.src_offset.y + copy.extent.height,
                                      copy.src_offset.x + copy.extent.width, copy.src_offset.x};
