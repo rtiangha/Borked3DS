@@ -269,14 +269,22 @@ public:
         : separable(separable), programmable_vertex_shaders(separable),
           trivial_vertex_shader(driver, separable), fixed_geometry_shaders(separable),
           fragment_shaders(separable), disk_cache(separable) {
+
+        const bool is_gles = driver.IsOpenGLES();
+
         if (separable) {
+            if (is_gles && !driver.HasExtension("GL_EXT_separate_shader_objects")) {
+                LOG_ERROR(Render_OpenGL, "Separate shader objects not supported!");
+                throw std::runtime_error("Separate shader objects not supported!");
+            }
             pipeline.Create();
         }
         profile = Pica::Shader::Profile{
             .has_separable_shaders = separable,
             .has_clip_planes = driver.HasClipCullDistance(),
             .has_geometry_shader = true,
-            .has_custom_border_color = true,
+            .has_custom_border_color =
+                !is_gles || driver.HasExtension("GL_EXT_texture_border_clamp"),
             .has_fragment_shader_interlock = driver.HasArbFragmentShaderInterlock(),
             // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
             .has_fragment_shader_barycentric = false,
@@ -286,9 +294,10 @@ public:
             .has_gl_ext_framebuffer_fetch = driver.HasExtFramebufferFetch(),
             .has_gl_ext_texture_buffer = driver.HasExtTextureBuffer(),
             .has_gl_arm_framebuffer_fetch = driver.HasArmShaderFramebufferFetch(),
-            .has_gl_arb_shader_image_load_store = driver.HasArbShaderImageLoadStore(),
+            .has_gl_arb_shader_image_load_store = !is_gles && driver.HasArbShaderImageLoadStore(),
             .has_gl_nv_fragment_shader_interlock = driver.HasNvFragmentShaderInterlock(),
-            .has_gl_intel_fragment_shader_ordering = driver.HasIntelFragmentShaderOrdering(),
+            .has_gl_intel_fragment_shader_ordering =
+                !is_gles && driver.HasIntelFragmentShaderOrdering(),
             // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
             .has_gl_nv_fragment_shader_barycentric = false,
             .is_vulkan = false,
