@@ -197,6 +197,8 @@ bool Driver::HasExtension(std::string_view name) const {
             return GLAD_GL_EXT_texture_filter_anisotropic;
         if (ext_name == "EXT_texture_format_BGRA8888")
             return GLAD_GL_EXT_texture_format_BGRA8888;
+        if (ext_name == "EXT_texture_storage")
+            return GLAD_GL_EXT_texture_storage;
         if (ext_name == "EXT_unpack_subimage")
             return GLAD_GL_EXT_unpack_subimage;
         if (ext_name == "EXT_geometry_shader")
