@@ -92,9 +92,9 @@ RendererOpenGL::RendererOpenGL(Core::System& system, Pica::PicaCore& pica_,
         }
     }
 
-    window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
+    window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
     if (secondary_window) {
-        secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
+        secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
     }
     frame_dumper.mailbox = std::make_unique<OGLVideoDumpingMailbox>();
     InitOpenGLObjects();
