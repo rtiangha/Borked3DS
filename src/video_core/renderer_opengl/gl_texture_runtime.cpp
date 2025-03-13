@@ -37,6 +37,13 @@ static constexpr std::array<FormatTuple, 4> DEPTH_TUPLES = {{
     {GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8}, // D24S8
 }};
 
+static constexpr std::array<FormatTuple, 4> DEPTH_TUPLES_OES = {{
+    {GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT}, // D16
+    {},
+    {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT},       // D24
+    {GL_DEPTH24_STENCIL8_OES, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8}, // D24S8
+}};
+
 static constexpr std::array<FormatTuple, 5> COLOR_TUPLES = {{
     {GL_RGBA8, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8},     // RGBA8
     {GL_RGB8, GL_BGR, GL_UNSIGNED_BYTE},              // RGB8
@@ -136,6 +143,10 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
 
 TextureRuntime::TextureRuntime(const Driver& driver_, VideoCore::RendererBase& renderer)
     : driver{driver_}, blit_helper{driver} {
+    GLint major, minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+
     for (std::size_t i = 0; i < draw_fbos.size(); ++i) {
         draw_fbos[i].Create();
         read_fbos[i].Create();
@@ -179,7 +190,7 @@ const FormatTuple& TextureRuntime::GetFormatTuple(PixelFormat pixel_format) cons
     } else if (type == SurfaceType::Depth || type == SurfaceType::DepthStencil) {
         const std::size_t tuple_idx = format_index - 14;
         ASSERT(tuple_idx < DEPTH_TUPLES.size());
-        return DEPTH_TUPLES[tuple_idx];
+        return (driver.IsOpenGLES() ? DEPTH_TUPLES_OES : DEPTH_TUPLES)[tuple_idx];
     }
 
     return DEFAULT_TUPLE;
@@ -367,6 +378,14 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
     glActiveTexture(TEMP_UNIT);
     const GLenum target =
         texture_type == VideoCore::TextureType::CubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
+
+    // For GLES, ensure proper handling of depth/stencil formats
+    if (driver->IsOpenGLES() && (type == SurfaceType::Depth || type == SurfaceType::DepthStencil)) {
+        const bool is_depth_stencil = type == SurfaceType::DepthStencil;
+        tuple.internal_format = is_depth_stencil ? GL_DEPTH24_STENCIL8_OES : GL_DEPTH_COMPONENT24;
+        tuple.format = is_depth_stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT;
+        tuple.type = is_depth_stencil ? GL_UNSIGNED_INT_24_8 : GL_UNSIGNED_INT;
+    }
 
     textures[0] = MakeHandle(target, width, height, levels, tuple, DebugName(false));
     if (res_scale != 1) {
