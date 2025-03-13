@@ -147,6 +147,18 @@ TextureRuntime::TextureRuntime(const Driver& driver_, VideoCore::RendererBase& r
     glGetIntegerv(GL_MAJOR_VERSION, &major);
     glGetIntegerv(GL_MINOR_VERSION, &minor);
 
+    if (driver.IsOpenGLES()) {
+        // Verify required extensions
+        const bool has_depth_texture = driver.HasExtension("GL_OES_depth_texture");
+        const bool has_packed_depth_stencil = driver.HasExtension("GL_OES_packed_depth_stencil");
+        const bool has_depth24 = driver.HasExtension("GL_OES_depth24");
+
+        if (!has_depth_texture || !has_packed_depth_stencil || !has_depth24) {
+            LOG_CRITICAL(Render_OpenGL, "Required OpenGL ES extensions are not available");
+            throw std::runtime_error("Missing required OpenGL ES extensions");
+        }
+    }
+
     for (std::size_t i = 0; i < draw_fbos.size(); ++i) {
         draw_fbos[i].Create();
         read_fbos[i].Create();
