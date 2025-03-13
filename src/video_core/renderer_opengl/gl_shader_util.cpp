@@ -68,7 +68,7 @@ GLuint LoadShader(std::string_view source, GLenum type) {
                        "#if defined(GL_EXT_geometry_shader)\n"
                        "#extension GL_EXT_geometry_shader : enable\n"
                        "#endif //defined(GL_EXT_geometry_shader)\n"
-                       "#if defined(GL_EXT_texture_storage\n"
+                       "#if defined(GL_EXT_texture_storage)\n"
                        "#extension GL_EXT_texture_storage : enable\n"
                        "#endif //defined(GL_EXT_texture_storage)\n"
                        "#if defined(GL_EXT_separate_shader_objects)\n"
