@@ -58,6 +58,7 @@ int GLAD_GL_EXT_shader_framebuffer_fetch = 0;
 int GLAD_GL_EXT_texture_compression_s3tc = 0;
 int GLAD_GL_EXT_texture_filter_anisotropic = 0;
 int GLAD_GL_EXT_texture_sRGB_decode = 0;
+int GLAD_GL_EXT_texture_storage = 0;
 int GLAD_GL_INTEL_fragment_shader_ordering = 0;
 int GLAD_GL_KHR_debug = 0;
 int GLAD_GL_KHR_texture_compression_astc_ldr = 0;
@@ -480,13 +481,19 @@ PFNGLTEXPARAMETERFVPROC glad_glTexParameterfv = NULL;
 PFNGLTEXPARAMETERIPROC glad_glTexParameteri = NULL;
 PFNGLTEXPARAMETERIVPROC glad_glTexParameteriv = NULL;
 PFNGLTEXSTORAGE1DPROC glad_glTexStorage1D = NULL;
+PFNGLTEXSTORAGE1DEXTPROC glad_glTexStorage1DEXT = NULL;
 PFNGLTEXSTORAGE2DPROC glad_glTexStorage2D = NULL;
+PFNGLTEXSTORAGE2DEXTPROC glad_glTexStorage2DEXT = NULL;
 PFNGLTEXSTORAGE2DMULTISAMPLEPROC glad_glTexStorage2DMultisample = NULL;
 PFNGLTEXSTORAGE3DPROC glad_glTexStorage3D = NULL;
+PFNGLTEXSTORAGE3DEXTPROC glad_glTexStorage3DEXT = NULL;
 PFNGLTEXSTORAGE3DMULTISAMPLEPROC glad_glTexStorage3DMultisample = NULL;
 PFNGLTEXSUBIMAGE1DPROC glad_glTexSubImage1D = NULL;
 PFNGLTEXSUBIMAGE2DPROC glad_glTexSubImage2D = NULL;
 PFNGLTEXSUBIMAGE3DPROC glad_glTexSubImage3D = NULL;
+PFNGLTEXTURESTORAGE1DEXTPROC glad_glTextureStorage1DEXT = NULL;
+PFNGLTEXTURESTORAGE2DEXTPROC glad_glTextureStorage2DEXT = NULL;
+PFNGLTEXTURESTORAGE3DEXTPROC glad_glTextureStorage3DEXT = NULL;
 PFNGLTEXTUREVIEWPROC glad_glTextureView = NULL;
 PFNGLTRANSFORMFEEDBACKVARYINGSPROC glad_glTransformFeedbackVaryings = NULL;
 PFNGLUNIFORM1DPROC glad_glUniform1d = NULL;
@@ -1809,6 +1816,15 @@ static void glad_gl_load_GL_EXT_separate_shader_objects( GLADuserptrloadfunc loa
     glad_glUseShaderProgramEXT = (PFNGLUSESHADERPROGRAMEXTPROC) load(userptr, "glUseShaderProgramEXT");
     glad_glValidateProgramPipelineEXT = (PFNGLVALIDATEPROGRAMPIPELINEEXTPROC) load(userptr, "glValidateProgramPipelineEXT");
 }
+static void glad_gl_load_GL_EXT_texture_storage( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_GL_EXT_texture_storage) return;
+    glad_glTexStorage1DEXT = (PFNGLTEXSTORAGE1DEXTPROC) load(userptr, "glTexStorage1DEXT");
+    glad_glTexStorage2DEXT = (PFNGLTEXSTORAGE2DEXTPROC) load(userptr, "glTexStorage2DEXT");
+    glad_glTexStorage3DEXT = (PFNGLTEXSTORAGE3DEXTPROC) load(userptr, "glTexStorage3DEXT");
+    glad_glTextureStorage1DEXT = (PFNGLTEXTURESTORAGE1DEXTPROC) load(userptr, "glTextureStorage1DEXT");
+    glad_glTextureStorage2DEXT = (PFNGLTEXTURESTORAGE2DEXTPROC) load(userptr, "glTextureStorage2DEXT");
+    glad_glTextureStorage3DEXT = (PFNGLTEXTURESTORAGE3DEXTPROC) load(userptr, "glTextureStorage3DEXT");
+}
 static void glad_gl_load_GL_KHR_debug( GLADuserptrloadfunc load, void* userptr) {
     if(!GLAD_GL_KHR_debug) return;
     glad_glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC) load(userptr, "glDebugMessageCallback");
@@ -1973,6 +1989,7 @@ static int glad_gl_find_extensions_gl(void) {
     GLAD_GL_EXT_texture_compression_s3tc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_s3tc");
     GLAD_GL_EXT_texture_filter_anisotropic = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_filter_anisotropic");
     GLAD_GL_EXT_texture_sRGB_decode = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_sRGB_decode");
+    GLAD_GL_EXT_texture_storage = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_storage");
     GLAD_GL_INTEL_fragment_shader_ordering = glad_gl_has_extension(exts, exts_i, "GL_INTEL_fragment_shader_ordering");
     GLAD_GL_KHR_debug = glad_gl_has_extension(exts, exts_i, "GL_KHR_debug");
     GLAD_GL_KHR_texture_compression_astc_ldr = glad_gl_has_extension(exts, exts_i, "GL_KHR_texture_compression_astc_ldr");
@@ -2061,6 +2078,7 @@ int gladLoadGLUserPtr( GLADuserptrloadfunc load, void *userptr) {
     glad_gl_load_GL_EXT_debug_label(load, userptr);
     glad_gl_load_GL_EXT_debug_marker(load, userptr);
     glad_gl_load_GL_EXT_separate_shader_objects(load, userptr);
+    glad_gl_load_GL_EXT_texture_storage(load, userptr);
     glad_gl_load_GL_KHR_debug(load, userptr);
 
 
@@ -2085,6 +2103,7 @@ static int glad_gl_find_extensions_gles2(void) {
     GLAD_GL_EXT_texture_compression_s3tc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_s3tc");
     GLAD_GL_EXT_texture_filter_anisotropic = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_filter_anisotropic");
     GLAD_GL_EXT_texture_sRGB_decode = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_sRGB_decode");
+    GLAD_GL_EXT_texture_storage = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_storage");
     GLAD_GL_KHR_debug = glad_gl_has_extension(exts, exts_i, "GL_KHR_debug");
     GLAD_GL_KHR_texture_compression_astc_ldr = glad_gl_has_extension(exts, exts_i, "GL_KHR_texture_compression_astc_ldr");
     GLAD_GL_NV_blend_minmax_factor = glad_gl_has_extension(exts, exts_i, "GL_NV_blend_minmax_factor");
@@ -2163,6 +2182,7 @@ int gladLoadGLES2UserPtr( GLADuserptrloadfunc load, void *userptr) {
     glad_gl_load_GL_EXT_debug_label(load, userptr);
     glad_gl_load_GL_EXT_debug_marker(load, userptr);
     glad_gl_load_GL_EXT_separate_shader_objects(load, userptr);
+    glad_gl_load_GL_EXT_texture_storage(load, userptr);
     glad_gl_load_GL_KHR_debug(load, userptr);
     glad_gl_load_GL_EXT_buffer_storage(load, userptr);
     glad_gl_load_GL_EXT_clear_texture(load, userptr);
