@@ -6,6 +6,7 @@
 #include "common/alignment.h"
 #include "common/assert.h"
 #include "common/profiling.h"
+#include "common/settings.h"
 #include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_stream_buffer.h"
 
@@ -14,11 +15,52 @@ namespace OpenGL {
 OGLStreamBuffer::OGLStreamBuffer(Driver& driver, GLenum target, GLsizeiptr size,
                                  bool prefer_coherent)
     : gl_target(target), buffer_size(size) {
+
+    bool is_gles = driver.IsOpenGLES();
     gl_buffer.Create();
     glBindBuffer(gl_target, gl_buffer.handle);
 
+    if (is_gles) {
+        InitializeGLES(driver, size, prefer_coherent);
+    } else {
+        InitializeDesktopGL(driver, size, prefer_coherent);
+    }
+}
+
+bool OGLStreamBuffer::InitializeGLES(Driver& driver, GLsizeiptr size, bool prefer_coherent) {
+    // For GLES, we'll use a simpler approach since persistent mapping isn't widely supported
     GLsizeiptr allocate_size = size;
-    if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && target == GL_ARRAY_BUFFER) {
+
+    // Check for vertex array out of bounds bug
+    if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && gl_target == GL_ARRAY_BUFFER) {
+        allocate_size = allocate_size * 2;
+    }
+
+    // Try to use buffer storage if available (GLES 3.1+)
+    if (driver.HasExtension("GL_EXT_buffer_storage")) {
+        persistent = true;
+        coherent = prefer_coherent;
+        GLbitfield flags =
+            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | (coherent ? GL_MAP_COHERENT_BIT : 0);
+
+        glBufferStorageEXT(gl_target, allocate_size, nullptr, flags);
+        mapped_ptr = static_cast<u8*>(glMapBufferRange(
+            gl_target, 0, buffer_size, flags | (coherent ? 0 : GL_MAP_FLUSH_EXPLICIT_BIT)));
+
+        return true;
+    }
+
+    // Fall back to standard buffer usage
+    glBufferData(gl_target, allocate_size, nullptr, GL_STREAM_DRAW);
+    persistent = false;
+    coherent = false;
+
+    return true;
+}
+
+bool OGLStreamBuffer::InitializeDesktopGL(Driver& driver, GLsizeiptr size, bool prefer_coherent) {
+    GLsizeiptr allocate_size = size;
+    if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && gl_target == GL_ARRAY_BUFFER) {
         allocate_size = allocate_size * 2;
     }
 
@@ -33,6 +75,8 @@ OGLStreamBuffer::OGLStreamBuffer(Driver& driver, GLenum target, GLsizeiptr size,
     } else {
         glBufferData(gl_target, allocate_size, nullptr, GL_STREAM_DRAW);
     }
+
+    return true;
 }
 
 OGLStreamBuffer::~OGLStreamBuffer() {
@@ -72,9 +116,27 @@ std::tuple<u8*, GLintptr, bool> OGLStreamBuffer::Map(GLsizeiptr size, GLintptr a
 
     if (invalidate || !persistent) {
         BORKED3DS_PROFILE("OpenGL", "Stream Buffer Orphaning");
-        GLbitfield flags = GL_MAP_WRITE_BIT | (persistent ? GL_MAP_PERSISTENT_BIT : 0) |
-                           (coherent ? GL_MAP_COHERENT_BIT : GL_MAP_FLUSH_EXPLICIT_BIT) |
-                           (invalidate ? GL_MAP_INVALIDATE_BUFFER_BIT : GL_MAP_UNSYNCHRONIZED_BIT);
+
+        GLbitfield flags;
+        if (Settings::values.use_gles.GetValue()) {
+            // GLES might not support all mapping flags, use a more compatible set
+            flags = GL_MAP_WRITE_BIT | (persistent ? GL_MAP_PERSISTENT_BIT : 0) |
+                    (coherent ? GL_MAP_COHERENT_BIT : 0);
+
+            if (!coherent) {
+                flags |= GL_MAP_FLUSH_EXPLICIT_BIT;
+            }
+
+            if (invalidate) {
+                // Orphan the buffer
+                glBufferData(gl_target, buffer_size, nullptr, GL_STREAM_DRAW);
+            }
+        } else {
+            flags = GL_MAP_WRITE_BIT | (persistent ? GL_MAP_PERSISTENT_BIT : 0) |
+                    (coherent ? GL_MAP_COHERENT_BIT : GL_MAP_FLUSH_EXPLICIT_BIT) |
+                    (invalidate ? GL_MAP_INVALIDATE_BUFFER_BIT : GL_MAP_UNSYNCHRONIZED_BIT);
+        }
+
         mapped_ptr = static_cast<u8*>(
             glMapBufferRange(gl_target, buffer_pos, buffer_size - buffer_pos, flags));
         mapped_offset = buffer_pos;
