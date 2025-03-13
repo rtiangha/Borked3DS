@@ -120,6 +120,34 @@ bool Driver::HasBug(DriverBug bug) const {
     return True(bugs & bug);
 }
 
+void Driver::CheckGLESFeatures() {
+    if (!is_gles) {
+        return;
+    }
+
+    // Check GLES version
+    is_suitable = IsGLESVersionSupported(3, 2);
+
+    // Check required features
+    ext_texture_storage = HasExtension("GL_EXT_texture_storage");
+    oes_depth_texture = HasExtension("GL_OES_depth_texture");
+    oes_packed_depth_stencil = HasExtension("GL_OES_packed_depth_stencil");
+    oes_depth24 = HasExtension("GL_OES_depth24");
+    oes_rgb8_rgba8 = HasExtension("GL_OES_rgb8_rgba8");
+    ext_texture_format_bgra8888 = HasExtension("GL_EXT_texture_format_BGRA8888");
+    ext_texture_filter_anisotropic = HasExtension("GL_EXT_texture_filter_anisotropic");
+    ext_color_buffer_float = HasExtension("GL_EXT_color_buffer_float");
+    ext_color_buffer_half_float = HasExtension("GL_EXT_color_buffer_half_float");
+    oes_texture_float = HasExtension("GL_OES_texture_float");
+    oes_texture_half_float = HasExtension("GL_OES_texture_half_float");
+    oes_texture_float_linear = HasExtension("GL_OES_texture_float_linear");
+    oes_texture_half_float_linear = HasExtension("GL_OES_texture_half_float_linear");
+    ext_texture_rg = HasExtension("GL_EXT_texture_rg");
+    ext_draw_buffers = HasExtension("GL_EXT_draw_buffers");
+    ext_geometry_shader = HasExtension("GL_EXT_geometry_shader");
+    khr_debug = HasExtension("GL_KHR_debug");
+}
+
 bool Driver::HasExtension(std::string_view name) const {
     if (is_gles) {
         // For OpenGL ES, we need to check extensions one by one
@@ -251,6 +279,31 @@ bool Driver::HasExtension(std::string_view name) const {
     }
 }
 
+bool Driver::SupportsNonPowerOfTwo() const {
+    return !is_gles || HasExtension("GL_OES_texture_npot");
+}
+
+bool Driver::SupportsASTCCompression() const {
+    return HasExtension("GL_KHR_texture_compression_astc_ldr");
+}
+
+bool Driver::SupportsDXTCompression() const {
+    return HasExtension("GL_EXT_texture_compression_s3tc") ||
+           HasExtension("GL_EXT_texture_compression_dxt1");
+}
+
+bool Driver::SupportsTextureStorage() const {
+    return !is_gles || HasExtension("GL_EXT_texture_storage");
+}
+
+bool Driver::SupportsDepthTextures() const {
+    return !is_gles || (oes_depth_texture && oes_packed_depth_stencil);
+}
+
+bool Driver::SupportsFloatTextures() const {
+    return !is_gles || (oes_texture_float && oes_texture_float_linear);
+}
+
 bool Driver::HasDebugTool() {
     GLint num_extensions;
     glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
@@ -261,6 +314,51 @@ bool Driver::HasDebugTool() {
         }
     }
     return false;
+}
+
+bool Driver::IsGLESVersionSupported(int major, int minor) const {
+    if (!is_gles) {
+        return false; // Not an OpenGL ES context
+    }
+
+    // Parse the OpenGL ES version string
+    // Format is typically: "OpenGL ES <version> <vendor-specific-info>"
+    std::string_view version = gl_version;
+    if (!version.starts_with("OpenGL ES ")) {
+        return false;
+    }
+
+    // Skip "OpenGL ES " prefix
+    version.remove_prefix(10);
+
+    // Parse major version
+    int current_major = 0;
+    while (!version.empty() && std::isdigit(version.front())) {
+        current_major = current_major * 10 + (version.front() - '0');
+        version.remove_prefix(1);
+    }
+
+    // Skip dot
+    if (version.empty() || version.front() != '.') {
+        return false;
+    }
+    version.remove_prefix(1);
+
+    // Parse minor version
+    int current_minor = 0;
+    while (!version.empty() && std::isdigit(version.front())) {
+        current_minor = current_minor * 10 + (version.front() - '0');
+        version.remove_prefix(1);
+    }
+
+    // Compare versions
+    if (current_major > major) {
+        return true;
+    }
+    if (current_major < major) {
+        return false;
+    }
+    return current_minor >= minor;
 }
 
 bool Driver::IsCustomFormatSupported(VideoCore::CustomPixelFormat format) const {
@@ -320,6 +418,15 @@ void Driver::DeduceVendor() {
         vendor = Vendor::Qualcomm;
     } else if (gpu_vendor.find("Samsung") != gpu_vendor.npos) {
         vendor = Vendor::Samsung;
+    } else if (gpu_vendor.find("PowerVR") != gpu_vendor.npos ||
+               gpu_vendor.find("ImgTec") != gpu_vendor.npos) {
+        vendor = Vendor::ImgTec;
+    } else if (gpu_vendor.find("Vivante") != gpu_vendor.npos) {
+        vendor = Vendor::Vivante;
+    } else if (gpu_vendor.find("Broadcom") != gpu_vendor.npos) {
+        vendor = Vendor::Broadcom;
+    } else if (gpu_vendor.find("Apple") != gpu_vendor.npos) {
+        vendor = Vendor::Apple;
     } else if (gpu_vendor.find("GDI Generic") != gpu_vendor.npos) {
         vendor = Vendor::Generic;
     }
@@ -353,24 +460,58 @@ void Driver::FindBugs() {
     const bool is_linux = false;
 #endif
 
-    // TODO: Check if these have been fixed in the newer driver
-    if (vendor == Vendor::AMD) {
-        bugs |= DriverBug::ShaderStageChangeFreeze | DriverBug::VertexArrayOutOfBound;
+    // Desktop OpenGL bug checks..
+    if (!is_gles) {
+        // TODO: Check if these have been fixed in the newer driver
+        if (vendor == Vendor::AMD) {
+            bugs |= DriverBug::ShaderStageChangeFreeze | DriverBug::VertexArrayOutOfBound;
+        }
+
+        if (vendor == Vendor::AMD || (vendor == Vendor::Intel && !is_linux)) {
+            bugs |= DriverBug::BrokenTextureView;
+        }
+
+        if (vendor == Vendor::Intel && !is_linux) {
+            bugs |= DriverBug::BrokenClearTexture;
+        }
+
+        if (vendor == Vendor::ARM && gpu_model.find("Mali") != gpu_model.npos) {
+            constexpr GLint MIN_TEXTURE_BUFFER_SIZE = static_cast<GLint>((1 << 16));
+            GLint max_texel_buffer_size;
+            glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_texel_buffer_size);
+            if (max_texel_buffer_size == MIN_TEXTURE_BUFFER_SIZE) {
+                bugs |= DriverBug::SlowTextureBufferWithBigSize;
+            }
+        }
+        return;
     }
 
-    if (vendor == Vendor::AMD || (vendor == Vendor::Intel && !is_linux)) {
-        bugs |= DriverBug::BrokenTextureView;
+    // GLES-specific bug checks
+    if (vendor == Vendor::Qualcomm) {
+        // Known Qualcomm driver bugs
+        bugs |= DriverBug::BrokenETC2Compression;
+        bugs |= DriverBug::BrokenBufferSubData;
+        bugs |= DriverBug::RequiresSRGBSuffix;
     }
 
-    if (vendor == Vendor::Intel && !is_linux) {
-        bugs |= DriverBug::BrokenClearTexture;
+    if (vendor == Vendor::ARM) {
+        // Known Mali driver bugs
+        if (gpu_model.find("Mali") != gpu_model.npos) {
+            bugs |= DriverBug::SlowTextureBufferWithBigSize;
+            bugs |= DriverBug::BrokenMipmapGeneration;
+        }
     }
 
-    if (vendor == Vendor::ARM && gpu_model.find("Mali") != gpu_model.npos) {
-        constexpr GLint MIN_TEXTURE_BUFFER_SIZE = static_cast<GLint>((1 << 16));
+    if (vendor == Vendor::ImgTec) {
+        // Known PowerVR driver bugs
+        bugs |= DriverBug::BrokenASTCCompression;
+    }
+
+    // Check for texture buffer size limitations
+    if (is_gles) {
         GLint max_texel_buffer_size;
         glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_texel_buffer_size);
-        if (max_texel_buffer_size == MIN_TEXTURE_BUFFER_SIZE) {
+        if (max_texel_buffer_size <= (1 << 16)) {
             bugs |= DriverBug::SlowTextureBufferWithBigSize;
         }
     }

@@ -26,6 +26,10 @@ enum class Vendor {
     Qualcomm = 5,
     Samsung = 6,
     Generic = 7,
+    ImgTec = 8,   // PowerVR
+    Broadcom = 9, // VideoCore
+    Vivante = 10, // Mobile GPU
+    Apple = 11,   // Metal GPU
 };
 
 enum class DriverBug {
@@ -43,6 +47,11 @@ enum class DriverBug {
     // On some Mali GPUs, the texture buffer size is small and has reduced performance
     // if the buffer is close to the maximum texture size
     SlowTextureBufferWithBigSize = 1 << 4,
+    BrokenETC2Compression = 1 << 5,  // Some devices have broken ETC2 support
+    BrokenASTCCompression = 1 << 6,  // Some devices have broken ASTC support
+    BrokenBufferSubData = 1 << 7,    // Some devices have issues with glBufferSubData
+    RequiresSRGBSuffix = 1 << 8,     // Some GLES drivers require explicit sRGB suffix
+    BrokenMipmapGeneration = 1 << 9, // Some devices have broken mipmap generation
 };
 
 /**
@@ -62,6 +71,14 @@ public:
 
     /// Returns true if any debug tool is attached
     bool HasDebugTool();
+
+    // Add GLES capability checks
+    bool SupportsNonPowerOfTwo() const;
+    bool SupportsASTCCompression() const;
+    bool SupportsDXTCompression() const;
+    bool SupportsTextureStorage() const;
+    bool SupportsDepthTextures() const;
+    bool SupportsFloatTextures() const;
 
     /// Returns true if the driver supports the provided custom format
     bool IsCustomFormatSupported(VideoCore::CustomPixelFormat format) const;
@@ -177,6 +194,11 @@ private:
     void CheckExtensionSupport();
     void FindBugs();
 
+    // Add GLES-specific methods
+    void CheckGLESFeatures();
+    void CheckGLESExtensions();
+    bool IsGLESVersionSupported(int major, int minor) const;
+
 private:
     Vendor vendor = Vendor::Unknown;
     DriverBug bugs{};
@@ -200,6 +222,25 @@ private:
     bool nv_fragment_shader_interlock{};
     bool intel_fragment_shader_ordering{};
     bool blend_minmax_factor{};
+
+    // Add GLES-specific extension flags
+    bool ext_texture_storage{};
+    bool oes_depth_texture{};
+    bool oes_packed_depth_stencil{};
+    bool oes_depth24{};
+    bool oes_rgb8_rgba8{};
+    bool ext_texture_format_bgra8888{};
+    bool ext_texture_filter_anisotropic{};
+    bool ext_color_buffer_float{};
+    bool ext_color_buffer_half_float{};
+    bool oes_texture_float{};
+    bool oes_texture_half_float{};
+    bool oes_texture_float_linear{};
+    bool oes_texture_half_float_linear{};
+    bool ext_texture_rg{};
+    bool ext_draw_buffers{};
+    bool ext_geometry_shader{};
+    bool khr_debug{};
 
     std::string_view gl_version{};
     std::string_view gpu_vendor{};
