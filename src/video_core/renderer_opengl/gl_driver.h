@@ -57,6 +57,9 @@ public:
     /// Returns true of the driver has a particular bug stated in the DriverBug enum
     bool HasBug(DriverBug bug) const;
 
+    /// Returns true if the implementation supports the specified extension
+    bool HasExtension(std::string_view name) const;
+
     /// Returns true if any debug tool is attached
     bool HasDebugTool();
 

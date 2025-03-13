@@ -120,6 +120,135 @@ bool Driver::HasBug(DriverBug bug) const {
     return True(bugs & bug);
 }
 
+bool Driver::HasExtension(std::string_view name) const {
+    if (is_gles) {
+        // For OpenGL ES, we need to check extensions one by one
+        GLint num_extensions;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+        for (GLint i = 0; i < num_extensions; ++i) {
+            const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
+            if (name == extension) {
+                return true;
+            }
+        }
+        return false;
+    } else {
+        // For desktop OpenGL, we can use GLAD's extension checking
+        // Convert extension name to string for comparison
+        std::string ext_name(name);
+        if (ext_name.starts_with("GL_")) {
+            ext_name = ext_name.substr(3); // Remove "GL_" prefix
+        }
+
+        // AMD Extensions
+        if (ext_name == "AMD_blend_minmax_factor")
+            return GLAD_GL_AMD_blend_minmax_factor;
+
+        // ARB Extensions
+        if (ext_name == "ARB_buffer_storage")
+            return GLAD_GL_ARB_buffer_storage;
+        if (ext_name == "ARB_clear_texture")
+            return GLAD_GL_ARB_clear_texture;
+        if (ext_name == "ARB_fragment_shader_interlock")
+            return GLAD_GL_ARB_fragment_shader_interlock;
+        if (ext_name == "ARB_get_texture_sub_image")
+            return GLAD_GL_ARB_get_texture_sub_image;
+        if (ext_name == "ARB_shader_image_load_store")
+            return GLAD_GL_ARB_shader_image_load_store;
+        if (ext_name == "ARB_texture_compression_bptc")
+            return GLAD_GL_ARB_texture_compression_bptc;
+        if (ext_name == "ARB_separate_shader_objects")
+            return GLAD_GL_ARB_separate_shader_objects;
+
+        // ARM Extensions
+        if (ext_name == "ARM_shader_framebuffer_fetch")
+            return GLAD_GL_ARM_shader_framebuffer_fetch;
+
+        // EXT Extensions
+        if (ext_name == "EXT_buffer_storage")
+            return GLAD_GL_EXT_buffer_storage;
+        if (ext_name == "EXT_clear_texture")
+            return GLAD_GL_EXT_clear_texture;
+        if (ext_name == "EXT_clip_cull_distance")
+            return GLAD_GL_EXT_clip_cull_distance;
+        if (ext_name == "EXT_shader_framebuffer_fetch")
+            return GLAD_GL_EXT_shader_framebuffer_fetch;
+        if (ext_name == "EXT_texture_buffer")
+            return GLAD_GL_EXT_texture_buffer;
+        if (ext_name == "EXT_texture_compression_bptc")
+            return GLAD_GL_EXT_texture_compression_bptc;
+        if (ext_name == "EXT_texture_compression_s3tc")
+            return GLAD_GL_EXT_texture_compression_s3tc;
+        if (ext_name == "EXT_color_buffer_half_float")
+            return GLAD_GL_EXT_color_buffer_half_float;
+        if (ext_name == "EXT_debug_label")
+            return GLAD_GL_EXT_debug_label;
+        if (ext_name == "EXT_debug_marker")
+            return GLAD_GL_EXT_debug_marker;
+        if (ext_name == "EXT_separate_shader_objects")
+            return GLAD_GL_EXT_separate_shader_objects;
+        if (ext_name == "EXT_shadow_samplers")
+            return GLAD_GL_EXT_shadow_samplers;
+        if (ext_name == "EXT_texture_sRGB_decode")
+            return GLAD_GL_EXT_texture_sRGB_decode;
+        if (ext_name == "EXT_texture_type_2_10_10_10_REV")
+            return GLAD_GL_EXT_texture_type_2_10_10_10_REV;
+        if (ext_name == "EXT_texture_filter_anisotropic")
+            return GLAD_GL_EXT_texture_filter_anisotropic;
+        if (ext_name == "EXT_texture_format_BGRA8888")
+            return GLAD_GL_EXT_texture_format_BGRA8888;
+        if (ext_name == "EXT_unpack_subimage")
+            return GLAD_GL_EXT_unpack_subimage;
+        if (ext_name == "EXT_geometry_shader")
+            return GLAD_GL_EXT_geometry_shader;
+
+        // INTEL Extensions
+        if (ext_name == "INTEL_fragment_shader_ordering")
+            return GLAD_GL_INTEL_fragment_shader_ordering;
+
+        // KHR Extensions
+        if (ext_name == "KHR_texture_compression_astc_ldr")
+            return GLAD_GL_KHR_texture_compression_astc_ldr;
+        if (ext_name == "KHR_debug")
+            return GLAD_GL_KHR_debug;
+
+        // NV Extensions
+        if (ext_name == "NV_blend_minmax_factor")
+            return GLAD_GL_NV_blend_minmax_factor;
+        if (ext_name == "NV_fragment_shader_interlock")
+            return GLAD_GL_NV_fragment_shader_interlock;
+
+        // OES Extensions
+        if (ext_name == "OES_depth_texture")
+            return GLAD_GL_OES_depth_texture;
+        if (ext_name == "OES_packed_depth_stencil")
+            return GLAD_GL_OES_packed_depth_stencil;
+        if (ext_name == "OES_standard_derivatives")
+            return GLAD_GL_OES_standard_derivatives;
+        if (ext_name == "OES_texture_float")
+            return GLAD_GL_OES_texture_float;
+        if (ext_name == "OES_texture_half_float")
+            return GLAD_GL_OES_texture_half_float;
+        if (ext_name == "OES_texture_npot")
+            return GLAD_GL_OES_texture_npot;
+        if (ext_name == "OES_vertex_array_object")
+            return GLAD_GL_OES_vertex_array_object;
+        if (ext_name == "OES_texture_view")
+            return GLAD_GL_OES_texture_view;
+
+        // For any other extensions, check using glGetStringi
+        GLint num_extensions;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+        for (GLint i = 0; i < num_extensions; ++i) {
+            const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
+            if (name == extension) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 bool Driver::HasDebugTool() {
     GLint num_extensions;
     glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
