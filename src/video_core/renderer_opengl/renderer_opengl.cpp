@@ -78,7 +78,20 @@ RendererOpenGL::RendererOpenGL(Core::System& system, Pica::PicaCore& pica_,
     : VideoCore::RendererBase{system, window, secondary_window}, pica{pica_},
       rasterizer{system.Memory(), pica, system.CustomTexManager(), *this, driver},
       frame_dumper{system, window} {
+    GLint major, minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+
     const bool has_debug_tool = driver.HasDebugTool();
+
+    // Check for required GLES extensions
+    if (driver.IsOpenGLES()) {
+        if (!driver.HasExtension("GL_OES_rgb8_rgba8")) {
+            LOG_CRITICAL(Render_OpenGL, "GL_OES_rgb8_rgba8 not supported! Exiting...");
+            throw std::runtime_error("GL_OES_rgb8_rgba8 not supported!");
+        }
+    }
+
     window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
     if (secondary_window) {
         secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
