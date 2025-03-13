@@ -3,6 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
 #include "common/profiling.h"
 #include "common/settings.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
@@ -10,6 +12,29 @@
 #include "video_core/renderer_opengl/gl_state.h"
 
 namespace OpenGL {
+
+namespace detail {
+
+bool IsGLES() {
+    if (Settings::values.use_gles.GetValue()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool SupportsTextureStorage() {
+    static bool supports_texture_storage = [] {
+        if (Settings::values.use_gles.GetValue()) {
+            return GLAD_GL_ES_VERSION_3_0 || GLAD_GL_EXT_texture_storage;
+        } else {
+            return true;
+        }
+    }();
+    return supports_texture_storage;
+}
+
+} // namespace detail
 
 void OGLRenderbuffer::Create() {
     if (handle != 0) {
@@ -49,6 +74,12 @@ void OGLTexture::Release() {
 
 void OGLTexture::Allocate(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width,
                           GLsizei height, GLsizei depth) {
+    if (is_gles) {
+        AllocateGLES(target, levels, internalformat, width, height, depth);
+        return;
+    }
+
+    // Original desktop GL implementation
     GLuint old_tex = OpenGLState::GetCurState().texture_units[0].texture_2d;
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(target, handle);
@@ -69,6 +100,69 @@ void OGLTexture::Allocate(GLenum target, GLsizei levels, GLenum internalformat, 
     case GL_TEXTURE_CUBE_MAP_ARRAY:
         glTexStorage3D(target, levels, internalformat, width, height, depth);
         break;
+    }
+
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindTexture(GL_TEXTURE_2D, old_tex);
+}
+
+void OGLTexture::AllocateGLES(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width,
+                              GLsizei height, GLsizei depth) {
+    GLuint old_tex = OpenGLState::GetCurState().texture_units[0].texture_2d;
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(target, handle);
+
+    // Convert desktop GL internal formats to GLES compatible ones
+    GLenum gles_format = internalformat;
+    GLenum gles_type = GL_UNSIGNED_BYTE;
+
+    switch (internalformat) {
+    case GL_RGBA8:
+        gles_format = GL_RGBA;
+        gles_type = GL_UNSIGNED_BYTE;
+        break;
+    case GL_RGB8:
+        gles_format = GL_RGB;
+        gles_type = GL_UNSIGNED_BYTE;
+        break;
+    case GL_DEPTH24_STENCIL8:
+        gles_format = GL_DEPTH_STENCIL_OES;
+        gles_type = GL_UNSIGNED_INT_24_8_OES;
+        break;
+        // Add more format conversions as needed
+    }
+
+    if (detail::SupportsTextureStorage()) {
+        // Use texture storage if available
+        switch (target) {
+        case GL_TEXTURE_2D:
+        case GL_TEXTURE_CUBE_MAP:
+            glTexStorage2D(target, levels, internalformat, width, height);
+            break;
+        case GL_TEXTURE_3D:
+        case GL_TEXTURE_2D_ARRAY:
+            glTexStorage3D(target, levels, internalformat, width, height, depth);
+            break;
+        }
+    } else {
+        // Fall back to legacy texture allocation
+        switch (target) {
+        case GL_TEXTURE_2D:
+            for (GLsizei level = 0; level < levels; ++level) {
+                glTexImage2D(target, level, gles_format, width >> level, height >> level, 0,
+                             gles_format, gles_type, nullptr);
+            }
+            break;
+        case GL_TEXTURE_3D:
+            for (GLsizei level = 0; level < levels; ++level) {
+                glTexImage3D(target, level, gles_format, width >> level, height >> level,
+                             depth >> level, 0, gles_format, gles_type, nullptr);
+            }
+            break;
+        }
     }
 
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -190,7 +284,11 @@ void OGLVertexArray::Release() {
         return;
 
     if (Settings::values.use_gles.GetValue()) {
-        glDeleteVertexArraysOES(1, &handle);
+        if (GLAD_GL_OES_vertex_array_object) {
+            glDeleteVertexArraysOES(1, &handle);
+        } else {
+            glDeleteVertexArrays(1, &handle);
+        }
     } else {
         glDeleteVertexArrays(1, &handle);
     }
