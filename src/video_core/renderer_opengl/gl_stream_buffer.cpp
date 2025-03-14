@@ -22,7 +22,7 @@ OGLStreamBuffer::OGLStreamBuffer(Driver& driver, GLenum target, GLsizeiptr size,
     if (driver.IsOpenGLES() || driver.HasBug(DriverBug::SlowTextureBufferWithBigSize)) {
         // For GLES, we need to be more conservative with buffer sizes
         // 32KB is generally safe across most GLES implementations
-        constexpr GLsizeiptr GLES_SAFE_BUFFER_SIZE = 32 * 1024;
+        constexpr GLsizeiptr GLES_SAFE_BUFFER_SIZE = 64 * 1024;
         buffer_size = std::min(buffer_size, GLES_SAFE_BUFFER_SIZE);
     }
 
