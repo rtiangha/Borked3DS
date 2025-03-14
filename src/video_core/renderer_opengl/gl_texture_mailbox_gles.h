@@ -1,8 +1,13 @@
+// Copyright 2024 Borked3DS Emulator Project
+// Licensed under GPLv2 or any later version
+// Refer to the license.txt file included.
+
 #pragma once
 
 #include <glad/gl.h>
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
+#include "common/common_types.h"
 
 namespace OpenGL {
 
@@ -29,7 +34,7 @@ public:
         return &swap_chain[present_index];
     }
 
-    void ReloadPresentFrame(Frontend::Frame* frame, int width, int height) override {
+    void ReloadPresentFrame(Frontend::Frame* frame, u32 height, u32 width) override {
         frame->present.Release();
         frame->present.Create();
         glBindFramebuffer(GL_FRAMEBUFFER, frame->present.handle);
