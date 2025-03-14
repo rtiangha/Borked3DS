@@ -912,10 +912,22 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.src_a_func = GL_ONE;
                 state.blend.dst_a_func = GL_ONE;
                 break;
+            case Pica::FramebufferRegs::LogicOp::Copy:
+                state.blend.rgb_equation = GL_FUNC_ADD;
+                state.blend.a_equation = GL_FUNC_ADD;
+                state.blend.src_rgb_func = GL_ONE;
+                state.blend.dst_rgb_func = GL_ZERO;
+                state.blend.src_a_func = GL_ONE;
+                state.blend.dst_a_func = GL_ZERO;
+                break;
             // Add more logic op emulation cases as needed
             default:
                 LOG_WARNING(Render_OpenGL, "Unsupported logic op on GLES: {}",
                             static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()));
+                // Fall back to basic copy
+                state.blend.rgb_equation = GL_FUNC_ADD;
+                state.blend.src_rgb_func = GL_ONE;
+                state.blend.dst_rgb_func = GL_ZERO;
                 break;
             }
             return;

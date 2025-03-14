@@ -207,11 +207,28 @@ void OpenGLState::Apply() const {
         }
 
         // GLES does not support glLogicOp
-        if (!GLES) {
-            if (blend.enabled) {
-                glDisable(GL_COLOR_LOGIC_OP);
-            } else {
-                glEnable(GL_COLOR_LOGIC_OP);
+        if (!is_gles || features.has_logic_op) {
+            if (blend.enabled != cur_state.blend.enabled) {
+                if (blend.enabled) {
+                    glEnable(GL_BLEND);
+                    glDisable(GL_COLOR_LOGIC_OP);
+                } else {
+                    glDisable(GL_BLEND);
+                    glEnable(GL_COLOR_LOGIC_OP);
+                }
+            }
+
+            if (!blend.enabled && logic_op != cur_state.logic_op) {
+                glLogicOp(logic_op);
+            }
+        } else {
+            // GLES without logic op support - always use blend
+            if (blend.enabled != cur_state.blend.enabled) {
+                if (blend.enabled) {
+                    glEnable(GL_BLEND);
+                } else {
+                    glDisable(GL_BLEND);
+                }
             }
         }
     }
