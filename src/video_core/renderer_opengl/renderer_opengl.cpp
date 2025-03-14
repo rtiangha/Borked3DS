@@ -15,6 +15,7 @@
 #include "video_core/pica/pica_core.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
+#include "video_core/renderer_opengl/gl_texture_mailbox_gles.h"
 #include "video_core/renderer_opengl/post_processing_opengl.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
 #include "video_core/shader/generator/glsl_shader_gen.h"
@@ -92,10 +93,20 @@ RendererOpenGL::RendererOpenGL(Core::System& system, Pica::PicaCore& pica_,
         }
     }
 
-    window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
-    if (secondary_window) {
-        secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
+    if (driver.IsOpenGLES()) {
+        window.mailbox = std::make_unique<OGLTextureMailboxGLES>(has_debug_tool, &driver);
+        if (secondary_window) {
+            secondary_window->mailbox =
+                std::make_unique<OGLTextureMailboxGLES>(has_debug_tool, &driver);
+        }
+    } else {
+        window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
+        if (secondary_window) {
+            secondary_window->mailbox =
+                std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
+        }
     }
+
     frame_dumper.mailbox = std::make_unique<OGLVideoDumpingMailbox>();
     InitOpenGLObjects();
 }
