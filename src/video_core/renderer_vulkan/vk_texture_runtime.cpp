@@ -182,7 +182,9 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
 
     // Try different memory configurations
     const std::array<VmaAllocationCreateFlags, 3> alloc_flags = {
-        0, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
+        VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT |
+            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
         VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT};
 
     const std::array<VmaMemoryUsage, 3> memory_usages = {VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
@@ -776,22 +778,12 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
     const bool need_format_list = is_mutable && instance->IsImageFormatListSupported();
     handles[0] = MakeHandle(instance, width, height, levels, texture_type, format, traits.usage,
                             flags, traits.aspect, need_format_list, DebugName(false));
-    if (!handles[0].image) {
-        LOG_CRITICAL(Render_Vulkan, "Failed to allocate base image for surface");
-        pixel_format = VideoCore::PixelFormat::Invalid;
-        return;
-    }
     raw_images.emplace_back(handles[0].image);
 
     if (res_scale != 1) {
-        handles[1] = MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
-                                traits.native, traits.usage, flags, traits.aspect, need_format_list,
-                                DebugName(true));
-        if (!handles[1].image) {
-            LOG_CRITICAL(Render_Vulkan, "Failed to allocate scaled image for surface");
-            pixel_format = VideoCore::PixelFormat::Invalid;
-            return;
-        }
+        handles[1] =
+            MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type, format,
+                       traits.usage, flags, traits.aspect, need_format_list, DebugName(true));
         raw_images.emplace_back(handles[1].image);
     }
 
@@ -825,33 +817,17 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceBase& surface
     const std::string debug_name = DebugName(false, true);
     handles[0] = MakeHandle(instance, mat->width, mat->height, levels, texture_type, format,
                             traits.usage, flags, traits.aspect, false, debug_name);
-    if (!handles[0].image) {
-        LOG_CRITICAL(Render_Vulkan, "Failed to allocate base image for surface");
-        pixel_format = VideoCore::PixelFormat::Invalid;
-        return;
-    }
-
     raw_images.emplace_back(handles[0].image);
 
     if (res_scale != 1) {
         handles[1] = MakeHandle(instance, mat->width, mat->height, levels, texture_type,
                                 vk::Format::eR8G8B8A8Unorm, traits.usage, flags, traits.aspect,
                                 false, debug_name);
-        if (!handles[1].image) {
-            LOG_CRITICAL(Render_Vulkan, "Failed to allocate base image for surface");
-            pixel_format = VideoCore::PixelFormat::Invalid;
-            return;
-        }
         raw_images.emplace_back(handles[1].image);
     }
     if (has_normal) {
         handles[2] = MakeHandle(instance, mat->width, mat->height, levels, texture_type, format,
                                 traits.usage, flags, traits.aspect, false, debug_name);
-        if (!handles[2].image) {
-            LOG_CRITICAL(Render_Vulkan, "Failed to allocate base image for surface");
-            pixel_format = VideoCore::PixelFormat::Invalid;
-            return;
-        }
         raw_images.emplace_back(handles[2].image);
     }
 
@@ -1151,11 +1127,6 @@ void Surface::ScaleUp(u32 new_scale) {
     handles[1] =
         MakeHandle(instance, GetScaledWidth(), GetScaledHeight(), levels, texture_type,
                    traits.native, traits.usage, flags, traits.aspect, false, DebugName(true));
-    if (!handles[1].image) {
-        LOG_CRITICAL(Render_Vulkan, "Failed to allocate base image for surface");
-        pixel_format = VideoCore::PixelFormat::Invalid;
-        return;
-    }
 
     runtime->renderpass_cache.EndRendering();
     scheduler->Record(
