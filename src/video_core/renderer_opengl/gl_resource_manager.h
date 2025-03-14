@@ -12,6 +12,7 @@
 #include <glad/gl.h>
 #include "common/common_types.h"
 #include "common/settings.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 
 namespace OpenGL {
 
