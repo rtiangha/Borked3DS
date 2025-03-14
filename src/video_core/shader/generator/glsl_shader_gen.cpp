@@ -7,6 +7,10 @@
 #include <string_view>
 #include <fmt/format.h>
 
+#ifndef __APPLE__
+#include <glad/gl.h>
+#endif
+
 #include "video_core/pica/regs_rasterizer.h"
 #include "video_core/shader/generator/glsl_shader_decompiler.h"
 #include "video_core/shader/generator/glsl_shader_gen.h"

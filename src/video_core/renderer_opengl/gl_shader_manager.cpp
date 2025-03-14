@@ -10,6 +10,7 @@
 #include <thread>
 #include <unordered_map>
 #include <variant>
+#include <glad/gl.h>
 #include "common/settings.h"
 #include "core/frontend/emu_window.h"
 #include "video_core/pica/shader_setup.h"
@@ -53,7 +54,11 @@ static OGLProgram GeneratePrecompiledProgram(const ShaderDiskCacheDump& dump,
     auto shader = OGLProgram();
     shader.handle = glCreateProgram();
     if (separable) {
-        glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        if (Settings::values.use_gles.GetValue()) {
+            glProgramParameteriEXT(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        } else {
+            glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+        }
     }
     glProgramBinary(shader.handle, dump.binary_format, dump.binary.data(),
                     static_cast<GLsizei>(dump.binary.size()));
@@ -254,7 +259,7 @@ using ProgrammableVertexShaders =
     ShaderDoubleCache<PicaVSConfig, &GLSL::GenerateVertexShader, GL_VERTEX_SHADER>;
 
 using FixedGeometryShaders =
-    ShaderCache<PicaFixedGSConfig, &GLSL::GenerateFixedGeometryShader, GL_GEOMETRY_SHADER>;
+    ShaderCache<PicaFixedGSConfig, &GLSL::GenerateFixedGeometryShader, GL_GEOMETRY_SHADER_EXT>;
 
 using FragmentShaders = ShaderCache<FSConfig, &GLSL::GenerateFragmentShader, GL_FRAGMENT_SHADER>;
 
@@ -264,14 +269,22 @@ public:
         : separable(separable), programmable_vertex_shaders(separable),
           trivial_vertex_shader(driver, separable), fixed_geometry_shaders(separable),
           fragment_shaders(separable), disk_cache(separable) {
+
+        const bool is_gles = driver.IsOpenGLES();
+
         if (separable) {
+            if (is_gles && !driver.HasExtension("GL_EXT_separate_shader_objects")) {
+                LOG_ERROR(Render_OpenGL, "Separate shader objects not supported!");
+                throw std::runtime_error("Separate shader objects not supported!");
+            }
             pipeline.Create();
         }
         profile = Pica::Shader::Profile{
             .has_separable_shaders = separable,
             .has_clip_planes = driver.HasClipCullDistance(),
             .has_geometry_shader = true,
-            .has_custom_border_color = true,
+            .has_custom_border_color =
+                !is_gles || driver.HasExtension("GL_EXT_texture_border_clamp"),
             .has_fragment_shader_interlock = driver.HasArbFragmentShaderInterlock(),
             // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
             .has_fragment_shader_barycentric = false,
@@ -279,10 +292,12 @@ public:
             .has_minus_one_to_one_range = true,
             .has_logic_op = !driver.IsOpenGLES(),
             .has_gl_ext_framebuffer_fetch = driver.HasExtFramebufferFetch(),
+            .has_gl_ext_texture_buffer = driver.HasExtTextureBuffer(),
             .has_gl_arm_framebuffer_fetch = driver.HasArmShaderFramebufferFetch(),
-            .has_gl_arb_shader_image_load_store = driver.HasArbShaderImageLoadStore(),
+            .has_gl_arb_shader_image_load_store = !is_gles && driver.HasArbShaderImageLoadStore(),
             .has_gl_nv_fragment_shader_interlock = driver.HasNvFragmentShaderInterlock(),
-            .has_gl_intel_fragment_shader_ordering = driver.HasIntelFragmentShaderOrdering(),
+            .has_gl_intel_fragment_shader_ordering =
+                !is_gles && driver.HasIntelFragmentShaderOrdering(),
             // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
             .has_gl_nv_fragment_shader_barycentric = false,
             .is_vulkan = false,
@@ -404,14 +419,27 @@ void ShaderProgramManager::UseFragmentShader(const Pica::RegsInternal& regs,
 void ShaderProgramManager::ApplyTo(OpenGLState& state, bool accurate_mul) {
     if (impl->separable) {
         if (driver.HasBug(DriverBug::ShaderStageChangeFreeze)) {
-            glUseProgramStages(
-                impl->pipeline.handle,
-                GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            if (Settings::values.use_gles.GetValue()) {
+                glUseProgramStagesEXT(
+                    impl->pipeline.handle,
+                    GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT_EXT | GL_FRAGMENT_SHADER_BIT, 0);
+            } else {
+                glUseProgramStages(
+                    impl->pipeline.handle,
+                    GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            }
         }
 
-        glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
-        glUseProgramStages(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT, impl->current.gs);
-        glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        if (Settings::values.use_gles.GetValue()) {
+            glUseProgramStagesEXT(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
+            glUseProgramStagesEXT(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT_EXT,
+                                  impl->current.gs);
+            glUseProgramStagesEXT(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        } else {
+            glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
+            glUseProgramStages(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT, impl->current.gs);
+            glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        }
         state.draw.shader_program = 0;
         state.draw.program_pipeline = impl->pipeline.handle;
     } else {

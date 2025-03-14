@@ -25,6 +25,13 @@ class IOFile;
 
 namespace OpenGL {
 
+// Add GLES version tracking
+struct ShaderCacheVersion {
+    u32 version;
+    bool is_gles;
+    u32 gles_version;
+};
+
 struct ShaderDiskCacheDecompiled;
 struct ShaderDiskCacheDump;
 
@@ -83,8 +90,15 @@ struct ShaderDiskCacheDump {
 
 class ShaderDiskCache {
 public:
-    explicit ShaderDiskCache(bool separable);
+    explicit ShaderDiskCache(bool separable, bool is_gles = false);
     ~ShaderDiskCache() = default;
+
+    // Add GLES specific methods
+    bool IsGLES() const {
+        return is_gles;
+    }
+    bool SupportsShaderBinaryFormat() const;
+    std::vector<GLenum> GetSupportedBinaryFormats() const;
 
     /// Loads transferable cache. If file has a old version or on failure, it deletes the file.
     std::optional<std::vector<ShaderDiskCacheRaw>> LoadTransferable();
@@ -114,6 +128,11 @@ public:
     void SaveVirtualPrecompiledFile();
 
 private:
+    // Add GLES specific helpers
+    bool ValidateGLESBinaryFormat(GLenum format) const;
+    void SaveGLESBinaryHeader(FileUtil::IOFile& file) const;
+    bool LoadGLESBinaryHeader(FileUtil::IOFile& file) const;
+
     /// Loads the transferable cache. Returns empty on failure.
     std::optional<std::pair<ShaderDecompiledMap, ShaderDumpsMap>> LoadPrecompiledFile(
         FileUtil::IOFile& file, bool compressed);
@@ -217,8 +236,11 @@ private:
     u64 program_id{};
     std::string title_id;
 
+    bool is_gles{false};
     FileUtil::IOFile transferable_file;
     FileUtil::IOFile precompiled_file;
+
+    std::vector<GLenum> supported_binary_formats;
 };
 
 } // namespace OpenGL

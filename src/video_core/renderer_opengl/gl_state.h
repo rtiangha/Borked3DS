@@ -8,6 +8,8 @@
 #include <array>
 #include <glad/gl.h>
 
+#include "video_core/renderer_opengl/gl_driver.h"
+
 namespace OpenGL {
 
 namespace TextureUnits {
@@ -41,8 +43,33 @@ constexpr GLuint ShadowTextureNZ = 5;
 constexpr GLuint ShadowBuffer = 6;
 } // namespace ImageUnits
 
+// Add GLES-specific state management
+struct GLESFeatures {
+    bool has_clip_distance{false};
+    bool has_logic_op{false};
+    bool has_seamless_cubemap{false};
+    bool has_texture_buffer{false};
+    bool has_explicit_attrib_location{false};
+    bool has_vertex_array_object{false};
+    bool has_shader_image_load_store{false};
+    bool has_debug_output{false};
+};
+
 class OpenGLState {
 public:
+    explicit OpenGLState(const Driver* driver = nullptr);
+
+    // Add GLES specific methods
+    bool IsGLES() const {
+        return is_gles;
+    }
+    bool HasLogicOp() const {
+        return features.has_logic_op;
+    }
+    bool HasClipDistance() const {
+        return features.has_clip_distance;
+    }
+
     struct {
         bool enabled;      // GL_CULL_FACE
         GLenum mode;       // GL_CULL_FACE_MODE
@@ -159,8 +186,6 @@ public:
 
     GLuint renderbuffer; // GL_RENDERBUFFER_BINDING
 
-    OpenGLState();
-
     /// Get the currently active OpenGL state
     static OpenGLState GetCurState() {
         return cur_state;
@@ -189,6 +214,10 @@ public:
 
 private:
     static OpenGLState cur_state;
+    bool is_gles{false};
+    GLESFeatures features;
+
+    void InitializeGLESFeatures(const Driver* driver);
 };
 
 } // namespace OpenGL

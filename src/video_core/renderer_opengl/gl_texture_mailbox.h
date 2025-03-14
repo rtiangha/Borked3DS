@@ -11,6 +11,7 @@
 #include <queue>
 
 #include "core/frontend/emu_window.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 
 namespace Frontend {
@@ -23,6 +24,10 @@ struct Frame {
     OpenGL::OGLFramebuffer present{}; ///< FBO created on the present thread
     GLsync render_fence{};            ///< Fence created on the render thread
     GLsync present_fence{};           ///< Fence created on the presentation thread
+
+    // Add GLES specific members
+    bool is_gles{false}; ///< Whether running on GLES context
+    GLuint texture{0};   ///< Texture for GLES platforms that don't support renderbuffer sharing
 };
 } // namespace Frontend
 
@@ -40,7 +45,7 @@ constexpr std::size_t SWAP_CHAIN_SIZE = 9;
 
 class OGLTextureMailbox : public Frontend::TextureMailbox {
 public:
-    explicit OGLTextureMailbox(bool has_debug_tool = false);
+    explicit OGLTextureMailbox(bool has_debug_tool = false, const Driver* driver = nullptr);
     ~OGLTextureMailbox() override;
 
     void ReloadPresentFrame(Frontend::Frame* frame, u32 height, u32 width) override;
@@ -60,6 +65,14 @@ private:
     /// Wait for a new frame to be available (called from presentation thread)
     void DebugWaitForNextFrame();
 
+    // Add GLES helper methods
+    bool IsGLES() const {
+        return is_gles;
+    }
+    bool SupportsRenderbufferSharing() const;
+    void CreateGLESTexture(Frontend::Frame* frame, u32 width, u32 height);
+    void DeleteGLESTexture(Frontend::Frame* frame);
+
 public:
     std::mutex swap_chain_lock;
     std::condition_variable free_cv;
@@ -72,6 +85,7 @@ public:
     std::condition_variable debug_synch_condition;
     std::atomic_int frame_for_debug{};
     const bool has_debug_tool; ///< When true, using a GPU debugger, so keep frames in lock-step
+    const bool is_gles;
 };
 
 class OGLTextureMailboxException : public std::runtime_error {

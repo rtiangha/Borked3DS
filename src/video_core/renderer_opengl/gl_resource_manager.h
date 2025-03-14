@@ -11,8 +11,18 @@
 #include <vector>
 #include <glad/gl.h>
 #include "common/common_types.h"
+#include "common/settings.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 
 namespace OpenGL {
+
+class Driver; // Forward declaration for GLES checks
+
+// Add helper function declarations
+namespace detail {
+bool IsGLES();
+bool SupportsTextureStorage();
+} // namespace detail
 
 class OGLRenderbuffer : private NonCopyable {
 public:
@@ -43,6 +53,8 @@ class OGLTexture : private NonCopyable {
 public:
     OGLTexture() = default;
 
+    explicit OGLTexture(const Driver& driver) : is_gles{Settings::values.use_gles.GetValue()} {}
+
     OGLTexture(OGLTexture&& o) noexcept : handle(std::exchange(o.handle, 0)) {}
 
     ~OGLTexture() {
@@ -52,6 +64,7 @@ public:
     OGLTexture& operator=(OGLTexture&& o) noexcept {
         Release();
         handle = std::exchange(o.handle, 0);
+        is_gles = o.is_gles;
         return *this;
     }
 
@@ -64,7 +77,14 @@ public:
     void Allocate(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width,
                   GLsizei height = 1, GLsizei depth = 1);
 
+    // Helper method for GLES texture allocation
+    void AllocateGLES(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width,
+                      GLsizei height = 1, GLsizei depth = 1);
+
     GLuint handle = 0;
+
+private:
+    bool is_gles = false;
 };
 
 class OGLSampler : private NonCopyable {

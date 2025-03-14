@@ -4,13 +4,16 @@
 // Refer to the license.txt file included.
 
 #include "common/logging/log.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
 
 namespace OpenGL {
 
-OGLTextureMailbox::OGLTextureMailbox(bool has_debug_tool_) : has_debug_tool{has_debug_tool_} {
+OGLTextureMailbox::OGLTextureMailbox(bool has_debug_tool_, const Driver* driver)
+    : has_debug_tool{has_debug_tool_}, is_gles{driver ? driver->IsOpenGLES() : false} {
     for (auto& frame : swap_chain) {
+        frame.is_gles = is_gles;
         free_queue.push(&frame);
     }
 }
@@ -19,10 +22,67 @@ OGLTextureMailbox::~OGLTextureMailbox() {
     // Lock the mutex and clear out the present and free_queues and notify any people who are
     // blocked to prevent deadlock on shutdown
     std::scoped_lock lock(swap_chain_lock);
+
+    // Clean up GLES textures
+    if (is_gles) {
+        for (auto& frame : swap_chain) {
+            DeleteGLESTexture(&frame);
+        }
+    }
+
     free_queue = {};
     present_queue.clear();
     present_cv.notify_all();
     free_cv.notify_all();
+}
+
+bool OGLTextureMailbox::SupportsRenderbufferSharing() const {
+    if (!is_gles)
+        return true;
+
+    // Check for required extensions
+    // Some GLES implementations don't support sharing renderbuffers between contexts
+    const Driver* driver = reinterpret_cast<const Driver*>(glGetString(GL_VENDOR));
+
+    bool has_required_extensions = driver->HasExtension("GL_OES_framebuffer_object") &&
+                                   driver->HasExtension("GL_OES_rgb8_rgba8") &&
+                                   driver->HasExtension("GL_OES_packed_depth_stencil");
+
+    // Additional extensions that might be needed for full functionality
+    // bool has_advanced_features = driver->HasExtension("GL_EXT_multisampled_render_to_texture") &&
+    //                              driver->HasExtension("GL_EXT_color_buffer_half_float") &&
+    //                              driver->HasExtension("GL_EXT_texture_storage");
+
+    // Some vendors need special handling
+    const auto vendor = driver->GetVendor();
+    if (vendor == Vendor::Qualcomm || vendor == Vendor::ARM) {
+        // Some mobile GPUs have issues with renderbuffer sharing
+        return false;
+    }
+
+    // Require at least the basic extensions
+    return has_required_extensions;
+}
+
+void OGLTextureMailbox::CreateGLESTexture(Frontend::Frame* frame, u32 width, u32 height) {
+    if (frame->texture != 0) {
+        glDeleteTextures(1, &frame->texture);
+    }
+
+    glGenTextures(1, &frame->texture);
+    glBindTexture(GL_TEXTURE_2D, frame->texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+}
+
+void OGLTextureMailbox::DeleteGLESTexture(Frontend::Frame* frame) {
+    if (frame->texture != 0) {
+        glDeleteTextures(1, &frame->texture);
+        frame->texture = 0;
+    }
 }
 
 void OGLTextureMailbox::ReloadPresentFrame(Frontend::Frame* frame, u32 height, u32 width) {
@@ -31,8 +91,15 @@ void OGLTextureMailbox::ReloadPresentFrame(Frontend::Frame* frame, u32 height, u
     GLint previous_draw_fbo{};
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previous_draw_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, frame->present.handle);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
-                              frame->color.handle);
+
+    if (is_gles && !SupportsRenderbufferSharing()) {
+        // Use texture instead of renderbuffer for GLES
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frame->texture,
+                               0);
+    } else {
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
+                                  frame->color.handle);
+    }
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         LOG_CRITICAL(Render_OpenGL, "Failed to recreate present FBO!");
     }
@@ -44,12 +111,16 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
     OpenGLState prev_state = OpenGLState::GetCurState();
     OpenGLState state = OpenGLState::GetCurState();
 
-    // Recreate the color texture attachment
-    frame->color.Release();
-    frame->color.Create();
-    state.renderbuffer = frame->color.handle;
-    state.Apply();
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+    if (is_gles && !SupportsRenderbufferSharing()) {
+        CreateGLESTexture(frame, width, height);
+    } else {
+        // Recreate the color texture attachment
+        frame->color.Release();
+        frame->color.Create();
+        state.renderbuffer = frame->color.handle;
+        state.Apply();
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+    }
 
     // Recreate the FBO for the render target
     frame->render.Release();
@@ -57,8 +128,15 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
     state.draw.read_framebuffer = frame->render.handle;
     state.draw.draw_framebuffer = frame->render.handle;
     state.Apply();
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
-                              frame->color.handle);
+
+    if (is_gles && !SupportsRenderbufferSharing()) {
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frame->texture,
+                               0);
+    } else {
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
+                                  frame->color.handle);
+    }
+
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
     }

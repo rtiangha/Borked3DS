@@ -34,6 +34,10 @@ public:
     void Unmap(GLsizeiptr size);
 
 private:
+    // Add GLES specific methods
+    bool InitializeGLES(Driver& driver, GLsizeiptr size, bool prefer_coherent);
+    bool InitializeDesktopGL(Driver& driver, GLsizeiptr size, bool prefer_coherent);
+
     OGLBuffer gl_buffer;
     GLenum gl_target;
 

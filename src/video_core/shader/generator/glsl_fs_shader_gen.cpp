@@ -3,6 +3,10 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#ifndef __APPLE__
+#include <glad/gl.h>
+#endif
+
 #include "video_core/shader/generator/glsl_fs_shader_gen.h"
 
 namespace Pica::Shader::Generator::GLSL {

@@ -14,9 +14,14 @@
 #include "common/zstd_compression.h"
 #include "core/core.h"
 #include "core/loader/loader.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_shader_disk_cache.h"
 
 namespace OpenGL {
+
+// Add version for GLES support
+constexpr u32 NativeVersion = 1;
+constexpr u32 GLESVersion = 1;
 
 constexpr std::size_t HASH_LENGTH = 64;
 using ShaderCacheVersionHash = std::array<u8, HASH_LENGTH>;
@@ -29,8 +34,6 @@ enum class PrecompiledEntryKind : u32 {
     Decompiled,
     Dump,
 };
-
-constexpr u32 NativeVersion = 1;
 
 // The hash is based on relevant files. The list of files can be found at src/common/CMakeLists.txt
 // and CMakeModules/GenerateSCMRev.cmake
@@ -103,10 +106,22 @@ bool ShaderDiskCacheRaw::Save(FileUtil::IOFile& file) const {
     return true;
 }
 
-ShaderDiskCache::ShaderDiskCache(bool separable)
-    : separable{separable}, transferable_file(AppendTransferableFile()),
+ShaderDiskCache::ShaderDiskCache(bool separable, bool is_gles_)
+    : separable{separable}, is_gles{is_gles_}, transferable_file(AppendTransferableFile()),
       // seperable shaders use the virtual precompile file, that already has a header.
-      precompiled_file(AppendPrecompiledFile(!separable)) {}
+      precompiled_file(AppendPrecompiledFile(!separable)) {
+
+    if (is_gles) {
+        // Get supported binary formats for GLES
+        GLint num_formats = 0;
+        glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &num_formats);
+        if (num_formats > 0) {
+            supported_binary_formats.resize(num_formats);
+            glGetIntegerv(GL_PROGRAM_BINARY_FORMATS,
+                          reinterpret_cast<GLint*>(supported_binary_formats.data()));
+        }
+    }
+}
 
 std::optional<std::vector<ShaderDiskCacheRaw>> ShaderDiskCache::LoadTransferable() {
     const bool has_title_id = GetProgramID() != 0;
@@ -200,6 +215,11 @@ ShaderDiskCache::LoadPrecompiled(bool compressed) {
 
 std::optional<std::pair<std::unordered_map<u64, ShaderDiskCacheDecompiled>, ShaderDumpsMap>>
 ShaderDiskCache::LoadPrecompiledFile(FileUtil::IOFile& file, bool compressed) {
+    // Read header for GLES compatibility
+    if (is_gles && !LoadGLESBinaryHeader(file)) {
+        return std::nullopt;
+    }
+
     // Read compressed file from disk and decompress to virtual precompiled cache file
     std::vector<u8> precompiled_file(file.GetSize());
     file.ReadBytes(precompiled_file.data(), precompiled_file.size());
@@ -281,6 +301,67 @@ ShaderDiskCache::LoadPrecompiledFile(FileUtil::IOFile& file, bool compressed) {
              "Found a precompiled disk cache with {} decompiled entries and {} binary entries",
              decompiled.size(), dumps.size());
     return {{decompiled, dumps}};
+}
+
+void ShaderDiskCache::SaveGLESBinaryHeader(FileUtil::IOFile& file) const {
+    if (!is_gles)
+        return;
+
+    const ShaderCacheVersion version{
+        .version = NativeVersion, .is_gles = true, .gles_version = GLESVersion};
+
+    if (file.WriteBytes(&version, sizeof(ShaderCacheVersion)) != sizeof(ShaderCacheVersion)) {
+        LOG_ERROR(Render_OpenGL, "Failed to write GLES cache version");
+        return;
+    }
+
+    // Write supported binary formats
+    const u32 num_formats = static_cast<u32>(supported_binary_formats.size());
+    if (file.WriteBytes(&num_formats, sizeof(u32)) != sizeof(u32)) {
+        LOG_ERROR(Render_OpenGL, "Failed to write number of GLES binary formats");
+        return;
+    }
+
+    if (num_formats > 0 &&
+        file.WriteArray(supported_binary_formats.data(), num_formats) != num_formats) {
+        LOG_ERROR(Render_OpenGL, "Failed to write GLES binary formats");
+        return;
+    }
+}
+
+bool ShaderDiskCache::LoadGLESBinaryHeader(FileUtil::IOFile& file) const {
+    ShaderCacheVersion version{};
+    if (file.ReadBytes(&version, sizeof(ShaderCacheVersion)) != sizeof(ShaderCacheVersion)) {
+        LOG_ERROR(Render_OpenGL, "Failed to read GLES cache version");
+        return false;
+    }
+
+    if (version.version != NativeVersion || version.gles_version != GLESVersion) {
+        LOG_INFO(Render_OpenGL, "GLES shader cache version mismatch");
+        return false;
+    }
+
+    u32 num_formats = 0;
+    if (file.ReadBytes(&num_formats, sizeof(u32)) != sizeof(u32)) {
+        LOG_ERROR(Render_OpenGL, "Failed to read number of GLES binary formats");
+        return false;
+    }
+
+    std::vector<GLenum> cached_formats(num_formats);
+    if (num_formats > 0 && file.ReadArray(cached_formats.data(), num_formats) != num_formats) {
+        LOG_ERROR(Render_OpenGL, "Failed to read GLES binary formats");
+        return false;
+    }
+
+    // Validate that all cached formats are still supported
+    for (const auto format : cached_formats) {
+        if (!ValidateGLESBinaryFormat(format)) {
+            LOG_INFO(Render_OpenGL, "GLES binary format {:04x} no longer supported", format);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 std::optional<ShaderDiskCacheDecompiled> ShaderDiskCache::LoadDecompiledEntry() {
@@ -376,6 +457,19 @@ void ShaderDiskCache::SaveRaw(const ShaderDiskCacheRaw& entry) {
     transferable_file.Flush();
 }
 
+bool ShaderDiskCache::SupportsShaderBinaryFormat() const {
+    if (!is_gles)
+        return true;
+    return !supported_binary_formats.empty();
+}
+
+bool ShaderDiskCache::ValidateGLESBinaryFormat(GLenum format) const {
+    if (!is_gles)
+        return true;
+    return std::find(supported_binary_formats.begin(), supported_binary_formats.end(), format) !=
+           supported_binary_formats.end();
+}
+
 void ShaderDiskCache::SaveDecompiled(u64 unique_identifier, const std::string& code,
                                      bool sanitize_mul) {
     if (!IsUsable())
@@ -393,15 +487,26 @@ void ShaderDiskCache::SaveDecompiled(u64 unique_identifier, const std::string& c
 }
 
 void ShaderDiskCache::SaveDump(u64 unique_identifier, GLuint program) {
-    if (!IsUsable())
+    if (!IsUsable() || !SupportsShaderBinaryFormat())
         return;
 
     GLint binary_length{};
     glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &binary_length);
 
+    if (binary_length <= 0) {
+        LOG_ERROR(Render_OpenGL, "Failed to get binary length for program {:016x}",
+                  unique_identifier);
+        return;
+    }
+
     GLenum binary_format{};
     std::vector<u8> binary(binary_length);
     glGetProgramBinary(program, binary_length, nullptr, &binary_format, binary.data());
+
+    if (is_gles && !ValidateGLESBinaryFormat(binary_format)) {
+        LOG_ERROR(Render_OpenGL, "Unsupported GLES binary format {:04x}", binary_format);
+        return;
+    }
 
     if (!SaveObjectToPrecompiled(static_cast<u32>(PrecompiledEntryKind::Dump)) ||
         !SaveObjectToPrecompiled(unique_identifier) ||
