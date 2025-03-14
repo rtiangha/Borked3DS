@@ -93,9 +93,6 @@ elseif(MSVC)
         # x86_64 SSE/AVX support
         set(SIMD_FLAGS "${SIMD_FLAGS} /arch:AVX") # This includes SSE4.1
     endif()
-
-    # Enable vectorization
-    set(SIMD_FLAGS "${SIMD_FLAGS} /Qvec")
 endif()
 
 add_compile_options("${SIMD_FLAGS}")
