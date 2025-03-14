@@ -52,6 +52,11 @@ enum class DriverBug {
     BrokenBufferSubData = 1 << 7,    // Some devices have issues with glBufferSubData
     RequiresSRGBSuffix = 1 << 8,     // Some GLES drivers require explicit sRGB suffix
     BrokenMipmapGeneration = 1 << 9, // Some devices have broken mipmap generation
+    // Add V3D specific bugs
+    V3DLimitedTextureSize = 1 << 10,
+    V3DReducedBufferStorage = 1 << 11,
+    V3DBrokenImageLoadStore = 1 << 12,
+    BrokenBlendEquationAdvanced = 1 << 13
 };
 
 /**

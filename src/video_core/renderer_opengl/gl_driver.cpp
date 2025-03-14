@@ -515,6 +515,28 @@ void Driver::FindBugs() {
             bugs |= DriverBug::SlowTextureBufferWithBigSize;
         }
     }
+
+    // Check for Broadcom V3D GPU
+    if (gpu_vendor.find("Broadcom") != gpu_vendor.npos) {
+        // Always enable these for V3D
+        bugs |= DriverBug::V3DReducedBufferStorage;
+
+        if (gpu_model.find("V3D") != gpu_model.npos) {
+            bugs |= DriverBug::V3DLimitedTextureSize;
+            bugs |= DriverBug::BrokenTextureView;
+            bugs |= DriverBug::BrokenClearTexture;
+
+            // Check if we need image load/store workaround
+            if (!HasExtension("GL_EXT_shader_image_load_store")) {
+                bugs |= DriverBug::V3DBrokenImageLoadStore;
+            }
+
+            // Check for advanced blend support
+            if (!HasExtension("GL_KHR_blend_equation_advanced")) {
+                bugs |= DriverBug::BrokenBlendEquationAdvanced;
+            }
+        }
+    }
 }
 
 } // namespace OpenGL
