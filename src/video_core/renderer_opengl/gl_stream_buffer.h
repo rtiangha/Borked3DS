@@ -21,6 +21,8 @@ public:
     GLuint GetHandle() const;
     GLsizeiptr GetSize() const;
 
+    bool CheckCapacity(GLsizeiptr requested_size) const;
+
     /*
      * Allocates a linear chunk of memory in the GPU buffer with at least "size" bytes
      * and the optional alignment requirement.
@@ -34,10 +36,6 @@ public:
     void Unmap(GLsizeiptr size);
 
 private:
-    // Add GLES specific methods
-    bool InitializeGLES(Driver& driver, GLsizeiptr size, bool prefer_coherent);
-    bool InitializeDesktopGL(Driver& driver, GLsizeiptr size, bool prefer_coherent);
-
     OGLBuffer gl_buffer;
     GLenum gl_target;
 
@@ -49,6 +47,12 @@ private:
     GLintptr mapped_offset = 0;
     GLsizeiptr mapped_size = 0;
     u8* mapped_ptr = nullptr;
+
+    bool is_gles{false};
+
+    bool IsGLES() const {
+        return is_gles;
+    }
 };
 
 } // namespace OpenGL

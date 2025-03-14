@@ -16,67 +16,49 @@ OGLStreamBuffer::OGLStreamBuffer(Driver& driver, GLenum target, GLsizeiptr size,
                                  bool prefer_coherent)
     : gl_target(target), buffer_size(size) {
 
-    bool is_gles = driver.IsOpenGLES();
+    is_gles = driver.IsOpenGLES();
+
     gl_buffer.Create();
     glBindBuffer(gl_target, gl_buffer.handle);
 
+    GLsizeiptr allocate_size = size;
+    if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && target == GL_ARRAY_BUFFER) {
+        allocate_size = allocate_size * 2;
+    }
+
+    // For GLES, use buffer storage if available
     if (is_gles) {
-        InitializeGLES(driver, size, prefer_coherent);
+        if (driver.HasExtension("GL_EXT_buffer_storage")) {
+            persistent = true;
+            coherent = prefer_coherent;
+            GLbitfield flags =
+                GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | (coherent ? GL_MAP_COHERENT_BIT : 0);
+
+            glBufferStorageEXT(gl_target, allocate_size, nullptr, flags);
+            mapped_ptr = static_cast<u8*>(glMapBufferRange(
+                gl_target, 0, buffer_size, flags | (coherent ? 0 : GL_MAP_FLUSH_EXPLICIT_BIT)));
+        } else {
+            // Standard GLES path
+            glBufferData(gl_target, allocate_size, nullptr, GL_STREAM_DRAW);
+            persistent = false;
+            coherent = false;
+        }
     } else {
-        InitializeDesktopGL(driver, size, prefer_coherent);
+        // Desktop OpenGL path
+        if (GLAD_GL_ARB_buffer_storage) {
+            persistent = true;
+            coherent = prefer_coherent;
+            GLbitfield flags =
+                GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | (coherent ? GL_MAP_COHERENT_BIT : 0);
+            glBufferStorage(gl_target, allocate_size, nullptr, flags);
+            mapped_ptr = static_cast<u8*>(glMapBufferRange(
+                gl_target, 0, buffer_size, flags | (coherent ? 0 : GL_MAP_FLUSH_EXPLICIT_BIT)));
+        } else {
+            glBufferData(gl_target, allocate_size, nullptr, GL_STREAM_DRAW);
+            persistent = false;
+            coherent = false;
+        }
     }
-}
-
-bool OGLStreamBuffer::InitializeGLES(Driver& driver, GLsizeiptr size, bool prefer_coherent) {
-    // For GLES, we'll use a simpler approach since persistent mapping isn't widely supported
-    GLsizeiptr allocate_size = size;
-
-    // Check for vertex array out of bounds bug
-    if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && gl_target == GL_ARRAY_BUFFER) {
-        allocate_size = allocate_size * 2;
-    }
-
-    // Try to use buffer storage if available (GLES 3.1+)
-    if (driver.HasExtension("GL_EXT_buffer_storage")) {
-        persistent = true;
-        coherent = prefer_coherent;
-        GLbitfield flags =
-            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | (coherent ? GL_MAP_COHERENT_BIT : 0);
-
-        glBufferStorageEXT(gl_target, allocate_size, nullptr, flags);
-        mapped_ptr = static_cast<u8*>(glMapBufferRange(
-            gl_target, 0, buffer_size, flags | (coherent ? 0 : GL_MAP_FLUSH_EXPLICIT_BIT)));
-
-        return true;
-    }
-
-    // Fall back to standard buffer usage
-    glBufferData(gl_target, allocate_size, nullptr, GL_STREAM_DRAW);
-    persistent = false;
-    coherent = false;
-
-    return true;
-}
-
-bool OGLStreamBuffer::InitializeDesktopGL(Driver& driver, GLsizeiptr size, bool prefer_coherent) {
-    GLsizeiptr allocate_size = size;
-    if (driver.HasBug(DriverBug::VertexArrayOutOfBound) && gl_target == GL_ARRAY_BUFFER) {
-        allocate_size = allocate_size * 2;
-    }
-
-    if (GLAD_GL_ARB_buffer_storage) {
-        persistent = true;
-        coherent = prefer_coherent;
-        GLbitfield flags =
-            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | (coherent ? GL_MAP_COHERENT_BIT : 0);
-        glBufferStorage(gl_target, allocate_size, nullptr, flags);
-        mapped_ptr = static_cast<u8*>(glMapBufferRange(
-            gl_target, 0, buffer_size, flags | (coherent ? 0 : GL_MAP_FLUSH_EXPLICIT_BIT)));
-    } else {
-        glBufferData(gl_target, allocate_size, nullptr, GL_STREAM_DRAW);
-    }
-
-    return true;
 }
 
 OGLStreamBuffer::~OGLStreamBuffer() {
@@ -85,6 +67,10 @@ OGLStreamBuffer::~OGLStreamBuffer() {
         glUnmapBuffer(gl_target);
     }
     gl_buffer.Release();
+}
+
+bool OGLStreamBuffer::CheckCapacity(GLsizeiptr requested_size) const {
+    return requested_size <= buffer_size;
 }
 
 GLuint OGLStreamBuffer::GetHandle() const {
@@ -118,7 +104,7 @@ std::tuple<u8*, GLintptr, bool> OGLStreamBuffer::Map(GLsizeiptr size, GLintptr a
         BORKED3DS_PROFILE("OpenGL", "Stream Buffer Orphaning");
 
         GLbitfield flags;
-        if (Settings::values.use_gles.GetValue()) {
+        if (IsGLES()) {
             // GLES might not support all mapping flags, use a more compatible set
             flags = GL_MAP_WRITE_BIT | (persistent ? GL_MAP_PERSISTENT_BIT : 0) |
                     (coherent ? GL_MAP_COHERENT_BIT : 0);
