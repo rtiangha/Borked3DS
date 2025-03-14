@@ -7,27 +7,52 @@ python -m glad --profile core --out-path glad/ --api "gl=4.3,gles2=3.2" --genera
 You can also generate the source using [this site](https://gen.glad.sh/):
 1. Select '4.3' for GL, '3.2' for GLES2, and 'Core' for Profile.
 2. Under Options, select Merge (Merge multiple APIs of the same specification into one file.)
-3. Input the currently supported extensions from [here](https://github.com/rtiangha/bravely-offline-citra/blob/master/externals/glad/include/glad/glad.h#L9), plus any new required extensions.
+3. Input the currently supported extensions from [here](https://github.com/rtiangha/bravely-offline-citra/blob/master/externals/glad/include/glad/gl.h#L9), plus any new required extensions.
 4. Click Generate and download the generated source zip.
 5. Unzip the new source over the current glad source files.
 
 Currently, the list of installed extensions are:
 
-* GL_AMD_blend_minmax_factor,
-* GL_ARB_buffer_storage,
-* GL_ARB_clear_texture,
-* GL_ARB_fragment_shader_interlock,
-* GL_ARB_get_texture_sub_image,
-* GL_ARB_shader_image_load_store,
-* GL_ARB_texture_compression_bptc,
-* GL_ARM_shader_framebuffer_fetch,
-* GL_EXT_buffer_storage,
-* GL_EXT_clear_texture,
-* GL_EXT_clip_cull_distance,
-* GL_EXT_shader_framebuffer_fetch,
-* GL_EXT_texture_compression_bptc,
-* GL_EXT_texture_compression_s3tc,
-* GL_INTEL_fragment_shader_ordering,
-* GL_NV_blend_minmax_factor,
-* GL_NV_fragment_shader_interlock
-
+```
+GL_AMD_blend_minmax_factor
+GL_ARB_buffer_storage
+GL_ARB_clear_texture
+GL_ARB_fragment_shader_interlock
+GL_ARB_get_texture_sub_image
+GL_ARB_separate_shader_objects
+GL_ARB_shader_image_load_store
+GL_ARB_texture_compression_bptc
+GL_ARM_shader_framebuffer_fetch
+GL_EXT_buffer_storage
+GL_EXT_clear_texture
+GL_EXT_clip_cull_distance
+GL_EXT_color_buffer_half_float
+GL_EXT_debug_label
+GL_EXT_debug_marker
+GL_EXT_geometry_shader
+GL_EXT_separate_shader_objects
+GL_EXT_shader_framebuffer_fetch
+GL_EXT_shadow_samplers
+GL_EXT_texture_buffer
+GL_EXT_texture_compression_bptc
+GL_EXT_texture_compression_s3tc
+GL_EXT_texture_filter_anisotropic
+GL_EXT_texture_format_BGRA8888
+GL_EXT_texture_sRGB_decode
+GL_EXT_texture_storage
+GL_EXT_texture_type_2_10_10_10_REV
+GL_EXT_unpack_subimage
+GL_INTEL_fragment_shader_ordering
+GL_KHR_debug
+GL_KHR_texture_compression_astc_ldr
+GL_NV_blend_minmax_factor
+GL_NV_fragment_shader_interlock
+GL_OES_depth_texture
+GL_OES_packed_depth_stencil
+GL_OES_standard_derivatives
+GL_OES_texture_float
+GL_OES_texture_half_float
+GL_OES_texture_npot
+GL_OES_texture_view
+GL_OES_vertex_array_object
+```
