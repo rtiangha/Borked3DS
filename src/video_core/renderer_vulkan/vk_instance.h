@@ -341,7 +341,6 @@ private:
     bool image_format_list{};
     bool pipeline_creation_cache_control{};
     bool fragment_shader_barycentric{};
-    bool has_portability_subset{};
     bool shader_stencil_export{};
     bool external_memory_host{};
     u64 min_imported_host_pointer_alignment{};

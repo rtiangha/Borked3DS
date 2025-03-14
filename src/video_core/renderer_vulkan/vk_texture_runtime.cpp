@@ -147,12 +147,6 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
                   std::string_view debug_name = {}) {
     const u32 layers = type == TextureType::CubeMap ? 6 : 1;
 
-    // Apply texture size limits if high quality textures are disabled
-    if (!TextureConfig{}.high_quality_textures) {
-        width = std::min(width, TextureConfig{}.max_texture_size);
-        height = std::min(height, TextureConfig{}.max_texture_size);
-    }
-
     const std::array format_list = {
         vk::Format::eR8G8B8A8Unorm,
         vk::Format::eR32Uint,
@@ -174,8 +168,7 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
         .usage = usage,
     };
 
-    // Try device memory first
-    VmaAllocationCreateInfo alloc_info = {
+    const VmaAllocationCreateInfo alloc_info = {
         .flags = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
         .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
         .requiredFlags = 0,
@@ -190,16 +183,8 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
 
     VkResult result = vmaCreateImage(instance->GetAllocator(), &unsafe_image_info, &alloc_info,
                                      &unsafe_image, &allocation, nullptr);
-
-    if (result == VK_ERROR_OUT_OF_HOST_MEMORY || result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-        // Try host visible memory instead
-        alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-        result = vmaCreateImage(instance->GetAllocator(), &unsafe_image_info, &alloc_info,
-                                &unsafe_image, &allocation, nullptr);
-    }
-
-    if (result != VK_SUCCESS) {
-        LOG_CRITICAL(Render_Vulkan, "Failed allocating image with error {} after fallback", result);
+    if (result != VK_SUCCESS) [[unlikely]] {
+        LOG_CRITICAL(Render_Vulkan, "Failed allocating image with error {}", result);
         UNREACHABLE();
     }
 
@@ -217,7 +202,6 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
             .layerCount = layers,
         },
     };
-
     vk::UniqueImageView image_view = instance->GetDevice().createImageViewUnique(view_info);
 
     if (!debug_name.empty() && instance->HasDebuggingToolAttached()) {
