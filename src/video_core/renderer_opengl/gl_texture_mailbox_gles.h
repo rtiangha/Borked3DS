@@ -5,15 +5,15 @@
 #pragma once
 
 #include <glad/gl.h>
+#include "common/common_types.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
-#include "common/common_types.h"
 
 namespace OpenGL {
 
 class OGLTextureMailboxGLES : public OGLTextureMailbox {
 public:
-    explicit OGLTextureMailboxGLES(bool debug, const Driver* driver) 
+    explicit OGLTextureMailboxGLES(bool debug, const Driver* driver)
         : OGLTextureMailbox(debug, driver) {}
 
     Frontend::Frame* GetRenderFrame() override {
@@ -44,7 +44,8 @@ public:
         glGenRenderbuffers(1, &color_buffer);
         glBindRenderbuffer(GL_RENDERBUFFER, color_buffer);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color_buffer);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
+                                  color_buffer);
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             LOG_CRITICAL(Render_OpenGL, "Failed to recreate present framebuffer!");

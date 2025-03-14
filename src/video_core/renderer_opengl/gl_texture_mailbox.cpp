@@ -40,28 +40,7 @@ bool OGLTextureMailbox::SupportsRenderbufferSharing() const {
     if (!is_gles)
         return true;
 
-    // Check for required extensions
-    // Some GLES implementations don't support sharing renderbuffers between contexts
-    const Driver* driver = reinterpret_cast<const Driver*>(glGetString(GL_VENDOR));
-
-    bool has_required_extensions = driver->HasExtension("GL_OES_framebuffer_object") &&
-                                   driver->HasExtension("GL_OES_rgb8_rgba8") &&
-                                   driver->HasExtension("GL_OES_packed_depth_stencil");
-
-    // Additional extensions that might be needed for full functionality
-    // bool has_advanced_features = driver->HasExtension("GL_EXT_multisampled_render_to_texture") &&
-    //                              driver->HasExtension("GL_EXT_color_buffer_half_float") &&
-    //                              driver->HasExtension("GL_EXT_texture_storage");
-
-    // Some vendors need special handling
-    const auto vendor = driver->GetVendor();
-    if (vendor == Vendor::Qualcomm || vendor == Vendor::ARM) {
-        // Some mobile GPUs have issues with renderbuffer sharing
-        return false;
-    }
-
-    // Require at least the basic extensions
-    return has_required_extensions;
+    return false; // For now, always use textures for GLES
 }
 
 void OGLTextureMailbox::CreateGLESTexture(Frontend::Frame* frame, u32 width, u32 height) {
@@ -92,17 +71,18 @@ void OGLTextureMailbox::ReloadPresentFrame(Frontend::Frame* frame, u32 height, u
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previous_draw_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, frame->present.handle);
 
-    if (is_gles && !SupportsRenderbufferSharing()) {
-        // Use texture instead of renderbuffer for GLES
+    if (is_gles) {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frame->texture,
                                0);
     } else {
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
                                   frame->color.handle);
     }
+
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         LOG_CRITICAL(Render_OpenGL, "Failed to recreate present FBO!");
     }
+
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, previous_draw_fbo);
     frame->color_reloaded = false;
 }
@@ -111,35 +91,58 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
     OpenGLState prev_state = OpenGLState::GetCurState();
     OpenGLState state = OpenGLState::GetCurState();
 
-    if (is_gles && !SupportsRenderbufferSharing()) {
-        CreateGLESTexture(frame, width, height);
+    // For GLES, always use textures
+    if (is_gles) {
+        // Delete old texture if it exists
+        if (frame->texture != 0) {
+            glDeleteTextures(1, &frame->texture);
+        }
+
+        // Create new texture
+        glGenTextures(1, &frame->texture);
+        glBindTexture(GL_TEXTURE_2D, frame->texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                     nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        // Create and setup FBO
+        frame->render.Release();
+        frame->render.Create();
+        state.draw.read_framebuffer = frame->render.handle;
+        state.draw.draw_framebuffer = frame->render.handle;
+        state.Apply();
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frame->texture,
+                               0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
+        }
     } else {
-        // Recreate the color texture attachment
+        // Original desktop GL path
         frame->color.Release();
         frame->color.Create();
         state.renderbuffer = frame->color.handle;
         state.Apply();
         glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
-    }
 
-    // Recreate the FBO for the render target
-    frame->render.Release();
-    frame->render.Create();
-    state.draw.read_framebuffer = frame->render.handle;
-    state.draw.draw_framebuffer = frame->render.handle;
-    state.Apply();
+        frame->render.Release();
+        frame->render.Create();
+        state.draw.read_framebuffer = frame->render.handle;
+        state.draw.draw_framebuffer = frame->render.handle;
+        state.Apply();
 
-    if (is_gles && !SupportsRenderbufferSharing()) {
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frame->texture,
-                               0);
-    } else {
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
                                   frame->color.handle);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
+        }
     }
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
-    }
     prev_state.Apply();
     frame->width = width;
     frame->height = height;
