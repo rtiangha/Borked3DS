@@ -92,7 +92,7 @@ GLenum MakeAttributeType(Pica::PipelineRegs::VertexAttributeFormat format) {
 RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore& pica,
                                    VideoCore::CustomTexManager& custom_tex_manager,
                                    VideoCore::RendererBase& renderer, Driver& driver_)
-    : VideoCore::RasterizerAccelerated{memory, pica}, driver{driver_},
+    : VideoCore::RasterizerAccelerated{memory, pica}, driver{driver_}, state{&driver_},
       shader_manager{renderer.GetRenderWindow(), driver, !driver.IsOpenGLES()},
       runtime{driver, renderer}, res_cache{memory, custom_tex_manager, runtime, regs, renderer},
       vertex_buffer{driver, GL_ARRAY_BUFFER,

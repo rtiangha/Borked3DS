@@ -15,7 +15,12 @@ namespace OpenGL {
 
 OpenGLState OpenGLState::cur_state;
 
-OpenGLState::OpenGLState() {
+OpenGLState::OpenGLState(const Driver* driver) {
+    if (driver) {
+        is_gles = driver->IsOpenGLES();
+        InitializeGLESFeatures(driver);
+    }
+
     // These all match default OpenGL values
     cull.enabled = false;
     cull.mode = GL_BACK;
@@ -95,6 +100,30 @@ OpenGLState::OpenGLState() {
     clip_distance = {};
 
     renderbuffer = 0;
+
+    // Initialize GLES-specific states
+    if (is_gles) {
+        // Disable unsupported features in GLES
+        if (!features.has_logic_op) {
+            blend.enabled = true; // Force blending when logic ops not available
+        }
+    }
+}
+
+void OpenGLState::InitializeGLESFeatures(const Driver* driver) {
+    if (!driver || !is_gles) {
+        return;
+    }
+
+    features.has_clip_distance = driver->HasExtension("GL_EXT_clip_cull_distance");
+    features.has_logic_op = driver->HasExtension("GL_EXT_blend_logic_op");
+    features.has_seamless_cubemap = driver->HasExtension("GL_EXT_texture_cube_map_seamless");
+    features.has_texture_buffer = driver->HasExtension("GL_EXT_texture_buffer");
+    features.has_explicit_attrib_location = driver->HasExtension("GL_EXT_explicit_attrib_location");
+    features.has_vertex_array_object = driver->HasExtension("GL_OES_vertex_array_object") ||
+                                       driver->HasExtension("GL_ARB_vertex_array_object");
+    features.has_shader_image_load_store = driver->HasExtension("GL_EXT_shader_image_load_store");
+    features.has_debug_output = driver->HasExtension("GL_KHR_debug");
 }
 
 void OpenGLState::Apply() const {
@@ -274,40 +303,43 @@ void OpenGLState::Apply() const {
         glBindTexture(GL_TEXTURE_2D, color_buffer.texture_2d);
     }
 
-    // Shadow Images
-    if (image_shadow_buffer != cur_state.image_shadow_buffer) {
-        glBindImageTexture(ImageUnits::ShadowBuffer, image_shadow_buffer, 0, GL_FALSE, 0,
-                           GL_READ_WRITE, GL_R32UI);
-    }
+    // Image load/store (check for extension support)
+    if (!is_gles || features.has_shader_image_load_store) {
+        // Shadow Images
+        if (image_shadow_buffer != cur_state.image_shadow_buffer) {
+            glBindImageTexture(ImageUnits::ShadowBuffer, image_shadow_buffer, 0, GL_FALSE, 0,
+                               GL_READ_WRITE, GL_R32UI);
+        }
 
-    if (image_shadow_texture_px != cur_state.image_shadow_texture_px) {
-        glBindImageTexture(ImageUnits::ShadowTexturePX, image_shadow_texture_px, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
-    }
+        if (image_shadow_texture_px != cur_state.image_shadow_texture_px) {
+            glBindImageTexture(ImageUnits::ShadowTexturePX, image_shadow_texture_px, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
 
-    if (image_shadow_texture_nx != cur_state.image_shadow_texture_nx) {
-        glBindImageTexture(ImageUnits::ShadowTextureNX, image_shadow_texture_nx, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
-    }
+        if (image_shadow_texture_nx != cur_state.image_shadow_texture_nx) {
+            glBindImageTexture(ImageUnits::ShadowTextureNX, image_shadow_texture_nx, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
 
-    if (image_shadow_texture_py != cur_state.image_shadow_texture_py) {
-        glBindImageTexture(ImageUnits::ShadowTexturePY, image_shadow_texture_py, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
-    }
+        if (image_shadow_texture_py != cur_state.image_shadow_texture_py) {
+            glBindImageTexture(ImageUnits::ShadowTexturePY, image_shadow_texture_py, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
 
-    if (image_shadow_texture_ny != cur_state.image_shadow_texture_ny) {
-        glBindImageTexture(ImageUnits::ShadowTextureNY, image_shadow_texture_ny, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
-    }
+        if (image_shadow_texture_ny != cur_state.image_shadow_texture_ny) {
+            glBindImageTexture(ImageUnits::ShadowTextureNY, image_shadow_texture_ny, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
 
-    if (image_shadow_texture_pz != cur_state.image_shadow_texture_pz) {
-        glBindImageTexture(ImageUnits::ShadowTexturePZ, image_shadow_texture_pz, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
-    }
+        if (image_shadow_texture_pz != cur_state.image_shadow_texture_pz) {
+            glBindImageTexture(ImageUnits::ShadowTexturePZ, image_shadow_texture_pz, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
 
-    if (image_shadow_texture_nz != cur_state.image_shadow_texture_nz) {
-        glBindImageTexture(ImageUnits::ShadowTextureNZ, image_shadow_texture_nz, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+        if (image_shadow_texture_nz != cur_state.image_shadow_texture_nz) {
+            glBindImageTexture(ImageUnits::ShadowTextureNZ, image_shadow_texture_nz, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
     }
 
     // Framebuffer
@@ -319,11 +351,11 @@ void OpenGLState::Apply() const {
     }
 
     // Vertex array
-    if (draw.vertex_array != cur_state.draw.vertex_array) {
-        if (Settings::values.use_gles.GetValue()) {
-            glBindVertexArrayOES(draw.vertex_array);
-        } else {
-            glBindVertexArray(draw.vertex_array);
+    if (!is_gles || features.has_vertex_array_object) {
+        if (draw.vertex_array != cur_state.draw.vertex_array) {
+            if (features.has_vertex_array_object) {
+                glBindVertexArray(draw.vertex_array);
+            }
         }
     }
 
@@ -369,6 +401,13 @@ void OpenGLState::Apply() const {
         viewport.width != cur_state.viewport.width ||
         viewport.height != cur_state.viewport.height) {
         glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+    }
+
+    // Handle GLES-specific states
+    if (!is_gles || features.has_logic_op) {
+        if (logic_op != cur_state.logic_op) {
+            glLogicOp(logic_op);
+        }
     }
 
     // Clip distance
