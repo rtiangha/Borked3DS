@@ -92,20 +92,17 @@ GLenum MakeAttributeType(Pica::PipelineRegs::VertexAttributeFormat format) {
 RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore& pica,
                                    VideoCore::CustomTexManager& custom_tex_manager,
                                    VideoCore::RendererBase& renderer, Driver& driver_)
-    : VideoCore::RasterizerAccelerated{memory, pica}, driver{driver_}, state{&driver_},
+    : VideoCore::RasterizerAccelerated{memory, pica}, driver{driver_},
       shader_manager{renderer.GetRenderWindow(), driver, !driver.IsOpenGLES()},
-      runtime{driver, renderer}, res_cache{memory, custom_tex_manager, runtime, regs, renderer},
-      vertex_buffer{driver, GL_ARRAY_BUFFER,
-                    static_cast<GLsizeiptr>(driver.IsOpenGLES() ? VERTEX_BUFFER_SIZE / 2
-                                                                : VERTEX_BUFFER_SIZE)},
-      uniform_buffer{driver, GL_UNIFORM_BUFFER,
-                     static_cast<GLsizeiptr>(driver.IsOpenGLES() ? UNIFORM_BUFFER_SIZE / 2
-                                                                 : UNIFORM_BUFFER_SIZE)},
-      index_buffer{
-          driver, GL_ELEMENT_ARRAY_BUFFER,
-          static_cast<GLsizeiptr>(driver.IsOpenGLES() ? INDEX_BUFFER_SIZE / 2 : INDEX_BUFFER_SIZE)},
+      runtime{driver, renderer}, res_cache{memory, custom_tex_manager, runtime, regs, renderer}
+      // Initialize stream buffers in initialization list
+      ,
+      vertex_buffer{driver, GL_ARRAY_BUFFER, GetAdjustedBufferSize(VERTEX_BUFFER_SIZE)},
+      uniform_buffer{driver, GL_UNIFORM_BUFFER, GetAdjustedBufferSize(UNIFORM_BUFFER_SIZE)},
+      index_buffer{driver, GL_ELEMENT_ARRAY_BUFFER, GetAdjustedBufferSize(INDEX_BUFFER_SIZE)},
       texture_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, false)},
       texture_lf_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, true)} {
+
     const bool is_gles = driver.IsOpenGLES();
 
     // Check required GLES extensions

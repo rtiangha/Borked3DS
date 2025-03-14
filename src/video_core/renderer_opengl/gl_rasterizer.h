@@ -58,6 +58,12 @@ public:
     bool AccelerateDrawBatch(bool is_indexed) override;
 
 private:
+    /// Calculates the size of gles buffers
+    static GLsizeiptr GetAdjustedBufferSize(GLsizeiptr original_size) {
+        // Ensure buffer is at least 64KB to handle 50176 byte requests
+        return std::max<GLsizeiptr>(64 * 1024, original_size);
+    }
+
     void SyncFixedState() override;
     void NotifyFixedFunctionPicaRegisterChanged(u32 id) override;
 
