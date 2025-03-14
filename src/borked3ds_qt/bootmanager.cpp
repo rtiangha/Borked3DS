@@ -135,9 +135,10 @@ void EmuThread::run() {
 #ifdef ENABLE_OPENGL
 static std::unique_ptr<QOpenGLContext> CreateQOpenGLContext(bool gles) {
     QSurfaceFormat format;
+
     if (gles) {
         format.setRenderableType(QSurfaceFormat::RenderableType::OpenGLES);
-        format.setVersion(3, 2);
+        format.setVersion(3, 1);
     } else {
         format.setRenderableType(QSurfaceFormat::RenderableType::OpenGL);
         format.setVersion(4, 3);
@@ -777,10 +778,10 @@ bool GRenderWindow::LoadOpenGL() {
                                 "latest graphics driver.<br><br>GL Renderer:<br>%1")
                                  .arg(renderer));
         return false;
-    } else if (gles && !GLAD_GL_ES_VERSION_3_2) {
-        LOG_ERROR(Frontend, "GPU does not support OpenGL ES 3.2: {}", renderer.toStdString());
-        QMessageBox::warning(this, tr("Error while initializing OpenGL ES 3.2!"),
-                             tr("Your GPU may not support OpenGL ES 3.2, or you do not have the "
+    } else if (gles && !GLAD_GL_ES_VERSION_3_1) {
+        LOG_ERROR(Frontend, "GPU does not support OpenGL ES 3.1: {}", renderer.toStdString());
+        QMessageBox::warning(this, tr("Error while initializing OpenGL ES 3.1!"),
+                             tr("Your GPU may not support OpenGL ES 3.1, or you do not have the "
                                 "latest graphics driver.<br><br>GL Renderer:<br>%1")
                                  .arg(renderer));
         return false;

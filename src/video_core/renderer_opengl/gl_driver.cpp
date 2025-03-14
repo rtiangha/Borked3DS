@@ -59,17 +59,32 @@ static void GLAD_API_PTR DebugHandler(GLenum source, GLenum type, GLuint id, GLe
                                       GLsizei length, const GLchar* message,
                                       const void* user_param) {
     auto level = Common::Log::Level::Info;
-    switch (severity) {
-    case GL_DEBUG_SEVERITY_HIGH:
-        level = Common::Log::Level::Critical;
-        break;
-    case GL_DEBUG_SEVERITY_MEDIUM:
-        level = Common::Log::Level::Warning;
-        break;
-    case GL_DEBUG_SEVERITY_NOTIFICATION:
-    case GL_DEBUG_SEVERITY_LOW:
-        level = Common::Log::Level::Debug;
-        break;
+    if (Settings::values.use_gles.GetValue()) {
+        switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH_KHR:
+            level = Common::Log::Level::Critical;
+            break;
+        case GL_DEBUG_SEVERITY_MEDIUM_KHR:
+            level = Common::Log::Level::Warning;
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION_KHR:
+        case GL_DEBUG_SEVERITY_LOW_KHR:
+            level = Common::Log::Level::Debug;
+            break;
+        }
+    } else {
+        switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH:
+            level = Common::Log::Level::Critical;
+            break;
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            level = Common::Log::Level::Warning;
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+        case GL_DEBUG_SEVERITY_LOW:
+            level = Common::Log::Level::Debug;
+            break;
+        }
     }
     LOG_GENERIC(Common::Log::Class::Render_OpenGL, level, "{} {} {}: {}", GetSource(source),
                 GetType(type), id, message);
@@ -78,8 +93,18 @@ static void GLAD_API_PTR DebugHandler(GLenum source, GLenum type, GLuint id, GLe
 Driver::Driver() {
     const bool enable_debug = Settings::values.renderer_debug.GetValue();
     if (enable_debug) {
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        glDebugMessageCallback(DebugHandler, nullptr);
+
+        if (Settings::values.use_gles.GetValue()) {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+        } else {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        }
+
+        if (Settings::values.use_gles.GetValue()) {
+            glDebugMessageCallbackKHR(DebugHandler, nullptr);
+        } else {
+            glDebugMessageCallback(DebugHandler, nullptr);
+        }
     }
 
     ReportDriverInfo();
@@ -95,6 +120,190 @@ bool Driver::HasBug(DriverBug bug) const {
     return True(bugs & bug);
 }
 
+void Driver::CheckGLESFeatures() {
+    if (!is_gles) {
+        return;
+    }
+
+    // Check GLES version
+    is_suitable = IsGLESVersionSupported(3, 2);
+
+    // Check required features
+    ext_texture_storage = HasExtension("GL_EXT_texture_storage");
+    oes_depth_texture = HasExtension("GL_OES_depth_texture");
+    oes_packed_depth_stencil = HasExtension("GL_OES_packed_depth_stencil");
+    oes_depth24 = HasExtension("GL_OES_depth24");
+    oes_rgb8_rgba8 = HasExtension("GL_OES_rgb8_rgba8");
+    ext_texture_format_bgra8888 = HasExtension("GL_EXT_texture_format_BGRA8888");
+    ext_texture_filter_anisotropic = HasExtension("GL_EXT_texture_filter_anisotropic");
+    ext_color_buffer_float = HasExtension("GL_EXT_color_buffer_float");
+    ext_color_buffer_half_float = HasExtension("GL_EXT_color_buffer_half_float");
+    oes_texture_float = HasExtension("GL_OES_texture_float");
+    oes_texture_half_float = HasExtension("GL_OES_texture_half_float");
+    oes_texture_float_linear = HasExtension("GL_OES_texture_float_linear");
+    oes_texture_half_float_linear = HasExtension("GL_OES_texture_half_float_linear");
+    ext_texture_rg = HasExtension("GL_EXT_texture_rg");
+    ext_draw_buffers = HasExtension("GL_EXT_draw_buffers");
+    ext_geometry_shader = HasExtension("GL_EXT_geometry_shader");
+    khr_debug = HasExtension("GL_KHR_debug");
+}
+
+bool Driver::HasExtension(std::string_view name) const {
+    if (is_gles) {
+        // For OpenGL ES, we need to check extensions one by one
+        GLint num_extensions;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+        for (GLint i = 0; i < num_extensions; ++i) {
+            const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
+            if (name == extension) {
+                return true;
+            }
+        }
+        return false;
+    } else {
+        // For desktop OpenGL, we can use GLAD's extension checking
+        // Convert extension name to string for comparison
+        std::string ext_name(name);
+        if (ext_name.starts_with("GL_")) {
+            ext_name = ext_name.substr(3); // Remove "GL_" prefix
+        }
+
+        // AMD Extensions
+        if (ext_name == "AMD_blend_minmax_factor")
+            return GLAD_GL_AMD_blend_minmax_factor;
+
+        // ARB Extensions
+        if (ext_name == "ARB_buffer_storage")
+            return GLAD_GL_ARB_buffer_storage;
+        if (ext_name == "ARB_clear_texture")
+            return GLAD_GL_ARB_clear_texture;
+        if (ext_name == "ARB_fragment_shader_interlock")
+            return GLAD_GL_ARB_fragment_shader_interlock;
+        if (ext_name == "ARB_get_texture_sub_image")
+            return GLAD_GL_ARB_get_texture_sub_image;
+        if (ext_name == "ARB_shader_image_load_store")
+            return GLAD_GL_ARB_shader_image_load_store;
+        if (ext_name == "ARB_texture_compression_bptc")
+            return GLAD_GL_ARB_texture_compression_bptc;
+        if (ext_name == "ARB_separate_shader_objects")
+            return GLAD_GL_ARB_separate_shader_objects;
+
+        // ARM Extensions
+        if (ext_name == "ARM_shader_framebuffer_fetch")
+            return GLAD_GL_ARM_shader_framebuffer_fetch;
+
+        // EXT Extensions
+        if (ext_name == "EXT_buffer_storage")
+            return GLAD_GL_EXT_buffer_storage;
+        if (ext_name == "EXT_clear_texture")
+            return GLAD_GL_EXT_clear_texture;
+        if (ext_name == "EXT_clip_cull_distance")
+            return GLAD_GL_EXT_clip_cull_distance;
+        if (ext_name == "EXT_shader_framebuffer_fetch")
+            return GLAD_GL_EXT_shader_framebuffer_fetch;
+        if (ext_name == "EXT_texture_buffer")
+            return GLAD_GL_EXT_texture_buffer;
+        if (ext_name == "EXT_texture_compression_bptc")
+            return GLAD_GL_EXT_texture_compression_bptc;
+        if (ext_name == "EXT_texture_compression_s3tc")
+            return GLAD_GL_EXT_texture_compression_s3tc;
+        if (ext_name == "EXT_color_buffer_half_float")
+            return GLAD_GL_EXT_color_buffer_half_float;
+        if (ext_name == "EXT_debug_label")
+            return GLAD_GL_EXT_debug_label;
+        if (ext_name == "EXT_debug_marker")
+            return GLAD_GL_EXT_debug_marker;
+        if (ext_name == "EXT_separate_shader_objects")
+            return GLAD_GL_EXT_separate_shader_objects;
+        if (ext_name == "EXT_shadow_samplers")
+            return GLAD_GL_EXT_shadow_samplers;
+        if (ext_name == "EXT_texture_sRGB_decode")
+            return GLAD_GL_EXT_texture_sRGB_decode;
+        if (ext_name == "EXT_texture_type_2_10_10_10_REV")
+            return GLAD_GL_EXT_texture_type_2_10_10_10_REV;
+        if (ext_name == "EXT_texture_filter_anisotropic")
+            return GLAD_GL_EXT_texture_filter_anisotropic;
+        if (ext_name == "EXT_texture_format_BGRA8888")
+            return GLAD_GL_EXT_texture_format_BGRA8888;
+        if (ext_name == "EXT_texture_storage")
+            return GLAD_GL_EXT_texture_storage;
+        if (ext_name == "EXT_unpack_subimage")
+            return GLAD_GL_EXT_unpack_subimage;
+        if (ext_name == "EXT_geometry_shader")
+            return GLAD_GL_EXT_geometry_shader;
+
+        // INTEL Extensions
+        if (ext_name == "INTEL_fragment_shader_ordering")
+            return GLAD_GL_INTEL_fragment_shader_ordering;
+
+        // KHR Extensions
+        if (ext_name == "KHR_texture_compression_astc_ldr")
+            return GLAD_GL_KHR_texture_compression_astc_ldr;
+        if (ext_name == "KHR_debug")
+            return GLAD_GL_KHR_debug;
+
+        // NV Extensions
+        if (ext_name == "NV_blend_minmax_factor")
+            return GLAD_GL_NV_blend_minmax_factor;
+        if (ext_name == "NV_fragment_shader_interlock")
+            return GLAD_GL_NV_fragment_shader_interlock;
+
+        // OES Extensions
+        if (ext_name == "OES_depth_texture")
+            return GLAD_GL_OES_depth_texture;
+        if (ext_name == "OES_packed_depth_stencil")
+            return GLAD_GL_OES_packed_depth_stencil;
+        if (ext_name == "OES_standard_derivatives")
+            return GLAD_GL_OES_standard_derivatives;
+        if (ext_name == "OES_texture_float")
+            return GLAD_GL_OES_texture_float;
+        if (ext_name == "OES_texture_half_float")
+            return GLAD_GL_OES_texture_half_float;
+        if (ext_name == "OES_texture_npot")
+            return GLAD_GL_OES_texture_npot;
+        if (ext_name == "OES_vertex_array_object")
+            return GLAD_GL_OES_vertex_array_object;
+        if (ext_name == "OES_texture_view")
+            return GLAD_GL_OES_texture_view;
+
+        // For any other extensions, check using glGetStringi
+        GLint num_extensions;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+        for (GLint i = 0; i < num_extensions; ++i) {
+            const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i));
+            if (name == extension) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+bool Driver::SupportsNonPowerOfTwo() const {
+    return !is_gles || HasExtension("GL_OES_texture_npot");
+}
+
+bool Driver::SupportsASTCCompression() const {
+    return HasExtension("GL_KHR_texture_compression_astc_ldr");
+}
+
+bool Driver::SupportsDXTCompression() const {
+    return HasExtension("GL_EXT_texture_compression_s3tc") ||
+           HasExtension("GL_EXT_texture_compression_dxt1");
+}
+
+bool Driver::SupportsTextureStorage() const {
+    return !is_gles || HasExtension("GL_EXT_texture_storage");
+}
+
+bool Driver::SupportsDepthTextures() const {
+    return !is_gles || (oes_depth_texture && oes_packed_depth_stencil);
+}
+
+bool Driver::SupportsFloatTextures() const {
+    return !is_gles || (oes_texture_float && oes_texture_float_linear);
+}
+
 bool Driver::HasDebugTool() {
     GLint num_extensions;
     glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
@@ -105,6 +314,51 @@ bool Driver::HasDebugTool() {
         }
     }
     return false;
+}
+
+bool Driver::IsGLESVersionSupported(int major, int minor) const {
+    if (!is_gles) {
+        return false; // Not an OpenGL ES context
+    }
+
+    // Parse the OpenGL ES version string
+    // Format is typically: "OpenGL ES <version> <vendor-specific-info>"
+    std::string_view version = gl_version;
+    if (!version.starts_with("OpenGL ES ")) {
+        return false;
+    }
+
+    // Skip "OpenGL ES " prefix
+    version.remove_prefix(10);
+
+    // Parse major version
+    int current_major = 0;
+    while (!version.empty() && std::isdigit(version.front())) {
+        current_major = current_major * 10 + (version.front() - '0');
+        version.remove_prefix(1);
+    }
+
+    // Skip dot
+    if (version.empty() || version.front() != '.') {
+        return false;
+    }
+    version.remove_prefix(1);
+
+    // Parse minor version
+    int current_minor = 0;
+    while (!version.empty() && std::isdigit(version.front())) {
+        current_minor = current_minor * 10 + (version.front() - '0');
+        version.remove_prefix(1);
+    }
+
+    // Compare versions
+    if (current_major > major) {
+        return true;
+    }
+    if (current_major < major) {
+        return false;
+    }
+    return current_minor >= minor;
 }
 
 bool Driver::IsCustomFormatSupported(VideoCore::CustomPixelFormat format) const {
@@ -164,6 +418,15 @@ void Driver::DeduceVendor() {
         vendor = Vendor::Qualcomm;
     } else if (gpu_vendor.find("Samsung") != gpu_vendor.npos) {
         vendor = Vendor::Samsung;
+    } else if (gpu_vendor.find("PowerVR") != gpu_vendor.npos ||
+               gpu_vendor.find("ImgTec") != gpu_vendor.npos) {
+        vendor = Vendor::ImgTec;
+    } else if (gpu_vendor.find("Vivante") != gpu_vendor.npos) {
+        vendor = Vendor::Vivante;
+    } else if (gpu_vendor.find("Broadcom") != gpu_vendor.npos) {
+        vendor = Vendor::Broadcom;
+    } else if (gpu_vendor.find("Apple") != gpu_vendor.npos) {
+        vendor = Vendor::Apple;
     } else if (gpu_vendor.find("GDI Generic") != gpu_vendor.npos) {
         vendor = Vendor::Generic;
     }
@@ -178,6 +441,7 @@ void Driver::CheckExtensionSupport() {
     arb_shader_image_load_store = GLAD_GL_ARB_shader_image_load_store;
     arb_texture_compression_bptc = GLAD_GL_ARB_texture_compression_bptc;
     ext_texture_compression_bptc = GLAD_GL_EXT_texture_compression_bptc;
+    ext_texture_buffer = !is_gles || GLAD_GL_EXT_texture_buffer;
     clip_cull_distance = !is_gles || GLAD_GL_EXT_clip_cull_distance;
     ext_texture_compression_s3tc = GLAD_GL_EXT_texture_compression_s3tc;
     ext_shader_framebuffer_fetch = GLAD_GL_EXT_shader_framebuffer_fetch;
@@ -186,7 +450,7 @@ void Driver::CheckExtensionSupport() {
     nv_fragment_shader_interlock = GLAD_GL_NV_fragment_shader_interlock;
     intel_fragment_shader_ordering = GLAD_GL_INTEL_fragment_shader_ordering;
     blend_minmax_factor = GLAD_GL_AMD_blend_minmax_factor || GLAD_GL_NV_blend_minmax_factor;
-    is_suitable = GLAD_GL_VERSION_4_3 || GLAD_GL_ES_VERSION_3_2;
+    is_suitable = GLAD_GL_VERSION_4_3 || GLAD_GL_ES_VERSION_3_1;
 }
 
 void Driver::FindBugs() {
@@ -196,24 +460,58 @@ void Driver::FindBugs() {
     const bool is_linux = false;
 #endif
 
-    // TODO: Check if these have been fixed in the newer driver
-    if (vendor == Vendor::AMD) {
-        bugs |= DriverBug::ShaderStageChangeFreeze | DriverBug::VertexArrayOutOfBound;
+    // Desktop OpenGL bug checks..
+    if (!is_gles) {
+        // TODO: Check if these have been fixed in the newer driver
+        if (vendor == Vendor::AMD) {
+            bugs |= DriverBug::ShaderStageChangeFreeze | DriverBug::VertexArrayOutOfBound;
+        }
+
+        if (vendor == Vendor::AMD || (vendor == Vendor::Intel && !is_linux)) {
+            bugs |= DriverBug::BrokenTextureView;
+        }
+
+        if (vendor == Vendor::Intel && !is_linux) {
+            bugs |= DriverBug::BrokenClearTexture;
+        }
+
+        if (vendor == Vendor::ARM && gpu_model.find("Mali") != gpu_model.npos) {
+            constexpr GLint MIN_TEXTURE_BUFFER_SIZE = static_cast<GLint>((1 << 16));
+            GLint max_texel_buffer_size;
+            glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_texel_buffer_size);
+            if (max_texel_buffer_size == MIN_TEXTURE_BUFFER_SIZE) {
+                bugs |= DriverBug::SlowTextureBufferWithBigSize;
+            }
+        }
+        return;
     }
 
-    if (vendor == Vendor::AMD || (vendor == Vendor::Intel && !is_linux)) {
-        bugs |= DriverBug::BrokenTextureView;
+    // GLES-specific bug checks
+    if (vendor == Vendor::Qualcomm) {
+        // Known Qualcomm driver bugs
+        bugs |= DriverBug::BrokenETC2Compression;
+        bugs |= DriverBug::BrokenBufferSubData;
+        bugs |= DriverBug::RequiresSRGBSuffix;
     }
 
-    if (vendor == Vendor::Intel && !is_linux) {
-        bugs |= DriverBug::BrokenClearTexture;
+    if (vendor == Vendor::ARM) {
+        // Known Mali driver bugs
+        if (gpu_model.find("Mali") != gpu_model.npos) {
+            bugs |= DriverBug::SlowTextureBufferWithBigSize;
+            bugs |= DriverBug::BrokenMipmapGeneration;
+        }
     }
 
-    if (vendor == Vendor::ARM && gpu_model.find("Mali") != gpu_model.npos) {
-        constexpr GLint MIN_TEXTURE_BUFFER_SIZE = static_cast<GLint>((1 << 16));
+    if (vendor == Vendor::ImgTec) {
+        // Known PowerVR driver bugs
+        bugs |= DriverBug::BrokenASTCCompression;
+    }
+
+    // Check for texture buffer size limitations
+    if (is_gles) {
         GLint max_texel_buffer_size;
         glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_texel_buffer_size);
-        if (max_texel_buffer_size == MIN_TEXTURE_BUFFER_SIZE) {
+        if (max_texel_buffer_size <= (1 << 16)) {
             bugs |= DriverBug::SlowTextureBufferWithBigSize;
         }
     }

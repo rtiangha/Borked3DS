@@ -3,6 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
 #include "common/logging/log.h"
 #include "common/profiling.h"
 #include "common/settings.h"
@@ -76,10 +78,23 @@ RendererOpenGL::RendererOpenGL(Core::System& system, Pica::PicaCore& pica_,
     : VideoCore::RendererBase{system, window, secondary_window}, pica{pica_},
       rasterizer{system.Memory(), pica, system.CustomTexManager(), *this, driver},
       frame_dumper{system, window} {
+    GLint major, minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+
     const bool has_debug_tool = driver.HasDebugTool();
-    window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
+
+    // Check for required GLES extensions
+    if (driver.IsOpenGLES()) {
+        if (!driver.HasExtension("GL_OES_rgb8_rgba8")) {
+            LOG_CRITICAL(Render_OpenGL, "GL_OES_rgb8_rgba8 not supported! Exiting...");
+            throw std::runtime_error("GL_OES_rgb8_rgba8 not supported!");
+        }
+    }
+
+    window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
     if (secondary_window) {
-        secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
+        secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool, &driver);
     }
     frame_dumper.mailbox = std::make_unique<OGLVideoDumpingMailbox>();
     InitOpenGLObjects();
@@ -266,7 +281,12 @@ void RendererOpenGL::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
         state.Apply();
 
         glActiveTexture(GL_TEXTURE0);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
+
+        if (Settings::values.use_gles.GetValue()) {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, (GLint)pixel_stride);
+        } else {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
+        }
 
         // Update existing texture
         // TODO: Test what happens on hardware when you change the framebuffer dimensions so that

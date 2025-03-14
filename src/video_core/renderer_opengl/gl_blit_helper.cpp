@@ -3,6 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
 #include "common/scope_exit.h"
 #include "common/settings.h"
 #include "video_core/rasterizer_cache/pixel_format.h"
@@ -54,6 +56,14 @@ OGLProgram CreateProgram(std::string_view frag) {
 
 } // Anonymous namespace
 
+// Helper function to log OpenGL errors
+void CheckGLError(const char* operation) {
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        LOG_ERROR(Render_OpenGL, "{} failed with error: 0x{:x}", operation, err);
+    }
+}
+
 BlitHelper::BlitHelper(const Driver& driver_)
     : driver{driver_}, linear_sampler{CreateSampler(GL_LINEAR)},
       nearest_sampler{CreateSampler(GL_NEAREST)},
@@ -73,10 +83,12 @@ BlitHelper::BlitHelper(const Driver& driver_)
         state.texture_units[i].sampler = i == 2 ? nearest_sampler.handle : linear_sampler.handle;
     }
     if (driver.IsOpenGLES()) {
-        LOG_INFO(Render_OpenGL,
-                 "Texture views are unsupported, reinterpretation will do intermediate copy");
-        temp_tex.Create();
-        use_texture_view = false;
+        if (!GLAD_GL_OES_texture_view) {
+            LOG_INFO(Render_OpenGL,
+                     "Texture views are unsupported, reinterpretation will do intermediate copy");
+            temp_tex.Create();
+            use_texture_view = false;
+        }
     }
 }
 
@@ -87,15 +99,29 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
     OpenGLState prev_state = OpenGLState::GetCurState();
     SCOPE_EXIT({ prev_state.Apply(); });
 
-    state.texture_units[0].texture_2d = source.Handle();
-    state.texture_units[0].sampler = 0;
-    state.texture_units[1].sampler = 0;
+    const bool is_gles = driver.IsOpenGLES();
+
+    if (is_gles) {
+        // OpenGL ES path - use single texture
+        state.texture_units[0].texture_2d = source.Handle();
+        state.texture_units[0].sampler = 0;
+    } else {
+        // Desktop OpenGL path - use separate textures
+        state.texture_units[0].texture_2d = source.Handle();
+        state.texture_units[0].sampler = 0;
+        state.texture_units[1].sampler = 0;
+    }
 
     if (use_texture_view) {
         temp_tex.Create();
         glActiveTexture(GL_TEXTURE1);
-        glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8, 0, 1, 0,
-                      1);
+        if (is_gles) {
+            glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8_OES,
+                          0, 1, 0, 1);
+        } else {
+            glTextureView(temp_tex.handle, GL_TEXTURE_2D, source.Handle(), GL_DEPTH24_STENCIL8, 0,
+                          1, 0, 1);
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     } else if (copy.extent.width > temp_extent.width || copy.extent.height > temp_extent.height) {
@@ -105,11 +131,17 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
         state.texture_units[1].texture_2d = temp_tex.handle;
         state.Apply();
         glActiveTexture(GL_TEXTURE1);
-        glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, temp_extent.width,
-                       temp_extent.height);
+        if (is_gles) {
+            glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8_OES, temp_extent.width,
+                           temp_extent.height);
+        } else {
+            glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH24_STENCIL8, temp_extent.width,
+                           temp_extent.height);
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     }
+
     state.texture_units[1].texture_2d = temp_tex.handle;
     state.Apply();
 
@@ -119,7 +151,11 @@ bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
                            0, temp_tex.handle, GL_TEXTURE_2D, 0, copy.src_offset.x,
                            copy.src_offset.y, 0, copy.extent.width, copy.extent.height, 1);
     }
-    glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+
+    // Only set depth stencil texture mode for desktop OpenGL
+    if (!is_gles) {
+        glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+    }
 
     const Common::Rectangle src_rect{copy.src_offset.x, copy.src_offset.y + copy.extent.height,
                                      copy.src_offset.x + copy.extent.width, copy.src_offset.x};
