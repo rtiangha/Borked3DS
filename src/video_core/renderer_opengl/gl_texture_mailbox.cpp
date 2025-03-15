@@ -91,15 +91,15 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
     OpenGLState prev_state = OpenGLState::GetCurState();
     OpenGLState state = OpenGLState::GetCurState();
 
-    // For GLES, always use textures
+    frame->width = width;
+    frame->height = height;
+
     if (is_gles) {
-        // Delete old texture if it exists
-        if (frame->texture != 0) {
-            glDeleteTextures(1, &frame->texture);
+        // For GLES we use a simpler setup with just a color texture
+        if (frame->texture == 0) {
+            glGenTextures(1, &frame->texture);
         }
 
-        // Create new texture
-        glGenTextures(1, &frame->texture);
         glBindTexture(GL_TEXTURE_2D, frame->texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                      nullptr);
@@ -108,7 +108,7 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-        // Create and setup FBO
+        // Setup framebuffer
         frame->render.Release();
         frame->render.Create();
         state.draw.read_framebuffer = frame->render.handle;
@@ -117,10 +117,6 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frame->texture,
                                0);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
-        }
     } else {
         // Original desktop GL path
         frame->color.Release();
@@ -137,26 +133,41 @@ void OGLTextureMailbox::ReloadRenderFrame(Frontend::Frame* frame, u32 width, u32
 
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
                                   frame->color.handle);
+    }
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
-        }
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        LOG_CRITICAL(Render_OpenGL, "Failed to recreate render FBO!");
     }
 
     prev_state.Apply();
-    frame->width = width;
-    frame->height = height;
     frame->color_reloaded = true;
 }
 
 Frontend::Frame* OGLTextureMailbox::GetRenderFrame() {
     std::unique_lock lock{swap_chain_lock};
 
+    // Initialize frames if needed
+    if (!initialized) {
+        for (auto& frame : swap_chain) {
+            frame.render.Create();
+            frame.present.Create();
+            frame.is_gles = is_gles;
+            free_queue.push(&frame);
+        }
+        initialized = true;
+    }
+
     // If theres no free frames, we will reuse the oldest render frame
     if (free_queue.empty()) {
-        auto frame = present_queue.back();
-        present_queue.pop_back();
-        return frame;
+        if (is_gles) {
+            // For GLES, try to reuse the oldest frame in the present queue
+            if (!present_queue.empty()) {
+                auto frame = present_queue.back();
+                present_queue.pop_back();
+                return frame;
+            }
+        }
+        free_cv.wait(lock, [this] { return !free_queue.empty(); });
     }
 
     Frontend::Frame* frame = free_queue.front();
@@ -166,6 +177,14 @@ Frontend::Frame* OGLTextureMailbox::GetRenderFrame() {
 
 void OGLTextureMailbox::ReleaseRenderFrame(Frontend::Frame* frame) {
     std::unique_lock lock{swap_chain_lock};
+    if (is_gles) {
+        // For GLES, we want to make sure the frame is immediately available for presentation
+        while (present_queue.size() >= 2) {
+            auto old_frame = present_queue.back();
+            present_queue.pop_back();
+            free_queue.push(old_frame);
+        }
+    }
     present_queue.push_front(frame);
     present_cv.notify_one();
 
@@ -196,17 +215,22 @@ Frontend::Frame* OGLTextureMailbox::TryGetPresentFrame(int timeout_ms) {
     std::unique_lock lock{swap_chain_lock};
 
     if (is_gles) {
-        // For GLES, use simpler synchronization
-        if (!present_queue.empty()) {
-            auto* frame = present_queue.front();
-            present_queue.pop_front();
-            if (previous_frame) {
-                free_queue.push(previous_frame);
-            }
-            previous_frame = frame;
-            return frame;
+        // For GLES, we want to present the most recent frame
+        if (present_queue.empty()) {
+            return nullptr;
         }
-        return nullptr;
+
+        auto frame = present_queue.front();
+        present_queue.pop_front();
+
+        // Put previous frame back in free queue
+        if (previous_frame) {
+            free_queue.push(previous_frame);
+            free_cv.notify_one();
+        }
+
+        previous_frame = frame;
+        return frame;
     }
 
     // Wait for new entries in the present_queue

@@ -133,8 +133,15 @@ void RendererOpenGL::SwapBuffers() {
 
             state.draw.draw_framebuffer = frame->render.handle;
             state.Apply();
+
+            // Clear the framebuffer before drawing
+            glClear(GL_COLOR_BUFFER_BIT);
+
             DrawScreens(main_layout, false);
-            glFlush();
+
+            // Ensure rendering is complete
+            glFinish();
+
             render_window.mailbox->ReleaseRenderFrame(frame);
         }
     } else {
@@ -149,13 +156,6 @@ void RendererOpenGL::SwapBuffers() {
         secondary_window->PollEvents();
     }
 #endif
-    if (frame_dumper.IsDumping()) {
-        try {
-            RenderToMailbox(frame_dumper.GetLayout(), frame_dumper.mailbox, true);
-        } catch (const OGLTextureMailboxException& exception) {
-            LOG_DEBUG(Render_OpenGL, "Frame dumper exception caught: {}", exception.what());
-        }
-    }
 
     EndFrame();
     prev_state.Apply();
