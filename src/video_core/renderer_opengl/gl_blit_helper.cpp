@@ -3,6 +3,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include "common/logging/log.h"
 #include "common/scope_exit.h"
 #include "common/settings.h"
 #include "video_core/rasterizer_cache/pixel_format.h"
@@ -66,21 +67,277 @@ BlitHelper::BlitHelper(const Driver& driver_)
       refine_program{CreateProgram(HostShaders::REFINE_FRAG)},
       d24s8_to_rgba8{CreateProgram(HostShaders::D24S8_TO_RGBA8_FRAG)},
       rgba4_to_rgb5a1{CreateProgram(HostShaders::RGBA4_TO_RGB5A1_FRAG)} {
-    vao.Create();
-    draw_fbo.Create();
-    state.draw.vertex_array = vao.handle;
-    for (u32 i = 0; i < 3; i++) {
-        state.texture_units[i].sampler = i == 2 ? nearest_sampler.handle : linear_sampler.handle;
-    }
-    if (driver.IsOpenGLES()) {
-        LOG_INFO(Render_OpenGL,
-                 "Texture views are unsupported, reinterpretation will do intermediate copy");
-        temp_tex.Create();
-        use_texture_view = false;
+    if (!driver->IsOpenGLES()) {
+        vao.Create();
+        draw_fbo.Create();
+        state.draw.vertex_array = vao.handle;
+        for (u32 i = 0; i < 3; i++) {
+            state.texture_units[i].sampler =
+                i == 2 ? nearest_sampler.handle : linear_sampler.handle;
+        }
+        if (driver.IsOpenGLES()) {
+            LOG_INFO(Render_OpenGL,
+                     "Texture views are unsupported, reinterpretation will do intermediate copy");
+            temp_tex.Create();
+            use_texture_view = false;
+        }
+    } else {
+        uses_gles_path = GLCompatibility::IsOpenGLES();
+        has_copy_image = GLAD_GL_EXT_copy_image || !uses_gles_path;
+
+        if (!BuildProgramGLES() && !BuildProgramGL()) {
+            LOG_CRITICAL(Render_OpenGL, "Failed to build blit programs!");
+            return;
+        }
+
+        if (!BuildDepthStencilProgram()) {
+            LOG_CRITICAL(Render_OpenGL, "Failed to build depth stencil program!");
+            return;
+        }
+
+        vertex_buffer.Create();
+        vertex_array.Create();
+
+        // Setup vertex array
+        GLint pos_attr = -1;
+        GLint tex_attr = -1;
+
+        if (uses_gles_path) {
+            pos_attr = glGetAttribLocation(program.handle, "position");
+            tex_attr = glGetAttribLocation(program.handle, "texcoord");
+        } else {
+            pos_attr = 0;
+            tex_attr = 1;
+        }
+
+        glBindVertexArray(vertex_array.handle);
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer.handle);
+
+        glEnableVertexAttribArray(pos_attr);
+        glEnableVertexAttribArray(tex_attr);
+        glVertexAttribPointer(pos_attr, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, nullptr);
+        glVertexAttribPointer(tex_attr, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4,
+                              reinterpret_cast<void*>(sizeof(GLfloat) * 2));
+
+        uniforms.src_tex = glGetUniformLocation(program.handle, "tex");
+        uniforms.src_tex_2 = glGetUniformLocation(program.handle, "tex_2");
+        uniforms.sampler_2 = glGetUniformLocation(program.handle, "sampler_2");
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+        initialized = true;
     }
 }
 
 BlitHelper::~BlitHelper() = default;
+
+bool BlitHelper::BuildProgramGLES() {
+    if (!uses_gles_path) {
+        return false;
+    }
+
+    static constexpr char vertex_shader[] = R"(#version 300 es
+        precision highp float;
+        in vec2 position;
+        in vec2 texcoord;
+        out vec2 tex_coord;
+        void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+            tex_coord = texcoord;
+        }
+    )";
+
+    static constexpr char fragment_shader[] = R"(#version 300 es
+        precision highp float;
+        uniform sampler2D tex;
+        uniform sampler2D tex_2;
+        uniform bool sampler_2;
+        in vec2 tex_coord;
+        out vec4 color;
+        void main() {
+            if (sampler_2) {
+                color = texture(tex_2, tex_coord);
+            } else {
+                color = texture(tex, tex_coord);
+            }
+        }
+    )";
+
+    program.Create(vertex_shader, fragment_shader);
+    return program.handle != 0;
+}
+
+bool BlitHelper::BuildProgramGL() {
+    if (uses_gles_path) {
+        return false;
+    }
+
+    static constexpr char vertex_shader[] = R"(#version 330 core
+        layout(location = 0) in vec2 position;
+        layout(location = 1) in vec2 texcoord;
+        out vec2 tex_coord;
+        void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+            tex_coord = texcoord;
+        }
+    )";
+
+    static constexpr char fragment_shader[] = R"(#version 330 core
+        uniform sampler2D tex;
+        uniform sampler2D tex_2;
+        uniform bool sampler_2;
+        in vec2 tex_coord;
+        out vec4 color;
+        void main() {
+            if (sampler_2) {
+                color = texture(tex_2, tex_coord);
+            } else {
+                color = texture(tex, tex_coord);
+            }
+        }
+    )";
+
+    program.Create(vertex_shader, fragment_shader);
+    return program.handle != 0;
+}
+
+bool BlitHelper::BuildDepthStencilProgram() {
+    static constexpr char vertex_shader[] = R"(%s
+        %s vec2 position;
+        %s vec2 texcoord;
+        %s vec2 tex_coord;
+        void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+            tex_coord = texcoord;
+        }
+    )";
+
+    static constexpr char fragment_shader[] = R"(%s
+        %s sampler2D tex;
+        %s vec2 tex_coord;
+        %s vec4 color;
+        void main() {
+            float depth = texture(tex, tex_coord).x;
+            color = vec4(depth, 0.0, 0.0, 1.0);
+        }
+    )";
+
+    std::string vs = uses_gles_path
+                         ? fmt::format(vertex_shader, "#version 300 es\nprecision highp float;",
+                                       "in", "in", "out")
+                         : fmt::format(vertex_shader, "#version 330 core",
+                                       "layout(location = 0) in", "layout(location = 1) in", "out");
+
+    std::string fs =
+        uses_gles_path ? fmt::format(fragment_shader, "#version 300 es\nprecision highp float;",
+                                     "uniform", "in", "out")
+                       : fmt::format(fragment_shader, "#version 330 core", "uniform", "in", "out");
+
+    depth_program.Create(vs.c_str(), fs.c_str());
+    return depth_program.handle != 0;
+}
+
+bool BlitHelper::BlitTexture(GLuint src_tex, const Common::Rectangle<u32>& src_rect,
+                             const Common::Rectangle<u32>& dst_rect, GLuint read_fb_handle,
+                             GLuint draw_fb_handle, GLenum buffer, GLenum filter) {
+    if (!initialized) {
+        return false;
+    }
+
+    // If we have GL_EXT_copy_image (or desktop GL), use the more efficient copy path
+    if (has_copy_image && src_rect == dst_rect) {
+        if (uses_gles_path) {
+            glCopyImageSubDataEXT(src_tex, GL_TEXTURE_2D, 0, src_rect.left, src_rect.bottom, 0,
+                                  draw_fb_handle, GL_FRAMEBUFFER, 0, dst_rect.left, dst_rect.bottom,
+                                  0, src_rect.GetWidth(), src_rect.GetHeight(), 1);
+        } else {
+            glCopyImageSubData(src_tex, GL_TEXTURE_2D, 0, src_rect.left, src_rect.bottom, 0,
+                               draw_fb_handle, GL_FRAMEBUFFER, 0, dst_rect.left, dst_rect.bottom, 0,
+                               src_rect.GetWidth(), src_rect.GetHeight(), 1);
+        }
+        return true;
+    }
+
+    // Fallback to shader-based blit
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fb_handle);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb_handle);
+
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, buffer, GL_TEXTURE_2D, src_tex, 0);
+    glFramebufferRenderbuffer(GL_READ_FRAMEBUFFER, buffer, GL_RENDERBUFFER, 0);
+
+    glUseProgram(program.handle);
+    glUniform1i(uniforms.sampler_2, false);
+    glUniform1i(uniforms.src_tex, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, src_tex);
+
+    SetupVertices(src_rect, dst_rect);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    return true;
+}
+
+bool BlitHelper::BlitTextures(const std::array<GLuint, 2>& src_textures,
+                              const Common::Rectangle<u32>& src_rect,
+                              const Common::Rectangle<u32>& dst_rect, GLuint read_fb_handle,
+                              GLuint draw_fb_handle, GLenum buffer, GLenum filter) {
+    if (!initialized) {
+        return false;
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fb_handle);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb_handle);
+
+    glUseProgram(program.handle);
+    glUniform1i(uniforms.sampler_2, true);
+    glUniform1i(uniforms.src_tex, 0);
+    glUniform1i(uniforms.src_tex_2, 1);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, src_textures[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, src_textures[1]);
+
+    SetupVertices(src_rect, dst_rect);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    return true;
+}
+
+bool BlitHelper::BlitDepthStencil(GLuint src_tex, const Common::Rectangle<u32>& src_rect,
+                                  const Common::Rectangle<u32>& dst_rect, GLuint read_fb_handle,
+                                  GLuint draw_fb_handle) {
+    if (!initialized) {
+        return false;
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fb_handle);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fb_handle);
+
+    glUseProgram(depth_program.handle);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, src_tex);
+
+    SetupVertices(src_rect, dst_rect);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    return true;
+}
+
+void BlitHelper::SetupVertices(const Common::Rectangle<u32>& src_rect,
+                               const Common::Rectangle<u32>& dst_rect) {
+    std::array<GLfloat, 16> vertices;
+    vertices = {
+        // Position    Tex Coord
+        -1.0f, -1.0f, src_rect.left, src_rect.bottom, 1.0f, -1.0f, src_rect.right, src_rect.bottom,
+        -1.0f, 1.0f,  src_rect.left, src_rect.top,    1.0f, 1.0f,  src_rect.right, src_rect.top,
+    };
+
+    glBindVertexArray(vertex_array.handle);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer.handle);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(), GL_STREAM_DRAW);
+}
 
 bool BlitHelper::ConvertDS24S8ToRGBA8(Surface& source, Surface& dest,
                                       const VideoCore::TextureCopy& copy) {
