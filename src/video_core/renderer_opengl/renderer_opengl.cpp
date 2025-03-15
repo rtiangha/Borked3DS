@@ -126,13 +126,14 @@ void RendererOpenGL::SwapBuffers() {
         // For GLES, use a simpler presentation path
         Frontend::Frame* frame = render_window.mailbox->GetRenderFrame();
         if (frame) {
-            if (layout.width != frame->width || layout.height != frame->height) {
-                render_window.mailbox->ReloadRenderFrame(frame, layout.width, layout.height);
+            if (main_layout.width != frame->width || main_layout.height != frame->height) {
+                render_window.mailbox->ReloadRenderFrame(frame, main_layout.width,
+                                                         main_layout.height);
             }
 
             state.draw.draw_framebuffer = frame->render.handle;
             state.Apply();
-            DrawScreens(layout, false);
+            DrawScreens(main_layout, false);
             glFlush();
             render_window.mailbox->ReleaseRenderFrame(frame);
         }
