@@ -194,6 +194,21 @@ Frontend::Frame* OGLTextureMailbox::TryGetPresentFrame(int timeout_ms) {
     DebugWaitForNextFrame();
 
     std::unique_lock lock{swap_chain_lock};
+
+    if (is_gles) {
+        // For GLES, use simpler synchronization
+        if (!present_queue.empty()) {
+            auto* frame = present_queue.front();
+            present_queue.pop_front();
+            if (previous_frame) {
+                free_queue.push(previous_frame);
+            }
+            previous_frame = frame;
+            return frame;
+        }
+        return nullptr;
+    }
+
     // Wait for new entries in the present_queue
     present_cv.wait_for(lock, std::chrono::milliseconds(timeout_ms),
                         [&] { return !present_queue.empty(); });

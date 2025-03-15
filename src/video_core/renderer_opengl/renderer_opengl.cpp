@@ -122,7 +122,23 @@ void RendererOpenGL::SwapBuffers() {
     RenderScreenshot();
 
     const auto& main_layout = render_window.GetFramebufferLayout();
-    RenderToMailbox(main_layout, render_window.mailbox, false);
+    if (driver.IsOpenGLES()) {
+        // For GLES, use a simpler presentation path
+        Frontend::Frame* frame = render_window.mailbox->GetRenderFrame();
+        if (frame) {
+            if (layout.width != frame->width || layout.height != frame->height) {
+                render_window.mailbox->ReloadRenderFrame(frame, layout.width, layout.height);
+            }
+
+            state.draw.draw_framebuffer = frame->render.handle;
+            state.Apply();
+            DrawScreens(layout, false);
+            glFlush();
+            render_window.mailbox->ReleaseRenderFrame(frame);
+        }
+    } else {
+        RenderToMailbox(main_layout, render_window.mailbox, false);
+    }
 
 #ifndef ANDROID
     if (Settings::values.layout_option.GetValue() == Settings::LayoutOption::SeparateWindows) {
