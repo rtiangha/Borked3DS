@@ -7,6 +7,7 @@
 
 #include <array>
 #include <glad/gl.h>
+#include "video_core/renderer_opengl/gl_compatibility.h"
 
 namespace OpenGL {
 
@@ -92,6 +93,39 @@ public:
 
     GLenum logic_op; // GL_LOGIC_OP_MODE
 
+    struct TextureBufferExt {
+        GLuint texture_buffer;
+        GLuint buffer_object;
+        GLenum format;
+
+        void bind(GLenum target) {
+            GLFeatures::EmulateTextureBuffer(texture_buffer, buffer_object, format);
+        }
+    };
+    struct {
+        GLuint texture_buffer; // GL_TEXTURE_BINDING_BUFFER
+    } texture_buffer_lut_lf_gl;
+
+    struct {
+        GLuint texture_buffer; // GL_TEXTURE_BINDING_BUFFER
+    } texture_buffer_lut_rg_gl;
+
+    struct {
+        GLuint texture_buffer; // GL_TEXTURE_BINDING_BUFFER
+    } texture_buffer_lut_rgba_gl;
+
+    struct {
+        TextureBufferExt texture_buffer;
+    } texture_buffer_lut_lf;
+
+    struct {
+        TextureBufferExt texture_buffer;
+    } texture_buffer_lut_rg;
+
+    struct {
+        TextureBufferExt texture_buffer;
+    } texture_buffer_lut_rgba;
+
     // 3 texture units - one for each that is used in PICA fragment shader emulation
     struct TextureUnit {
         GLuint texture_2d; // GL_TEXTURE_BINDING_2D
@@ -99,18 +133,6 @@ public:
         GLuint sampler;    // GL_SAMPLER_BINDING
     };
     std::array<TextureUnit, 3> texture_units;
-
-    struct {
-        GLuint texture_buffer; // GL_TEXTURE_BINDING_BUFFER
-    } texture_buffer_lut_lf;
-
-    struct {
-        GLuint texture_buffer; // GL_TEXTURE_BINDING_BUFFER
-    } texture_buffer_lut_rg;
-
-    struct {
-        GLuint texture_buffer; // GL_TEXTURE_BINDING_BUFFER
-    } texture_buffer_lut_rgba;
 
     struct {
         GLuint texture_2d; // GL_TEXTURE_BINDING_2D

@@ -4,6 +4,7 @@
 // Refer to the license.txt file included.
 
 #include "common/common_types.h"
+#include "video_core/renderer_opengl/gl_compatibility.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_vars.h"
 
@@ -57,9 +58,13 @@ OpenGLState::OpenGLState() {
 
     color_buffer.texture_2d = 0;
 
+    texture_buffer_lut_lf_gl.texture_buffer = 0;
+    texture_buffer_lut_rg_gl.texture_buffer = 0;
+    texture_buffer_lut_rgba_gl.texture_buffer = 0;
+
     texture_buffer_lut_lf.texture_buffer = 0;
     texture_buffer_lut_rg.texture_buffer = 0;
-    texture_buffer_lut_rgba.texture_buffer = 0;
+    texture_buffer_lut_rgb.texture_buffer = 0;
 
     image_shadow_buffer = 0;
     image_shadow_texture_px = 0;
@@ -198,9 +203,25 @@ void OpenGLState::Apply() const {
                             blend.dst_a_func);
     }
 
-    if (blend.rgb_equation != cur_state.blend.rgb_equation ||
-        blend.a_equation != cur_state.blend.a_equation) {
-        glBlendEquationSeparate(blend.rgb_equation, blend.a_equation);
+    if (!GLES) {
+        if (blend.rgb_equation != cur_state.blend.rgb_equation ||
+            blend.a_equation != cur_state.blend.a_equation) {
+            glBlendEquationSeparate(blend.rgb_equation, blend.a_equation);
+        }
+
+    } else {
+        if (blend.rgb_equation != cur_state.blend.rgb_equation ||
+            blend.a_equation != cur_state.blend.a_equation) {
+            if (GLCompatibility::HasBlendMinMax() ||
+                (blend.rgb_equation != GL_MIN && blend.rgb_equation != GL_MAX &&
+                 blend.a_equation != GL_MIN && blend.a_equation != GL_MAX)) {
+                glBlendEquationSeparate(blend.rgb_equation, blend.a_equation);
+            } else {
+                // Handle min/max blend equations using custom shader
+                GLFeatures::EmulateBlendMinMax(blend.rgb_equation, cur_state.draw.draw_framebuffer,
+                                               draw.draw_framebuffer);
+            }
+        }
     }
 
     // GLES does not support glLogicOp
@@ -222,22 +243,48 @@ void OpenGLState::Apply() const {
     }
 
     // Texture buffer LUTs
-    if (texture_buffer_lut_lf.texture_buffer != cur_state.texture_buffer_lut_lf.texture_buffer) {
-        glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
-        glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_lf.texture_buffer);
+    if (!GLES) {
+        if (texture_buffer_lut_lf_gl.texture_buffer !=
+            cur_state.texture_buffer_lut_lf_gl.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_lf_gl.texture_buffer);
+        }
+    } else {
+        if (texture_buffer_lut_lf.texture_buffer.texture_buffer !=
+            cur_state.texture_buffer_lut_lf.texture_buffer.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
+            texture_buffer_lut_lf.texture_buffer.bind(GL_TEXTURE_BUFFER);
+        }
     }
 
     // Texture buffer LUTs
-    if (texture_buffer_lut_rg.texture_buffer != cur_state.texture_buffer_lut_rg.texture_buffer) {
-        glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
-        glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rg.texture_buffer);
+    if (!GLES) {
+        if (texture_buffer_lut_rg.texture_buffer !=
+            cur_state.texture_buffer_lut_rg_gl.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rg_gl.texture_buffer);
+        }
+    } else {
+        if (texture_buffer_lut_rg.texture_buffer.texture_buffer !=
+            cur_state.texture_buffer_lut_rg.texture_buffer.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+            texture_buffer_lut_rg.texture_buffer.bind(GL_TEXTURE_BUFFER);
+        }
     }
 
     // Texture buffer LUTs
-    if (texture_buffer_lut_rgba.texture_buffer !=
-        cur_state.texture_buffer_lut_rgba.texture_buffer) {
-        glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
-        glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rgba.texture_buffer);
+    if (!GLES) {
+        if (texture_buffer_lut_rgba.texture_buffer !=
+            cur_state.texture_buffer_lut_rgba_gl.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rgba.texture_buffer_gl);
+        }
+    } else {
+        if (texture_buffer_lut_rgb.texture_buffer.texture_buffer !=
+            cur_state.texture_buffer_lut_rgb.texture_buffer.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RGB.Enum());
+            texture_buffer_lut_rgb.texture_buffer.bind(GL_TEXTURE_BUFFER);
+        }
     }
 
     // Color buffer
@@ -247,39 +294,88 @@ void OpenGLState::Apply() const {
     }
 
     // Shadow Images
-    if (image_shadow_buffer != cur_state.image_shadow_buffer) {
-        glBindImageTexture(ImageUnits::ShadowBuffer, image_shadow_buffer, 0, GL_FALSE, 0,
-                           GL_READ_WRITE, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_buffer != cur_state.image_shadow_buffer) {
+            glBindImageTexture(ImageUnits::ShadowBuffer, image_shadow_buffer, 0, GL_FALSE, 0,
+                               GL_READ_WRITE, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_buffer != cur_state.image_shadow_buffer) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowBuffer, image_shadow_buffer,
+                                           GL_READ_WRITE, GL_R32UI);
+        }
     }
 
-    if (image_shadow_texture_px != cur_state.image_shadow_texture_px) {
-        glBindImageTexture(ImageUnits::ShadowTexturePX, image_shadow_texture_px, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_texture_px != cur_state.image_shadow_texture_px) {
+            glBindImageTexture(ImageUnits::ShadowTexturePX, image_shadow_texture_px, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_texture_px != cur_state.image_shadow_texture_px) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowTexturePX,
+                                           image_shadow_buffer_texture_px, GL_READ_ONLY, GL_R32UI);
+        }
     }
 
-    if (image_shadow_texture_nx != cur_state.image_shadow_texture_nx) {
-        glBindImageTexture(ImageUnits::ShadowTextureNX, image_shadow_texture_nx, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_texture_nx != cur_state.image_shadow_texture_nx) {
+            glBindImageTexture(ImageUnits::ShadowTextureNX, image_shadow_texture_nx, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_buffer_nx != cur_state.image_shadow_buffer_nx) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowTextureNX, image_shadow_buffer_nx,
+                                           GL_READ_ONLY, GL_R32UI);
+        }
     }
 
-    if (image_shadow_texture_py != cur_state.image_shadow_texture_py) {
-        glBindImageTexture(ImageUnits::ShadowTexturePY, image_shadow_texture_py, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_texture_py != cur_state.image_shadow_texture_py) {
+            glBindImageTexture(ImageUnits::ShadowTexturePY, image_shadow_texture_py, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_texture_py != cur_state.image_shadow_texture_py) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowTexturePY, image_shadow_texture_py,
+                                           GL_READ_ONLY, GL_R32UI);
+        }
     }
 
-    if (image_shadow_texture_ny != cur_state.image_shadow_texture_ny) {
-        glBindImageTexture(ImageUnits::ShadowTextureNY, image_shadow_texture_ny, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_texture_ny != cur_state.image_shadow_texture_ny) {
+            glBindImageTexture(ImageUnits::ShadowTextureNY, image_shadow_texture_ny, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_texture_ny != cur_state.image_shadow_texture_ny) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowTextureNY, image_shadow_texture_ny,
+                                           GL_READ_ONLY, GL_R32UI);
+        }
     }
 
-    if (image_shadow_texture_pz != cur_state.image_shadow_texture_pz) {
-        glBindImageTexture(ImageUnits::ShadowTexturePZ, image_shadow_texture_pz, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_texture_pz != cur_state.image_shadow_texture_pz) {
+            glBindImageTexture(ImageUnits::ShadowTexturePZ, image_shadow_texture_pz, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_texture_pz != cur_state.image_shadow_texture_pz) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowTexturePZ, image_shadow_texture_pz,
+                                           GL_READ_ONLY, GL_R32UI);
+        }
     }
 
-    if (image_shadow_texture_nz != cur_state.image_shadow_texture_nz) {
-        glBindImageTexture(ImageUnits::ShadowTextureNZ, image_shadow_texture_nz, 0, GL_FALSE, 0,
-                           GL_READ_ONLY, GL_R32UI);
+    if (!GLES) {
+        if (image_shadow_texture_nz != cur_state.image_shadow_texture_nz) {
+            glBindImageTexture(ImageUnits::ShadowTextureNZ, image_shadow_texture_nz, 0, GL_FALSE, 0,
+                               GL_READ_ONLY, GL_R32UI);
+        }
+    } else {
+        if (image_shadow_texture_nz != cur_state.image_shadow_texture_nz) {
+            GLFeatures::EmulateImageAtomic(ImageUnits::ShadowTextureNZ, image_shadow_texture_nz,
+                                           GL_READ_ONLY, GL_R32UI);
+        }
     }
 
     // Framebuffer
@@ -337,6 +433,16 @@ void OpenGLState::Apply() const {
 
     // Clip distance
     if (!GLES || GLAD_GL_EXT_clip_cull_distance) {
+        for (std::size_t i = 0; i < clip_distance.size(); ++i) {
+            if (clip_distance[i] != cur_state.clip_distance[i]) {
+                if (clip_distance[i]) {
+                    glEnable(GL_CLIP_DISTANCE0 + static_cast<GLenum>(i));
+                } else {
+                    glDisable(GL_CLIP_DISTANCE0 + static_cast<GLenum>(i));
+                }
+            }
+        }
+    } else if (GLCompatibility::HasClipDistance()) {
         for (std::size_t i = 0; i < clip_distance.size(); ++i) {
             if (clip_distance[i] != cur_state.clip_distance[i]) {
                 if (clip_distance[i]) {

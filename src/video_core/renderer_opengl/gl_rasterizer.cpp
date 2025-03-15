@@ -10,6 +10,7 @@
 #include "common/math_util.h"
 #include "common/profiling.h"
 #include "video_core/pica/pica_core.h"
+#include "video_core/renderer_opengl/gl_compatibility.h"
 #include "video_core/renderer_opengl/gl_rasterizer.h"
 #include "video_core/renderer_opengl/pica_to_gl.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
@@ -87,6 +88,8 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
       texture_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, false)},
       texture_lf_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, true)} {
 
+    bool is_gles = driver->IsOpenGLES();
+
     // Clipping plane 0 is always enabled for PICA fixed clip plane z <= 0
     state.clip_distance[0] = true;
 
@@ -141,9 +144,16 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
     texture_buffer_lut_lf.Create();
     texture_buffer_lut_rg.Create();
     texture_buffer_lut_rgba.Create();
-    state.texture_buffer_lut_lf.texture_buffer = texture_buffer_lut_lf.handle;
-    state.texture_buffer_lut_rg.texture_buffer = texture_buffer_lut_rg.handle;
-    state.texture_buffer_lut_rgba.texture_buffer = texture_buffer_lut_rgba.handle;
+
+    if (!is_gles) {
+        state.texture_buffer_lut_lf_gl.texture_buffer = texture_buffer_lut_lf_gl.handle;
+        state.texture_buffer_lut_rg_gl.texture_buffer = texture_buffer_lut_rg_gl.handle;
+        state.texture_buffer_lut_rgba_gl.texture_buffer = texture_buffer_lut_rgba_gl.handle;
+    } else {
+        state.texture_buffer_lut_lf.texture_buffer = texture_buffer_lut_lf.handle;
+        state.texture_buffer_lut_rg.texture_buffer = texture_buffer_lut_rg.handle;
+        state.texture_buffer_lut_rgba.texture_buffer = texture_buffer_lut_rgb.handle;
+    }
     state.Apply();
     glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
     glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
