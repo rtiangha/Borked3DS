@@ -86,6 +86,7 @@ public:
     std::atomic_int frame_for_debug{};
     const bool has_debug_tool; ///< When true, using a GPU debugger, so keep frames in lock-step
     const bool is_gles;
+    bool initialized = false;
 };
 
 class OGLTextureMailboxException : public std::runtime_error {
