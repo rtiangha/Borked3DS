@@ -16,12 +16,6 @@
 
 VK_DEFINE_HANDLE(VmaAllocation)
 
-struct TextureConfig {
-    bool high_quality_textures{false};
-    u32 max_anisotropy{1};
-    u32 max_texture_size{2048};
-};
-
 namespace VideoCore {
 struct Material;
 }
