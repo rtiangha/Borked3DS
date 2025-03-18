@@ -8,6 +8,7 @@
 #include <memory>
 #include <tuple>
 #include <utility>
+#include <vulkan/vulkan.h>
 
 #include "common/common_types.h"
 #include "core/3ds.h"
@@ -253,6 +254,44 @@ public:
      */
     void UpdateCurrentFramebufferLayout(unsigned width, unsigned height,
                                         bool is_portrait_mode = {});
+
+    /**
+     * Gets the native surface handle for Vulkan presentation
+     * @returns Native window surface as a vk::SurfaceKHR
+     */
+    virtual vk::SurfaceKHR GetWindowSurface() const = 0;
+
+    /**
+     * Gets the framebuffer dimensions
+     * @returns Window width in pixels
+     */
+    virtual u32 GetWidth() const {
+        return GetFramebufferLayout().width;
+    }
+
+    /**
+     * Gets the framebuffer dimensions
+     * @returns Window height in pixels
+     */
+    virtual u32 GetHeight() const {
+        return GetFramebufferLayout().height;
+    }
+
+    /**
+     * Gets the framebuffer dimensions
+     * @returns Window width in pixels
+     */
+    virtual u32 GetFramebufferWidth() const {
+        return GetFramebufferLayout().width;
+    }
+
+    /**
+     * Gets the framebuffer dimensions
+     * @returns Window height in pixels
+     */
+    virtual u32 GetFramebufferHeight() const {
+        return GetFramebufferLayout().height;
+    }
 
     std::unique_ptr<TextureMailbox> mailbox = nullptr;
 

@@ -47,7 +47,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsCallback(
         level = Common::Log::Level::Error;
         break;
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
-        level = Common::Log::Level::Info;
+        level = Common::Log::Level::Warning;
         break;
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
     case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
@@ -57,9 +57,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsCallback(
         level = Common::Log::Level::Info;
     }
 
-    LOG_GENERIC(Common::Log::Class::Render_Vulkan, level, "{}: {}",
+    LOG_GENERIC(Common::Log::Class::Render_Vulkan, level, "{}: {} - {}",
                 callback_data->pMessageIdName ? callback_data->pMessageIdName : "<null>",
-                callback_data->pMessage ? callback_data->pMessage : "<null>");
+                callback_data->pMessage ? callback_data->pMessage : "<null>",
+                callback_data->pMessage);
+
+    if (severity == vk::DebugUtilsMessageSeverityFlagBitsEXT::eError) {
+        // Additional logging for errors
+        LOG_ERROR(
+            Render_Vulkan, "Validation Error: [ {} ] Object 0: handle = 0x{:x}, type = {}",
+            callback_data->pMessageIdName, callback_data->pObjects[0].objectHandle,
+            vk::to_string(static_cast<vk::ObjectType>(callback_data->pObjects[0].objectType)));
+    }
 
     return VK_FALSE;
 }

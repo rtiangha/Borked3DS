@@ -9,6 +9,7 @@
 #include "common/thread.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
+#include "video_core/renderer_vulkan/vk_validation.h"
 
 namespace Vulkan {
 
@@ -82,6 +83,10 @@ void Scheduler::WaitWorker() {
 }
 
 void Scheduler::Wait(u64 tick) {
+    if (!ValidationHelper::ValidateSchedulerWait(tick, master_semaphore->CurrentTick())) {
+        return;
+    }
+
     if (tick >= master_semaphore->CurrentTick()) {
         // Make sure we are not waiting for the current tick without signalling
         Flush();
@@ -176,6 +181,12 @@ void Scheduler::SubmitExecution(vk::Semaphore signal_semaphore, vk::Semaphore wa
     Record([signal_semaphore, wait_semaphore, signal_value, this](vk::CommandBuffer cmdbuf) {
         BORKED3DS_PROFILE("Vulkan", "Vulkan Submit");
         std::scoped_lock lock{submit_mutex};
+
+        if (!ValidationHelper::ValidateSemaphoreSubmission(cmdbuf, wait_semaphore, signal_semaphore,
+                                                           signal_value)) {
+            return;
+        }
+
         master_semaphore->SubmitWork(cmdbuf, wait_semaphore, signal_semaphore, signal_value);
     });
 

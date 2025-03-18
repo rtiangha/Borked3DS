@@ -64,6 +64,16 @@ public:
         return swapchain.GetImageCount();
     }
 
+    vk::SurfaceKHR GetSurface() const {
+        return surface;
+    }
+    u32 GetWidth() const {
+        return width;
+    }
+    u32 GetHeight() const {
+        return height;
+    }
+
 private:
     void PresentThread(std::stop_token token);
 
@@ -96,6 +106,8 @@ private:
     bool blit_supported;
     bool use_present_thread{true};
     void* last_render_surface{};
+    u32 width;
+    u32 height;
 };
 
 } // namespace Vulkan

@@ -26,53 +26,74 @@ Swapchain::~Swapchain() {
 }
 
 void Swapchain::Create(u32 width_, u32 height_, vk::SurfaceKHR surface_) {
-    width = width_;
-    height = height_;
-    surface = surface_;
-    needs_recreation = false;
-
-    Destroy();
-
-    SetPresentMode();
-    SetSurfaceProperties();
-
-    const std::array queue_family_indices = {
-        instance.GetGraphicsQueueFamilyIndex(),
-        instance.GetPresentQueueFamilyIndex(),
-    };
-
-    const bool exclusive = queue_family_indices[0] == queue_family_indices[1];
-    const u32 queue_family_indices_count = exclusive ? 1u : 2u;
-    const vk::SharingMode sharing_mode =
-        exclusive ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
-    const vk::SwapchainCreateInfoKHR swapchain_info = {
-        .surface = surface,
-        .minImageCount = image_count,
-        .imageFormat = surface_format.format,
-        .imageColorSpace = surface_format.colorSpace,
-        .imageExtent = extent,
-        .imageArrayLayers = 1,
-        .imageUsage = vk::ImageUsageFlagBits::eColorAttachment |
-                      vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst,
-        .imageSharingMode = sharing_mode,
-        .queueFamilyIndexCount = queue_family_indices_count,
-        .pQueueFamilyIndices = queue_family_indices.data(),
-        .preTransform = transform,
-        .compositeAlpha = composite_alpha,
-        .presentMode = present_mode,
-        .clipped = true,
-        .oldSwapchain = nullptr,
-    };
-
     try {
-        swapchain = instance.GetDevice().createSwapchainKHR(swapchain_info);
-    } catch (vk::SystemError& err) {
-        LOG_CRITICAL(Render_Vulkan, "{}", err.what());
-        UNREACHABLE();
-    }
+        // Validate basic properties first
+        if (!ValidationHelper::ValidateSwapchainProperties(instance, surface_, width_, height_)) {
+            throw std::runtime_error("Swapchain properties validation failed");
+        }
+        width = width_;
+        height = height_;
+        surface = surface_;
+        needs_recreation = false;
 
-    SetupImages();
-    RefreshSemaphores();
+        Destroy();
+
+        SetPresentMode();
+
+        // Validate present mode after it's been set
+        if (!ValidationHelper::ValidatePresentMode(instance, surface, present_mode)) {
+            throw std::runtime_error("Present mode validation failed");
+        }
+
+        SetSurfaceProperties();
+
+        // Validate format after surface properties are set
+        if (!ValidationHelper::ValidateSwapchainFormat(instance, surface, surface_format)) {
+            throw std::runtime_error("Surface format validation failed");
+        }
+
+        const std::array queue_family_indices = {
+            instance.GetGraphicsQueueFamilyIndex(),
+            instance.GetPresentQueueFamilyIndex(),
+        };
+
+        const bool exclusive = queue_family_indices[0] == queue_family_indices[1];
+        const u32 queue_family_indices_count = exclusive ? 1u : 2u;
+        const vk::SharingMode sharing_mode =
+            exclusive ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
+
+        const vk::SwapchainCreateInfoKHR swapchain_info = {
+            .surface = surface,
+            .minImageCount = image_count,
+            .imageFormat = surface_format.format,
+            .imageColorSpace = surface_format.colorSpace,
+            .imageExtent = extent,
+            .imageArrayLayers = 1,
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment |
+                          vk::ImageUsageFlagBits::eTransferSrc |
+                          vk::ImageUsageFlagBits::eTransferDst,
+            .imageSharingMode = sharing_mode,
+            .queueFamilyIndexCount = queue_family_indices_count,
+            .pQueueFamilyIndices = queue_family_indices.data(),
+            .preTransform = transform,
+            .compositeAlpha = composite_alpha,
+            .presentMode = present_mode,
+            .clipped = true,
+            .oldSwapchain = nullptr,
+        };
+
+        swapchain = instance.GetDevice().createSwapchainKHR(swapchain_info);
+
+        SetupImages();
+        RefreshSemaphores();
+
+    } catch (const vk::SystemError& err) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error during swapchain creation: {}", err.what());
+        throw;
+    } catch (const std::exception& err) {
+        LOG_CRITICAL(Render_Vulkan, "Error during swapchain creation: {}", err.what());
+        throw;
+    }
 }
 
 bool Swapchain::AcquireNextImage() {

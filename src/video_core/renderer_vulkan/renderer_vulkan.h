@@ -13,6 +13,8 @@
 #include "video_core/renderer_vulkan/vk_rasterizer.h"
 #include "video_core/renderer_vulkan/vk_render_manager.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
+#include "video_core/renderer_vulkan/vk_types.h"
+#include "video_core/renderer_vulkan/vk_validation.h"
 
 namespace Core {
 class System;
@@ -35,21 +37,6 @@ class GPU;
 }
 
 namespace Vulkan {
-
-struct TextureInfo {
-    u32 width;
-    u32 height;
-    Pica::PixelFormat format;
-    vk::Image image;
-    vk::ImageView image_view;
-    VmaAllocation allocation;
-};
-
-struct ScreenInfo {
-    TextureInfo texture;
-    Common::Rectangle<f32> texcoords;
-    vk::ImageView image_view;
-};
 
 struct PresentUniformData {
     std::array<f32, 4 * 4> modelview;
@@ -84,10 +71,15 @@ public:
     void Sync() override;
 
 private:
+    // Validation methods
+    void ValidateDeviceProperties();
+    bool ValidateRenderState() const;
+    bool ValidateScreenConfiguration() const;
+
     void ReloadPipeline();
-    void CompileShaders();
-    void BuildLayouts();
-    void BuildPipelines();
+    bool CompileShaders();
+    bool BuildLayouts();
+    bool BuildPipelines();
     bool ConfigureFramebufferTexture(TextureInfo& texture,
                                      const Pica::FramebufferConfig& framebuffer);
     void ConfigureRenderPipeline();
@@ -113,6 +105,8 @@ private:
     void FillScreen(Common::Vec3<u8> color, const TextureInfo& texture);
 
 private:
+    std::unique_ptr<ValidationHelper> validation;
+
     Memory::MemorySystem& memory;
     Pica::PicaCore& pica;
 
@@ -136,6 +130,11 @@ private:
     std::array<ScreenInfo, 3> screen_infos{};
     PresentUniformData draw_info{};
     vk::ClearColorValue clear_color{};
+
+    // Add validation constants
+    static constexpr u32 MAX_SCREEN_ID = 2; // For 3DS top/bottom screens
+    static constexpr float MIN_DIMENSION = 1.0f;
+    static constexpr float MAX_DIMENSION = 16384.0f; // Typical max texture dimension
 };
 
 } // namespace Vulkan
