@@ -174,73 +174,33 @@ Handle MakeHandle(const Instance* instance, u32 width, u32 height, u32 levels, T
         .usage = usage,
     };
 
-    // Get memory requirements using Vulkan-Hpp
-    const vk::Device device = instance->GetDevice();
-    const vk::UniqueImage temp_image = device.createImageUnique(image_info);
-    const vk::MemoryRequirements mem_requirements =
-        device.getImageMemoryRequirements(temp_image.get());
-
-    // Try different memory configurations
-    const std::array<VmaAllocationCreateFlags, 3> alloc_flags = {
-        VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
-        VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT |
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT};
-
-    const std::array<VmaMemoryUsage, 3> memory_usages = {VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-                                                         VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
-                                                         VMA_MEMORY_USAGE_AUTO};
+    // Try device memory first
+    VmaAllocationCreateInfo alloc_info = {
+        .flags = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        .requiredFlags = 0,
+        .preferredFlags = 0,
+        .pool = VK_NULL_HANDLE,
+        .pUserData = nullptr,
+    };
 
     VkImage unsafe_image{};
-    VmaAllocation allocation{};
-    VkResult result = VK_ERROR_OUT_OF_HOST_MEMORY;
     VkImageCreateInfo unsafe_image_info = static_cast<VkImageCreateInfo>(image_info);
+    VmaAllocation allocation{};
 
-    // Try different combinations of flags and memory usage
-    for (const auto image_flags : alloc_flags) {
-        for (const auto mem_usage : memory_usages) {
-            const VmaAllocationCreateInfo alloc_info = {
-                .flags = image_flags,
-                .usage = mem_usage,
-                .requiredFlags = mem_requirements.memoryTypeBits,
-                .preferredFlags = 0,
-                .pool = VK_NULL_HANDLE,
-                .pUserData = nullptr,
-            };
+    VkResult result = vmaCreateImage(instance->GetAllocator(), &unsafe_image_info, &alloc_info,
+                                     &unsafe_image, &allocation, nullptr);
 
-            result = vmaCreateImage(instance->GetAllocator(), &unsafe_image_info, &alloc_info,
-                                    &unsafe_image, &allocation, nullptr);
-
-            if (result == VK_SUCCESS) {
-                LOG_DEBUG(Render_Vulkan,
-                          "Successfully allocated image with flags=0x{:x}, usage=0x{:x}",
-                          static_cast<uint32_t>(image_flags), static_cast<uint32_t>(mem_usage));
-                goto allocation_success;
-            }
-        }
-    }
-
-    // If all attempts failed, try one last time with minimal requirements
-    {
-        const VmaAllocationCreateInfo fallback_info = {
-            .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-            .usage = VMA_MEMORY_USAGE_AUTO,
-            .requiredFlags = mem_requirements.memoryTypeBits,
-            .preferredFlags = 0,
-            .pool = VK_NULL_HANDLE,
-            .pUserData = nullptr,
-        };
-
-        result = vmaCreateImage(instance->GetAllocator(), &unsafe_image_info, &fallback_info,
+    if (result == VK_ERROR_OUT_OF_HOST_MEMORY || result == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+        // Try host visible memory instead
+        alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+        result = vmaCreateImage(instance->GetAllocator(), &unsafe_image_info, &alloc_info,
                                 &unsafe_image, &allocation, nullptr);
     }
 
-allocation_success:
     if (result != VK_SUCCESS) {
-        LOG_CRITICAL(Render_Vulkan,
-                     "Failed allocating image: error={}, size={}x{}, mips={}, layers={}, format={}",
-                     result, width, height, levels, layers, vk::to_string(format));
-        return Handle{}; // Return empty handle instead of UNREACHABLE
+        LOG_CRITICAL(Render_Vulkan, "Failed allocating image with error {} after fallback", result);
+        UNREACHABLE();
     }
 
     const vk::Image image{unsafe_image};
