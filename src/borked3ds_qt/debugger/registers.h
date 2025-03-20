@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <QDockWidget>
+#include "borked3ds_qt/bootmanager.h"
 #include "common/common_types.h"
 
 class QTreeWidget;

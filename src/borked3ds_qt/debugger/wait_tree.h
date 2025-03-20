@@ -10,6 +10,7 @@
 #include <QDockWidget>
 #include <QTreeView>
 #include <boost/container/flat_set.hpp>
+#include "borked3ds_qt/bootmanager.h"
 #include "core/core.h"
 #include "core/hle/kernel/object.h"
 

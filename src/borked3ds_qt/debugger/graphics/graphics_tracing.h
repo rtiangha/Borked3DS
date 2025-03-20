@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "borked3ds_qt/bootmanager.h"
 #include "borked3ds_qt/debugger/graphics/graphics_breakpoint_observer.h"
 
 namespace Core {
