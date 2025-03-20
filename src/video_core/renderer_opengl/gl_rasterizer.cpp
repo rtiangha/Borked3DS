@@ -65,12 +65,15 @@ GLenum MakeAttributeType(Pica::PipelineRegs::VertexAttributeFormat format) {
 [[nodiscard]] GLsizeiptr TextureBufferSize(const Driver& driver, bool is_lf) {
     const bool is_gles = driver.IsOpenGLES();
 
-    // For GLES, use more conservative buffer sizes
     if (is_gles) {
+        GLint max_size;
+        glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_size);
+
+        // Use the minimum of the maximum available size and our desired size
         if (is_lf) {
-            return 64 * 1024; // 64KB for lighting/fog
+            return std::min<GLsizeiptr>(max_size, 64 * 1024);
         }
-        return 32 * 1024; // 32KB for other texture buffers
+        return std::min<GLsizeiptr>(max_size, 32 * 1024);
     }
 
     // Use the smallest texel size from the texel views
