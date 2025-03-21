@@ -963,7 +963,7 @@ void RasterizerOpenGL::SyncLogicOp() {
             // Add debug logging
             LOG_DEBUG(Render_OpenGL, "Logic op state: {}, Blend enabled: {}",
                       static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()),
-                      regs.framebuffer.output_merger.alphablend_enable);
+                      static_cast<u32>(regs.framebuffer.output_merger.alphablend_enable.Value()));
 
             state.blend.enabled = true;
 
