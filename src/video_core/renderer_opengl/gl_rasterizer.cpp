@@ -180,11 +180,23 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
     glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
 
     if (Settings::values.use_gles.GetValue()) {
-        glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
-        glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
-        glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_buffer.GetHandle());
-        glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
-        glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RGBA32F, texture_buffer.GetHandle());
+        // Check for GL_EXT_texture_buffer support
+        if (driver.HasExtension("GL_EXT_texture_buffer")) {
+            // Use floating-point formats if supported
+            glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
+            glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+            glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_buffer.GetHandle());
+            glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+            glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RGBA32F, texture_buffer.GetHandle());
+        } else {
+            // Fallback to normalized integer formats
+            glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG8, texture_lf_buffer.GetHandle());
+            glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+            glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG8, texture_buffer.GetHandle());
+            glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+            glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RGBA8, texture_buffer.GetHandle());
+            // Adjust shader LUT sampling to unpack normalized values
+        }
     } else {
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
         glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
