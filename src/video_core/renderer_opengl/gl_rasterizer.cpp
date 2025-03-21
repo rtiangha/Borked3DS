@@ -959,12 +959,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ZERO;
                 break;
             case Pica::FramebufferRegs::LogicOp::NoOp:
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ZERO;
-                state.blend.dst_rgb_func = GL_ONE;
-                state.blend.src_a_func = GL_ZERO;
-                state.blend.dst_a_func = GL_ONE;
+                state.color_mask = {};
                 break;
             case Pica::FramebufferRegs::LogicOp::Invert:
                 state.blend.rgb_equation = GL_FUNC_ADD;
@@ -1042,6 +1037,13 @@ void RasterizerOpenGL::SyncLogicOp() {
             default:
                 LOG_WARNING(Render_OpenGL, "Unsupported logic op on GLES: {}",
                             static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()));
+                // Fallback to a safe blend state
+                state.blend.rgb_equation = GL_FUNC_ADD;
+                state.blend.a_equation = GL_FUNC_ADD;
+                state.blend.src_rgb_func = GL_ONE;
+                state.blend.dst_rgb_func = GL_ZERO;
+                state.blend.src_a_func = GL_ONE;
+                state.blend.dst_a_func = GL_ZERO;
                 break;
             }
             return;
