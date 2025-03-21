@@ -911,6 +911,7 @@ void RasterizerOpenGL::SyncLogicOp() {
             state.blend.enabled = true;
             switch (regs.framebuffer.output_merger.logic_op) {
             case Pica::FramebufferRegs::LogicOp::Clear:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Clear");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ZERO;
@@ -919,6 +920,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ZERO;
                 break;
             case Pica::FramebufferRegs::LogicOp::And:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: And");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_DST_COLOR;
@@ -927,6 +929,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ZERO;
                 break;
             case Pica::FramebufferRegs::LogicOp::AndReverse:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: AndReverse");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
@@ -935,6 +938,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ZERO;
                 break;
             case Pica::FramebufferRegs::LogicOp::Copy:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Copy");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE;
@@ -943,6 +947,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ZERO;
                 break;
             case Pica::FramebufferRegs::LogicOp::Set:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Set");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE;
@@ -951,6 +956,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ONE;
                 break;
             case Pica::FramebufferRegs::LogicOp::CopyInverted:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: CopyInverted");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
@@ -959,9 +965,11 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ZERO;
                 break;
             case Pica::FramebufferRegs::LogicOp::NoOp:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: NoOp");
                 state.color_mask = {};
                 break;
             case Pica::FramebufferRegs::LogicOp::Invert:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Invert");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
@@ -969,8 +977,8 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.src_a_func = GL_ONE_MINUS_DST_ALPHA;
                 state.blend.dst_a_func = GL_ZERO;
                 break;
-            case Pica::FramebufferRegs::LogicOp::Nand: // Note: May not work correctly if src = dst
-                                                       // = 0
+            case Pica::FramebufferRegs::LogicOp::Nand:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Nand");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
@@ -979,6 +987,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ONE_MINUS_SRC_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::Or:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Or");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE;
@@ -987,6 +996,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ONE_MINUS_SRC_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::Nor:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Nor");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
@@ -995,6 +1005,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ONE_MINUS_DST_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::Xor:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Xor");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
@@ -1003,6 +1014,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ONE_MINUS_SRC_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::Equiv:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Equiv");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_DST_COLOR;
@@ -1011,6 +1023,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_SRC_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::AndInverted:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: AndInverted");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
@@ -1019,6 +1032,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_DST_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::OrReverse:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: OrReverse");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE;
@@ -1027,6 +1041,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 state.blend.dst_a_func = GL_ONE_MINUS_DST_ALPHA;
                 break;
             case Pica::FramebufferRegs::LogicOp::OrInverted:
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: OrInverted");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
@@ -1038,6 +1053,7 @@ void RasterizerOpenGL::SyncLogicOp() {
                 LOG_WARNING(Render_OpenGL, "Unsupported logic op on GLES: {}",
                             static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()));
                 // Fallback to a safe blend state
+                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Default case");
                 state.blend.rgb_equation = GL_FUNC_ADD;
                 state.blend.a_equation = GL_FUNC_ADD;
                 state.blend.src_rgb_func = GL_ONE;
