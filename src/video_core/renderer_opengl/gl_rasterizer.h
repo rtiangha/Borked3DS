@@ -5,12 +5,14 @@
 
 #pragma once
 
+#include "video_core/pica/pica_core.h"
 #include "video_core/rasterizer_accelerated.h"
 #include "video_core/rasterizer_interface.h"
 #include "video_core/renderer_opengl/gl_shader_manager.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_stream_buffer.h"
 #include "video_core/renderer_opengl/gl_texture_runtime.h"
+#include "video_core/renderer_opengl/pica_to_gl.h"
 
 namespace VideoCore {
 class RendererBase;
@@ -56,6 +58,7 @@ public:
     bool AccelerateDisplay(const Pica::FramebufferConfig& config, PAddr framebuffer_addr,
                            u32 pixel_stride, ScreenInfo& screen_info);
     bool AccelerateDrawBatch(bool is_indexed) override;
+    Pica::FramebufferRegs::LogicOp DetermineAppropriateLogicOp();
 
 private:
     void SyncFixedState() override;
