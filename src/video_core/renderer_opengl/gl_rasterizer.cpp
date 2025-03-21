@@ -425,12 +425,14 @@ bool RasterizerOpenGL::Draw(bool accelerate, bool is_indexed) {
         regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::Clear) {
         // Check if this Clear operation makes sense in context
         if (regs.framebuffer.output_merger.alphablend_enable ||
-            regs.framebuffer.output_merger.color_enable) {
+            regs.framebuffer.output_merger.red_enable ||
+            regs.framebuffer.output_merger.green_enable ||
+            regs.framebuffer.output_merger.blue_enable) {
             LOG_WARNING(Render_OpenGL,
                         "Suspicious Clear logic op detected - forcing Copy operation");
             // Temporarily override the logic op
             auto saved_op = regs.framebuffer.output_merger.logic_op;
-            regs.framebuffer.output_merger.logic_op = Pica::FramebufferRegs::LogicOp::Copy;
+            regs.framebuffer.output_merger.logic_op.Assign(Pica::FramebufferRegs::LogicOp::Copy);
 
             // Update the logic op state
             SyncLogicOp();
@@ -945,7 +947,10 @@ void RasterizerOpenGL::SyncLogicOp() {
             regs.framebuffer.output_merger.logic_op != Pica::FramebufferRegs::LogicOp::NoOp;
 
         // Check if we're in a valid rendering state
-        bool valid_render_state = regs.framebuffer.output_merger.output_enable != 0;
+        bool valid_render_state = (regs.framebuffer.output_merger.red_enable ||
+                                   regs.framebuffer.output_merger.green_enable ||
+                                   regs.framebuffer.output_merger.blue_enable ||
+                                   regs.framebuffer.output_merger.alpha_enable);
 
         if (should_apply_logic_op && !valid_render_state) {
             LOG_WARNING(Render_OpenGL, "Logic op requested but output not enabled - forcing NoOp");
@@ -956,26 +961,24 @@ void RasterizerOpenGL::SyncLogicOp() {
         if (should_apply_logic_op) {
 
             // Add debug logging
-            LOG_DEBUG(Render_OpenGL,
-                      "Logic op state: {}, Blend enabled: {}, Output merger state: {:08x}",
+            LOG_DEBUG(Render_OpenGL, "Logic op state: {}, Blend enabled: {}",
                       static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()),
-                      regs.framebuffer.output_merger.alphablend_enable,
-                      regs.framebuffer.output_merger.raw);
+                      regs.framebuffer.output_merger.alphablend_enable);
 
             state.blend.enabled = true;
 
             // Get the actual operation the 3DS hardware would perform
-            auto logic_op = regs.framebuffer.output_merger.logic_op;
+            auto& logic_op = regs.framebuffer.output_merger.logic_op;
 
             // If we detect Clear operation, verify this is really intended
-            if (logic_op == Pica::FramebufferRegs::LogicOp::Clear) {
+            if (logic_op.Value() == Pica::FramebufferRegs::LogicOp::Clear) {
                 // Check if this might be an incorrect state
                 if (regs.framebuffer.output_merger.alphablend_enable) {
                     LOG_WARNING(
                         Render_OpenGL,
                         "Clear logic op with alpha blend enabled - possible incorrect state");
                     // Use Copy instead of Clear to preserve the texture
-                    logic_op = Pica::FramebufferRegs::LogicOp::Copy;
+                    logic_op.Assign(Pica::FramebufferRegs::LogicOp::Copy);
                 }
             }
 
