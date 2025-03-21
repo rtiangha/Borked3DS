@@ -933,15 +933,6 @@ void RasterizerOpenGL::SyncLogicOp() {
     state.logic_op = PicaToGL::LogicOp(regs.framebuffer.output_merger.logic_op);
 
     if (is_gles) {
-        // Handle the NoOp case specially first
-        if (!regs.framebuffer.output_merger.alphablend_enable) {
-            if (regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::NoOp) {
-                // Use color write mask to disable color output but allow depth write
-                state.color_mask = {};
-                return; // Exit early as we've handled this case
-            }
-        }
-
         // Check if we're in a state where logic ops should be applied
         bool should_apply_logic_op =
             regs.framebuffer.output_merger.logic_op != Pica::FramebufferRegs::LogicOp::NoOp;
@@ -1125,14 +1116,6 @@ void RasterizerOpenGL::SyncLogicOp() {
             default:
                 LOG_WARNING(Render_OpenGL, "Unsupported logic op on GLES: {}",
                             static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()));
-                // Fallback to a safe blend state
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Default case");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_ONE;
-                state.blend.dst_a_func = GL_ZERO;
                 break;
             }
             return;
