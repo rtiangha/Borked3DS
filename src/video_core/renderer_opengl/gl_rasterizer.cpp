@@ -905,8 +905,21 @@ void RasterizerOpenGL::SyncBlendColor() {
 
 void RasterizerOpenGL::SyncLogicOp() {
     const bool is_gles = driver.IsOpenGLES();
+
+    // Set the base logic op state
+    state.logic_op = PicaToGL::LogicOp(regs.framebuffer.output_merger.logic_op);
+
     if (is_gles) {
-        // GLES doesn't support logic ops directly, emulate using blend functions
+        // Handle the NoOp case specially first
+        if (!regs.framebuffer.output_merger.alphablend_enable) {
+            if (regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::NoOp) {
+                // Use color write mask to disable color output but allow depth write
+                state.color_mask = {};
+                return; // Exit early as we've handled this case
+            }
+        }
+
+        // Only try to emulate other logic ops through blending if it's not NoOp
         if (regs.framebuffer.output_merger.logic_op != Pica::FramebufferRegs::LogicOp::NoOp) {
             state.blend.enabled = true;
             switch (regs.framebuffer.output_merger.logic_op) {
