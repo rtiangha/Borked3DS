@@ -185,6 +185,18 @@ precision highp int;
 }
 
 GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
+    // Add validation for input shaders
+    if (shaders.empty()) {
+        LOG_ERROR(Render_OpenGL, "No shaders provided to link");
+        return 0;
+    }
+
+    GLuint program_id = glCreateProgram();
+    if (program_id == 0) {
+        LOG_ERROR(Render_OpenGL, "Failed to create program object");
+        return 0;
+    }
+
     // Link the program
     LOG_DEBUG(Render_OpenGL, "Linking program...");
 
@@ -243,6 +255,24 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
             LOG_DEBUG(Render_OpenGL, "{}", &program_error[0]);
         } else {
             LOG_ERROR(Render_OpenGL, "Error linking shader:\n{}", &program_error[0]);
+        }
+    }
+
+    // Add program validation after linking
+    if (result == GL_TRUE) {
+        glValidateProgram(program_id);
+        GLint validate_status;
+        glGetProgramiv(program_id, GL_VALIDATE_STATUS, &validate_status);
+        if (validate_status != GL_TRUE) {
+            GLint validate_log_length;
+            glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &validate_log_length);
+            if (validate_log_length > 1) {
+                std::vector<char> validate_error(validate_log_length);
+                glGetProgramInfoLog(program_id, validate_log_length, nullptr, &validate_error[0]);
+                LOG_ERROR(Render_OpenGL, "Program validation failed:\n{}", &validate_error[0]);
+            }
+            glDeleteProgram(program_id);
+            return 0;
         }
     }
 
