@@ -5,6 +5,10 @@
 
 //? #version 430 core
 
+#ifdef GL_ES
+#define gl_VertexID gl_VertexIndex
+#endif
+
 layout(location = 0) out vec2 dst_coord;
 
 layout(location = 0) uniform mediump ivec2 dst_size;
