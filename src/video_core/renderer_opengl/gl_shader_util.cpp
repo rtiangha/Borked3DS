@@ -27,6 +27,8 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 
         if (majorVersion == 3 && minorVersion == 1) {
             preamble = R"(#version 310 es
+precision highp float;
+precision highp int;
 
 #if defined(GL_ANDROID_extension_pack_es31a)
 #extension GL_ANDROID_extension_pack_es31a : enable
@@ -39,6 +41,10 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 #if defined(GL_EXT_separate_shader_objects)
 #extension GL_EXT_separate_shader_objects : enable
 #endif //defined(GL_EXT_separate_shader_objects)
+
+#if defined(GL_EXT_texture_buffer)
+#extension GL_EXT_texture_buffer : enable
+#endif //defined(GL_EXT_texture_buffer)
 
 #if defined(GL_EXT_texture_storage)
 #extension GL_EXT_texture_storage : enable
@@ -77,9 +83,14 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 #else
         if (majorVersion == 3 && minorVersion == 1) {
             preamble = "#version 310 es\n"
+                       "precision highp float;\n"
+                       "precision highp int;\n"
                        "#if defined(GL_EXT_geometry_shader)\n"
                        "#extension GL_EXT_geometry_shader : enable\n"
                        "#endif //defined(GL_EXT_geometry_shader)\n"
+                       "#if defined(GL_EXT_texture_buffer)\n"
+                       "#extension GL_EXT_texture_buffer : enable\n"
+                       "#endif //defined(GL_EXT_texture_buffer)\n"
                        "#if defined(GL_EXT_texture_storage)\n"
                        "#extension GL_EXT_texture_storage : enable\n"
                        "#endif //defined(GL_EXT_texture_storage)\n"
