@@ -114,7 +114,6 @@ precision highp int;
                        "#endif // defined(GL_ARB_explicit_uniform_location)\n";
         } else {
             preamble = "#version 320 es\n"
-                       "#endif\n"
                        "#if defined(GL_EXT_clip_cull_distance)\n"
                        "#extension GL_EXT_clip_cull_distance : enable\n"
                        "#endif //defined(GL_EXT_clip_cull_distance)\n";
