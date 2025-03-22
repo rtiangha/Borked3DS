@@ -1211,7 +1211,11 @@ void FragmentModule::DefineExtensions() {
     if (config.framebuffer.shadow_rendering) {
         use_fragment_shader_interlock = true;
         if (profile.has_fragment_shader_interlock) {
+            out += "#ifdef GL_ES\n";
+            out += "#extension GL_EXT_fragment_shader_interlock : require\n";
+            out += "#else\n";
             out += "#extension GL_ARB_fragment_shader_interlock : enable\n";
+            out += "#endif\n";
             out += "#define beginInvocationInterlock beginInvocationInterlockARB\n";
             out += "#define endInvocationInterlock endInvocationInterlockARB\n";
         } else if (profile.has_gl_nv_fragment_shader_interlock) {
