@@ -26,9 +26,7 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 #ifdef __ANDROID__
 
         if (majorVersion == 3 && minorVersion == 1) {
-            preamble = R"(#version 310 es
-precision highp float;
-precision highp int;
+            preamble = R"(#version 310
 
 #if defined(GL_ANDROID_extension_pack_es31a)
 #extension GL_ANDROID_extension_pack_es31a : enable
@@ -83,8 +81,6 @@ precision highp int;
 #else
         if (majorVersion == 3 && minorVersion == 1) {
             preamble = "#version 310 es\n"
-                       "precision highp float;\n"
-                       "precision highp int;\n"
                        "#if defined(GL_EXT_geometry_shader)\n"
                        "#extension GL_EXT_geometry_shader : enable\n"
                        "#endif //defined(GL_EXT_geometry_shader)\n"
