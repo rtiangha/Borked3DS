@@ -47,6 +47,18 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 #if defined(GL_EXT_clip_cull_distance)
 #extension GL_EXT_clip_cull_distance : enable
 #endif // defined(GL_EXT_clip_cull_distance)
+
+#if defined(GL_EXT_shader_image_load_store)
+#extension GL_EXT_shader_image_load_store : enable
+#end if // defined(GL_EXT_shader_image_load_store)
+
+#if defined(GL_EXT_texture_shadow_lod)
+#extension GL_EXT_texture_shadow_lod : enable
+#endif // defined(GL_EXT_texture_shadow_lod)
+
+#if defined(GL_ARB_explicit_uniform_location)
+#extension GL_ARB_explicit_uniform_location : enable
+#endif // defined(GL_ARB_explicit_uniform_location)
 )";
 
         } else {
@@ -76,7 +88,19 @@ GLuint LoadShader(std::string_view source, GLenum type) {
                        "#endif //defined(GL_EXT_separate_shader_objects)\n"
                        "#if defined(GL_EXT_clip_cull_distance)\n"
                        "#extension GL_EXT_clip_cull_distance : enable\n"
-                       "#endif //defined(GL_EXT_clip_cull_distance)\n";
+                       "#endif //defined(GL_EXT_clip_cull_distance)\n"
+                       "#if defined(GL_EXT_clip_cull_distance)\n"
+                       "#extension GL_EXT_clip_cull_distance : enable\n"
+                       "#endif // defined(GL_EXT_clip_cull_distance)\n"
+                       "#if defined(GL_EXT_texture_shadow_lod)\n"
+                       "#extension GL_EXT_texture_shadow_lod : enable\n"
+                       "#endif // defined(GL_EXT_texture_shadow_lod)\n"
+                       "#if defined(GL_EXT_shader_image_load_store)\n"
+                       "#extension GL_EXT_shader_image_load_store : enable\n"
+                       "#end if // defined(GL_EXT_shader_image_load_store)\n"
+                       "#if defined(GL_ARB_explicit_uniform_location)\n"
+                       "#extension GL_ARB_explicit_uniform_location : enable\n"
+                       "#endif // defined(GL_ARB_explicit_uniform_location)\n";
         } else {
             preamble = "#version 320 es\n"
                        "#endif\n"
