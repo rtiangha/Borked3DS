@@ -229,12 +229,19 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
     }
 
     if (Settings::values.use_gles.GetValue()) {
-        // Program binaries are core since GLES 3.0, but check context if EXT is required
-        if (GLAD_GL_EXT_separate_shader_objects) {
-            glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
-        } else {
-            glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
-                                GL_TRUE); // Safe in GLES 3.0+
+        GLint major, minor;
+        glGetIntegerv(GL_MAJOR_VERSION, &major);
+        glGetIntegerv(GL_MINOR_VERSION, &minor);
+
+        // Make program binary hint optional
+        if (GLAD_GL_OES_get_program_binary || major >= 3) {
+            // Program binaries are core since GLES 3.0, but check context if EXT is required
+            if (GLAD_GL_EXT_separate_shader_objects) {
+                glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+            } else {
+                glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
+                                    GL_TRUE); // Safe in GLES 3.0+
+            }
         }
     } else {
         glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
@@ -255,6 +262,7 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
             LOG_DEBUG(Render_OpenGL, "{}", &program_error[0]);
         } else {
             LOG_ERROR(Render_OpenGL, "Error linking shader:\n{}", &program_error[0]);
+            LOG_ERROR(Render_OpenGL, "Full shader source:\n{}", preamble + std::string(source));
         }
     }
 
