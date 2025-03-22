@@ -56,7 +56,7 @@ precision highp int;
 
 #if defined(GL_EXT_shader_image_load_store)
 #extension GL_EXT_shader_image_load_store : enable
-#end if // defined(GL_EXT_shader_image_load_store)
+#endif // defined(GL_EXT_shader_image_load_store)
 
 #if defined(GL_EXT_texture_shadow_lod)
 #extension GL_EXT_texture_shadow_lod : enable
@@ -108,7 +108,7 @@ precision highp int;
                        "#endif // defined(GL_EXT_texture_shadow_lod)\n"
                        "#if defined(GL_EXT_shader_image_load_store)\n"
                        "#extension GL_EXT_shader_image_load_store : enable\n"
-                       "#end if // defined(GL_EXT_shader_image_load_store)\n"
+                       "#endif // defined(GL_EXT_shader_image_load_store)\n"
                        "#if defined(GL_ARB_explicit_uniform_location)\n"
                        "#extension GL_ARB_explicit_uniform_location : enable\n"
                        "#endif // defined(GL_ARB_explicit_uniform_location)\n";
@@ -200,8 +200,6 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
     // Link the program
     LOG_DEBUG(Render_OpenGL, "Linking program...");
 
-    GLuint program_id = glCreateProgram();
-
     for (GLuint shader : shaders) {
         if (shader != 0) {
             glAttachShader(program_id, shader);
@@ -233,15 +231,12 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
         glGetIntegerv(GL_MAJOR_VERSION, &major);
         glGetIntegerv(GL_MINOR_VERSION, &minor);
 
-        // Make program binary hint optional
-        if (GLAD_GL_OES_get_program_binary || major >= 3) {
-            // Program binaries are core since GLES 3.0, but check context if EXT is required
-            if (GLAD_GL_EXT_separate_shader_objects) {
-                glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
-            } else {
-                glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
-                                    GL_TRUE); // Safe in GLES 3.0+
-            }
+        // Program binaries are core since GLES 3.0, but check context if EXT is required
+        if (GLAD_GL_EXT_separate_shader_objects) {
+            glProgramParameteriEXT(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+        } else {
+            glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
+                                GL_TRUE); // Safe in GLES 3.0+
         }
     } else {
         glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
@@ -262,7 +257,6 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
             LOG_DEBUG(Render_OpenGL, "{}", &program_error[0]);
         } else {
             LOG_ERROR(Render_OpenGL, "Error linking shader:\n{}", &program_error[0]);
-            LOG_ERROR(Render_OpenGL, "Full shader source:\n{}", preamble + std::string(source));
         }
     }
 
