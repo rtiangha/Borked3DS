@@ -1444,13 +1444,7 @@ Result SVC::KernelSetState(u32 kernel_state, u32 varg1, u32 varg2) {
     // Borked3DS specific states.
     case KernelState::KERNEL_STATE_BORKED3DS_EMULATION_SPEED: {
         u16 new_value = static_cast<u16>(varg1);
-        if (new_value == 0xFFFF) {
-            Settings::is_temporary_frame_limit = false;
-            Settings::temporary_frame_limit = 0;
-        } else {
-            Settings::is_temporary_frame_limit = true;
-            Settings::temporary_frame_limit = static_cast<double>(new_value);
-        }
+        Settings::values.frame_limit.SetValue(new_value);
     } break;
     default:
         LOG_ERROR(Kernel_SVC, "Unknown KernelSetState state={} varg1={} varg2={}", kernel_state,
