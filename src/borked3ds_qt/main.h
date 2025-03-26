@@ -13,6 +13,7 @@
 #include <QString>
 #include <QTimer>
 #include <QTranslator>
+#include "borked3ds_qt/bootmanager.h"
 #include "borked3ds_qt/compatibility_list.h"
 #include "borked3ds_qt/hotkeys.h"
 #include "core/core.h"

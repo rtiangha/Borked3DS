@@ -199,7 +199,9 @@ public:
     }
 
     std::tuple<float, float> GetStatus() const override {
-        const auto [x, y] = GetAnalog(axis_x, axis_y);
+        auto analog = GetAnalog(axis_x, axis_y);
+        float x = analog.first;
+        float y = analog.second;
         const float r = std::sqrt((x * x) + (y * y));
         if (r > deadzone) {
             return {x / r * (r - deadzone) / (1 - deadzone),
