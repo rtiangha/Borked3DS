@@ -181,7 +181,7 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
 
     if (Settings::values.use_gles.GetValue()) {
         // Check for GL_EXT_texture_buffer support
-        if (driver.HasExtension("GL_EXT_texture_buffer")) {
+        if (GLAD_GL_EXT_texture_buffer) {
             // Use floating-point formats if supported
             glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RG32F, texture_lf_buffer.GetHandle());
             glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
