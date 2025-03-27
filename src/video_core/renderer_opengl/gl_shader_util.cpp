@@ -133,16 +133,35 @@ precision highp uimage2D;
 )";
         }
 
-        // Only add samplerBuffer precision if the extension is available
-        if (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 2) ||
-            GLAD_GL_EXT_texture_buffer) {
-            preamble += "precision highp samplerBuffer;\n";
-        }
-
         preamble += R"(
 #define NUM_TEV_STAGES 6
 #define NUM_LIGHTS 8
 #define NUM_LIGHTING_SAMPLERS 24
+
+// Texture buffer sampler definitions based on API version
+)";
+
+        // Add conditional texture buffer type definitions
+        if (GLES) {
+            if (GLAD_GL_EXT_texture_buffer) {
+                preamble +=
+                    "layout(binding = 3) uniform highp samplerBuffer texture_buffer_lut_lf;\n"
+                    "layout(binding = 4) uniform highp samplerBuffer texture_buffer_lut_rg;\n"
+                    "layout(binding = 5) uniform highp samplerBuffer texture_buffer_lut_rgba;\n";
+            } else {
+                // Fallback to regular texture2D for GLES without texture buffer support
+                preamble +=
+                    "layout(binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n"
+                    "layout(binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n"
+                    "layout(binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n";
+            }
+        } else {
+            preamble += "layout(binding = 3) uniform samplerBuffer texture_buffer_lut_lf;\n"
+                        "layout(binding = 4) uniform samplerBuffer texture_buffer_lut_rg;\n"
+                        "layout(binding = 5) uniform samplerBuffer texture_buffer_lut_rgba;\n";
+        }
+
+        preamble += R"(
 struct LightSrc {
     highp vec3 specular_0;
     highp vec3 specular_1;
