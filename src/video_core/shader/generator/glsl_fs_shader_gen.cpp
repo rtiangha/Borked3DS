@@ -103,6 +103,7 @@ layout (binding = 2, std140) uniform fs_data {
     vec3 tex_lod_bias;
     vec4 tex_border_color[3];
     vec4 blend_color;
+    int use_texture2d_lut;
 };
 )";
 
@@ -824,10 +825,25 @@ void FragmentModule::WriteFog() {
 
     // Generate clamped fog factor from LUT for given fog index
     out += "float fog_i = clamp(floor(fog_index), 0.0, 127.0);\n"
-           "float fog_f = fog_index - fog_i;\n"
-           "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + "
-           "fog_lut_offset).rg;\n"
-           "float fog_factor = fog_lut_entry.r + fog_lut_entry.g * fog_f;\n"
+           "float fog_f = fog_index - fog_i;\n";
+
+    if (!profile.is_vulkan) {
+        out += R"(
+    vec2 fog_lut_entry;
+    if (use_texture2d_lut != 0) {
+        // 2D texture fallback path
+        vec2 tex_coord = vec2(float(fog_i)/128.0, 0.0);
+        fog_lut_entry = texture2D(texture_buffer_lut_lf, tex_coord).rg;
+    } else {
+        fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + fog_lut_offset).rg;
+    }
+)";
+    } else {
+        out += "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + "
+               "fog_lut_offset).rg;\n";
+    }
+
+    out += "float fog_factor = fog_lut_entry.r + fog_lut_entry.g * fog_f;\n"
            "fog_factor = clamp(fog_factor, 0.0, 1.0);\n";
 
     // Blend the fog
@@ -1325,12 +1341,6 @@ void FragmentModule::DefineBindingsVK() {
 }
 
 void FragmentModule::DefineBindingsGL() {
-    // Uniform and texture buffers
-    out += FSUniformBlockDef;
-    out += "layout(binding = 3) uniform samplerBuffer texture_buffer_lut_lf;\n";
-    out += "layout(binding = 4) uniform samplerBuffer texture_buffer_lut_rg;\n";
-    out += "layout(binding = 5) uniform samplerBuffer texture_buffer_lut_rgba;\n\n";
-
     // Texture samplers
     const auto texture_type = config.texture.texture0_type.Value();
     for (u32 i = 0; i < 3; i++) {
@@ -1401,10 +1411,35 @@ void FragmentModule::DefineLightingHelpers() {
 
     out += R"(
 float LookupLightingLUT(int lut_index, int index, float delta) {
+)";
+
+    // Add the texture2d fallback path
+    if (!profile.is_vulkan) {
+        out += R"(
+    if (use_texture2d_lut != 0) {
+        // 2D texture fallback path
+        int x_offset = (lut_index % 4) * 256;  // 4 LUTs per row
+        int y_offset = lut_index / 4;          // Move to next row every 4 LUTs
+        int x_coord = x_offset + index;
+        vec2 tex_coord = vec2(float(x_coord)/1024.0, float(y_offset)/6.0);
+        return texture2D(texture_buffer_lut_rg, tex_coord).r + 
+               texture2D(texture_buffer_lut_rg, tex_coord).g * delta;
+    } else {
+)";
+    }
+
+    // Original texture buffer path
+    out += R"(
     vec2 entry = texelFetch(texture_buffer_lut_lf, lighting_lut_offset[lut_index >> 2][lut_index & 3] + index).rg;
     return entry.r + entry.g * delta;
-}
+)";
 
+    if (!profile.is_vulkan) {
+        out += "}\n";
+    }
+    out += "}\n";
+
+    out += R"(
 float LookupLightingLUTUnsigned(int lut_index, float pos) {
     int index = int(clamp(floor(pos * 256.0), 0.f, 255.f));
     float delta = pos * 256.0 - float(index);

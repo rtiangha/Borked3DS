@@ -126,6 +126,61 @@ precision highp int;
                    "#endif //defined(GL_ARB_shader_image_load_store)\n";
     }
 
+    // For fragment shaders, add the uniform block definition after version/extensions but before
+    // shader code
+    if (type == GL_FRAGMENT_SHADER) {
+        preamble += R"(
+#define NUM_TEV_STAGES 6
+#define NUM_LIGHTS 8
+#define NUM_LIGHTING_SAMPLERS 24
+struct LightSrc {
+    vec3 specular_0;
+    vec3 specular_1;
+    vec3 diffuse;
+    vec3 ambient;
+    vec3 position;
+    vec3 spot_direction;
+    float dist_atten_bias;
+    float dist_atten_scale;
+};
+
+layout (binding = 2, std140) uniform fs_data {
+    int framebuffer_scale;
+    int alphatest_ref;
+    float depth_scale;
+    float depth_offset;
+    float shadow_bias_constant;
+    float shadow_bias_linear;
+    int scissor_x1;
+    int scissor_y1;
+    int scissor_x2;
+    int scissor_y2;
+    int fog_lut_offset;
+    int proctex_noise_lut_offset;
+    int proctex_color_map_offset;
+    int proctex_alpha_map_offset;
+    int proctex_lut_offset;
+    int proctex_diff_lut_offset;
+    float proctex_bias;
+    int shadow_texture_bias;
+    ivec4 lighting_lut_offset[NUM_LIGHTING_SAMPLERS / 4];
+    vec3 fog_color;
+    vec2 proctex_noise_f;
+    vec2 proctex_noise_a;
+    vec2 proctex_noise_p;
+    vec3 lighting_global_ambient;
+    LightSrc light_src[NUM_LIGHTS];
+    vec4 const_color[NUM_TEV_STAGES];
+    vec4 tev_combiner_buffer_color;
+    vec3 tex_lod_bias;
+    vec4 tex_border_color[3];
+    vec4 blend_color;
+    int use_texture2d_lut;
+};
+
+)";
+    }
+
     std::string_view debug_type;
 
     if (Settings::values.use_gles.GetValue()) {

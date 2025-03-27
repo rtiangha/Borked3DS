@@ -63,9 +63,10 @@ struct FSUniformData {
     alignas(16) Common::Vec3f tex_lod_bias;
     alignas(16) Common::Vec4f tex_border_color[3];
     alignas(16) Common::Vec4f blend_color;
+    alignas(4) int use_texture2d_lut;
 };
 
-static_assert(sizeof(FSUniformData) == 0x530,
+static_assert(sizeof(FSUniformData) == 0x540,
               "The size of the UniformData does not match the structure in the shader");
 static_assert(sizeof(FSUniformData) < 16384,
               "UniformData structure must be less than 16kb as per the OpenGL spec");
