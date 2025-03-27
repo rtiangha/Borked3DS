@@ -129,9 +129,14 @@ GLuint LoadShader(std::string_view source, GLenum type) {
             preamble += R"(
 precision highp int;
 precision highp float;
-precision highp samplerBuffer;
 precision highp uimage2D;
 )";
+        }
+
+        // Only add samplerBuffer precision if the extension is available
+        if (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 2) ||
+            GLAD_GL_EXT_texture_buffer) {
+            preamble += "precision highp samplerBuffer;\n";
         }
 
         preamble += R"(
