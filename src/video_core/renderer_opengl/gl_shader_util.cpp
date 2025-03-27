@@ -27,8 +27,6 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 
         if (majorVersion == 3 && minorVersion == 1) {
             preamble = R"(#version 310 es
-precision highp float;
-precision highp int;
 
 #if defined(GL_ANDROID_extension_pack_es31a)
 #extension GL_ANDROID_extension_pack_es31a : enable
@@ -83,8 +81,6 @@ precision highp int;
 #else
         if (majorVersion == 3 && minorVersion == 1) {
             preamble = "#version 310 es\n"
-                       "precision highp float;\n"
-                       "precision highp int;\n"
                        "#if defined(GL_EXT_geometry_shader)\n"
                        "#extension GL_EXT_geometry_shader : enable\n"
                        "#endif //defined(GL_EXT_geometry_shader)\n"
@@ -129,28 +125,37 @@ precision highp int;
     // For fragment shaders, add the uniform block definition after version/extensions but before
     // shader code
     if (type == GL_FRAGMENT_SHADER) {
+        if (GLES) {
+            preamble += R"(
+precision highp int;
+precision highp float;
+precision highp samplerBuffer;
+precision highp uimage2D;
+)";
+        }
+
         preamble += R"(
 #define NUM_TEV_STAGES 6
 #define NUM_LIGHTS 8
 #define NUM_LIGHTING_SAMPLERS 24
 struct LightSrc {
-    vec3 specular_0;
-    vec3 specular_1;
-    vec3 diffuse;
-    vec3 ambient;
-    vec3 position;
-    vec3 spot_direction;
-    float dist_atten_bias;
-    float dist_atten_scale;
+    highp vec3 specular_0;
+    highp vec3 specular_1;
+    highp vec3 diffuse;
+    highp vec3 ambient;
+    highp vec3 position;
+    highp vec3 spot_direction;
+    highp float dist_atten_bias;
+    highp float dist_atten_scale;
 };
 
 layout (binding = 2, std140) uniform fs_data {
     int framebuffer_scale;
     int alphatest_ref;
-    float depth_scale;
-    float depth_offset;
-    float shadow_bias_constant;
-    float shadow_bias_linear;
+    highp float depth_scale;
+    highp float depth_offset;
+    highp float shadow_bias_constant;
+    highp float shadow_bias_linear;
     int scissor_x1;
     int scissor_y1;
     int scissor_x2;
@@ -161,20 +166,20 @@ layout (binding = 2, std140) uniform fs_data {
     int proctex_alpha_map_offset;
     int proctex_lut_offset;
     int proctex_diff_lut_offset;
-    float proctex_bias;
+    highp float proctex_bias;
     int shadow_texture_bias;
     ivec4 lighting_lut_offset[NUM_LIGHTING_SAMPLERS / 4];
-    vec3 fog_color;
-    vec2 proctex_noise_f;
-    vec2 proctex_noise_a;
-    vec2 proctex_noise_p;
-    vec3 lighting_global_ambient;
+    highp vec3 fog_color;
+    highp vec2 proctex_noise_f;
+    highp vec2 proctex_noise_a;
+    highp vec2 proctex_noise_p;
+    highp vec3 lighting_global_ambient;
     LightSrc light_src[NUM_LIGHTS];
-    vec4 const_color[NUM_TEV_STAGES];
-    vec4 tev_combiner_buffer_color;
-    vec3 tex_lod_bias;
-    vec4 tex_border_color[3];
-    vec4 blend_color;
+    highp vec4 const_color[NUM_TEV_STAGES];
+    highp vec4 tev_combiner_buffer_color;
+    highp vec3 tex_lod_bias;
+    highp vec4 tex_border_color[3];
+    highp vec4 blend_color;
     int use_texture2d_lut;
 };
 
