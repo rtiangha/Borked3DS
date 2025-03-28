@@ -123,17 +123,16 @@ GLuint LoadShader(std::string_view source, GLenum type) {
     }
 
     // For fragment shaders, add the uniform block definition after version/extensions but before
-    // shader code
+    // shader code for OpenGLES 3.1
     if (type == GL_FRAGMENT_SHADER) {
-        if (GLES) {
+        if (GLES && (majorVersion == 3 && minorVersion < 2)) {
             preamble += R"(
 precision highp int;
 precision highp float;
 precision highp uimage2D;
 )";
-        }
 
-        preamble += R"(
+            preamble += R"(
 #define NUM_TEV_STAGES 6
 #define NUM_LIGHTS 8
 #define NUM_LIGHTING_SAMPLERS 24
@@ -141,27 +140,12 @@ precision highp uimage2D;
 // Texture buffer sampler definitions based on API version
 )";
 
-        // Add conditional texture buffer type definitions
-        if (GLES) {
-            if (GLAD_GL_EXT_texture_buffer) {
-                preamble +=
-                    "layout(binding = 3) uniform highp samplerBuffer texture_buffer_lut_lf;\n"
-                    "layout(binding = 4) uniform highp samplerBuffer texture_buffer_lut_rg;\n"
-                    "layout(binding = 5) uniform highp samplerBuffer texture_buffer_lut_rgba;\n";
-            } else {
-                // Fallback to regular texture2D for GLES without texture buffer support
-                preamble +=
-                    "layout(binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n"
-                    "layout(binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n"
-                    "layout(binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n";
-            }
-        } else {
-            preamble += "layout(binding = 3) uniform samplerBuffer texture_buffer_lut_lf;\n"
-                        "layout(binding = 4) uniform samplerBuffer texture_buffer_lut_rg;\n"
-                        "layout(binding = 5) uniform samplerBuffer texture_buffer_lut_rgba;\n";
-        }
+            // Fallback to regular texture2D for GLES without texture buffer support
+            preamble += "layout(binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n"
+                        "layout(binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n"
+                        "layout(binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n";
 
-        preamble += R"(
+            preamble += R"(
 struct LightSrc {
     highp vec3 specular_0;
     highp vec3 specular_1;
@@ -208,6 +192,7 @@ layout (binding = 2, std140) uniform fs_data {
 };
 
 )";
+        }
     }
 
     std::string_view debug_type;
