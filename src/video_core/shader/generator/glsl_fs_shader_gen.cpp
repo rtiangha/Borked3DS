@@ -5,6 +5,8 @@
 
 #ifndef __APPLE__
 #include <glad/gl.h>
+#include "video_core/renderer_opengl/gl_driver.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #endif
 
 #include "video_core/shader/generator/glsl_fs_shader_gen.h"
@@ -57,6 +59,24 @@ precision mediump uimage2D;
 #endif // GL_FRAGMENT_PRECISION_HIGH
 #endif
 )";
+
+#ifndef __APPLE__
+// High precision may or may not be supported in GLES3. If it isn't, use medium precision instead.
+// For OpenGLES < 3.2.
+static constexpr char fragment_shader_precision_OES_2D[] = R"(
+#if GL_ES
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp int;
+precision highp float;
+precision highp uimage2D;
+#else
+precision mediump int;
+precision mediump float;
+precision mediump uimage2D;
+#endif // GL_FRAGMENT_PRECISION_HIGH
+#endif
+)";
+#endif
 
 constexpr static std::string_view FSUniformBlockDef = R"(
 #define NUM_TEV_STAGES 6
@@ -1275,7 +1295,19 @@ void FragmentModule::DefineExtensions() {
     }
 
     if (!profile.is_vulkan) {
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += fragment_shader_precision_OES_2D;
+        } else {
+            out += fragment_shader_precision_OES;
+        }
+#else
         out += fragment_shader_precision_OES;
+#endif
     }
 }
 

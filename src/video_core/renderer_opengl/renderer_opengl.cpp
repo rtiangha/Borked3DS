@@ -13,8 +13,10 @@
 #include "core/frontend/framebuffer_layout.h"
 #include "core/memory.h"
 #include "video_core/pica/pica_core.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/renderer_opengl/post_processing_opengl.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
 #include "video_core/shader/generator/glsl_shader_gen.h"
@@ -385,8 +387,17 @@ void RendererOpenGL::InitOpenGLObjects() {
 }
 
 void RendererOpenGL::ReloadShader() {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+    std::string shader_data;
+
     // Link shaders and get variable locations
-    std::string shader_data = fragment_shader_precision_OES;
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        shader_data = fragment_shader_precision_OES_2D;
+    } else {
+        shader_data = fragment_shader_precision_OES;
+    }
     if (Settings::values.render_3d.GetValue() == Settings::StereoRenderOption::Anaglyph) {
         if (Settings::values.anaglyph_shader_name.GetValue() == "rendepth (builtin)") {
             shader_data += HostShaders::OPENGL_PRESENT_ANAGLYPH_RENDEPTH_FRAG;
