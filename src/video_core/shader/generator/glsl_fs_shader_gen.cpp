@@ -1381,9 +1381,9 @@ void FragmentModule::DefineBindingsGL() {
 
     if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
         out += FSUniformBlockDef;
-        out += "layout(set = 0, binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n";
-        out += "layout(set = 0, binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n";
-        out += "layout(set = 0, binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n\n";
+        out += "layout(binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n";
+        out += "layout(binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n";
+        out += "layout(binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n\n";
     }
 #endif
 
