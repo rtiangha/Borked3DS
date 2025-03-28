@@ -1374,6 +1374,48 @@ void FragmentModule::DefineBindingsVK() {
 }
 
 void FragmentModule::DefineBindingsGL() {
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += "layout (std140) uniform fs_data {\n";
+        out += "    int framebuffer_scale;\n";
+        out += "    int alphatest_ref;\n";
+        out += "    float depth_scale;\n";
+        out += "    float depth_offset;\n";
+        out += "    float shadow_bias_constant;\n";
+        out += "    float shadow_bias_linear;\n";
+        out += "    int scissor_x1;\n";
+        out += "    int scissor_y1;\n";
+        out += "    int scissor_x2;\n";
+        out += "    int scissor_y2;\n";
+        out += "    int fog_lut_offset;\n";
+        out += "    int proctex_noise_lut_offset;\n";
+        out += "    int proctex_color_map_offset;\n";
+        out += "    int proctex_alpha_map_offset;\n";
+        out += "    int proctex_lut_offset;\n";
+        out += "    int proctex_diff_lut_offset;\n";
+        out += "    float proctex_bias;\n";
+        out += "    int shadow_texture_bias;\n";
+        out += "    ivec4 lighting_lut_offset[6];\n";
+        out += "    vec3 fog_color;\n";
+        out += "    vec2 proctex_noise_f;\n";
+        out += "    vec2 proctex_noise_a;\n";
+        out += "    vec2 proctex_noise_p;\n";
+        out += "    vec3 lighting_global_ambient;\n";
+        out += "    LightSrc light_src[8];\n";
+        out += "    vec4 const_color[6];\n";
+        out += "    vec4 tev_combiner_buffer_color;\n";
+        out += "    vec3 tex_lod_bias;\n";
+        out += "    vec4 tex_border_color[3];\n";
+        out += "    vec4 blend_color;\n";
+        out += "    int use_texture2d_lut;\n";
+        out += "};\n\n";
+    }
+#endif
+
     // Texture samplers
     const auto texture_type = config.texture.texture0_type.Value();
     for (u32 i = 0; i < 3; i++) {
