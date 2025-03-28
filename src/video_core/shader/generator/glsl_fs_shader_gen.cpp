@@ -10,6 +10,7 @@
 #endif
 
 #include "video_core/shader/generator/glsl_fs_shader_gen.h"
+#include "video_core/shader/generator/shader_uniforms.h"
 
 namespace Pica::Shader::Generator::GLSL {
 

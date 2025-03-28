@@ -12,6 +12,7 @@
 #include "common/settings.h"
 #include "video_core/renderer_opengl/gl_shader_util.h"
 #include "video_core/renderer_opengl/gl_vars.h"
+#include "video_core/shader/generator/shader_uniforms.h"
 
 namespace OpenGL {
 
