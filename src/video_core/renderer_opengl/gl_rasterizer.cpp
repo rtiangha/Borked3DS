@@ -451,7 +451,11 @@ bool RasterizerOpenGL::Draw(bool accelerate, bool is_indexed) {
     BORKED3DS_PROFILE("OpenGL", "Drawing");
 
     const bool is_gles = driver.IsOpenGLES();
-    if (is_gles &&
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2 &&
         regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::Clear) {
         // Check if this Clear operation makes sense in context
         if (regs.framebuffer.output_merger.alphablend_enable ||
