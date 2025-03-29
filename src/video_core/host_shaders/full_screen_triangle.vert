@@ -17,7 +17,11 @@ layout(location = 0) out vec2 texcoord;
 #else // if OpenGL
 #define BEGIN_PUSH_CONSTANTS
 #define END_PUSH_CONSTANTS
-#define UNIFORM(n) layout (location = n) uniform
+#ifdef GL_ES
+#define UNIFORM(n) uniform  // GLES doesn't support layout locations for uniforms
+#else
+#define UNIFORM(n) layout(location = n) uniform  // Desktop OpenGL can keep locations
+#endif
 #endif
 
 // Define a custom fma function for GLSL ES 3.10
