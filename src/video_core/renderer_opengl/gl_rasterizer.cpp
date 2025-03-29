@@ -110,6 +110,9 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
       texture_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, false)},
       texture_lf_buffer{driver, GL_TEXTURE_BUFFER, TextureBufferSize(driver, true)} {
     const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
     // Check required GLES extensions
     if (is_gles) {
@@ -179,7 +182,7 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
     state.Apply();
     glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         // Check for GL_EXT_texture_buffer support
         if (GLAD_GL_EXT_texture_buffer) {
             // Use floating-point formats if supported
@@ -898,8 +901,11 @@ void RasterizerOpenGL::SyncBlendEnabled() {
 void RasterizerOpenGL::SyncBlendFuncs() {
     const bool is_gles = driver.IsOpenGLES();
     const bool has_minmax_factor = driver.HasBlendMinMaxFactor();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
-    if (is_gles) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         // GLES doesn't support advanced blend equations, use standard ones
         state.blend.rgb_equation = GL_FUNC_ADD;
         state.blend.a_equation = GL_FUNC_ADD;
@@ -955,11 +961,14 @@ void RasterizerOpenGL::SyncBlendColor() {
 
 void RasterizerOpenGL::SyncLogicOp() {
     const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
     // Set the base logic op state
     state.logic_op = PicaToGL::LogicOp(regs.framebuffer.output_merger.logic_op);
 
-    if (is_gles) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         // Check if we're in a state where logic ops should be applied
         bool should_apply_logic_op =
             regs.framebuffer.output_merger.logic_op != Pica::FramebufferRegs::LogicOp::NoOp;
@@ -1218,6 +1227,11 @@ void RasterizerOpenGL::SyncDepthTest() {
 }
 
 void RasterizerOpenGL::SyncAndUploadLUTsLF() {
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     constexpr std::size_t max_size =
         sizeof(Common::Vec2f) * 256 * Pica::LightingRegs::NumLightingSampler + // lighting
         sizeof(Common::Vec2f) * 128;                                           // fog
@@ -1226,7 +1240,7 @@ void RasterizerOpenGL::SyncAndUploadLUTsLF() {
         return;
     }
 
-    if (Settings::values.use_gles.GetValue() && !GLAD_GL_EXT_texture_buffer) {
+    if (is_gles && !GLAD_GL_EXT_texture_buffer) {
         // Update 2D textures directly for the fallback path
         if (fs_uniform_block_data.lighting_lut_dirty_any) {
             for (unsigned index = 0; index < fs_uniform_block_data.lighting_lut_dirty.size();
@@ -1336,6 +1350,11 @@ void RasterizerOpenGL::SyncAndUploadLUTsLF() {
 }
 
 void RasterizerOpenGL::SyncAndUploadLUTs() {
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     constexpr std::size_t max_size =
         sizeof(Common::Vec2f) * 128 * 3 + // proctex: noise + color + alpha
         sizeof(Common::Vec4f) * 256 +     // proctex
@@ -1348,7 +1367,7 @@ void RasterizerOpenGL::SyncAndUploadLUTs() {
         return;
     }
 
-    if (Settings::values.use_gles.GetValue() && !GLAD_GL_EXT_texture_buffer) {
+    if (is_gles && !GLAD_GL_EXT_texture_buffer) {
         // Update 2D textures directly for the fallback path
         if (fs_uniform_block_data.proctex_noise_lut_dirty) {
             std::array<Common::Vec2f, 128> new_data;
