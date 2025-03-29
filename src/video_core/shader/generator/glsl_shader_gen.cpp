@@ -287,9 +287,6 @@ std::string GenerateVertexShader(const ShaderSetup& setup, const PicaVSConfig& c
             }
         }
     }
-    for (u32 i = 0; i < config.state.num_outputs; ++i) {
-        out += fmt::format("    vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
-    }
     out += "    // Initialize all vertex attributes to zero\n";
     for (u32 i = 0; i < config.state.num_outputs; ++i) {
         out += fmt::format("    vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
