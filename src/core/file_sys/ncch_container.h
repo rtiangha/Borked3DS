@@ -1,5 +1,6 @@
 // Copyright 2017 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -362,8 +363,8 @@ private:
     u32 partition = 0;
 
     std::string filepath;
-    FileUtil::IOFile file;
-    FileUtil::IOFile exefs_file;
+    std::unique_ptr<FileUtil::IOFile> file;
+    std::unique_ptr<FileUtil::IOFile> exefs_file;
 };
 
 } // namespace FileSys

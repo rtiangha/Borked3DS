@@ -197,7 +197,7 @@ endif()
 create_target_directory_groups(borked3ds_common)
 
 target_link_libraries(borked3ds_common PUBLIC fmt library-headers Boost::boost Boost::serialization Boost::iostreams)
-target_link_libraries(borked3ds_common PRIVATE zstd)
+target_link_libraries(borked3ds_common PRIVATE cryptopp zstd)
 
 if (ENABLE_PROFILING)
     target_link_libraries(borked3ds_common PUBLIC tracy)

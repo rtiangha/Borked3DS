@@ -1,5 +1,6 @@
 // Copyright 2017 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -150,11 +151,11 @@ void HostRoomWindow::Host() {
             ban_list = UISettings::values.ban_list;
         }
         if (auto room = Network::GetRoom().lock()) {
-            bool created = room->Create(ui->room_name->text().toStdString(),
-                                        ui->room_description->toPlainText().toStdString(), "", port,
-                                        password, ui->max_player->value(),
-                                        ui->username->text().toStdString(), game_name.toStdString(),
-                                        game_id, CreateVerifyBackend(is_public), ban_list);
+            bool created = room->Create(
+                ui->room_name->text().toStdString(),
+                ui->room_description->toPlainText().toStdString(), "", static_cast<u16>(port),
+                password, ui->max_player->value(), NetSettings::values.borked3ds_username,
+                game_name.toStdString(), game_id, CreateVerifyBackend(is_public), ban_list);
             if (!created) {
                 NetworkMessage::ErrorManager::ShowError(
                     NetworkMessage::ErrorManager::COULD_NOT_CREATE_ROOM);
@@ -205,7 +206,8 @@ void HostRoomWindow::Host() {
         }
 #endif
         member->Join(ui->username->text().toStdString(), Service::CFG::GetConsoleIdHash(system),
-                     ip_address.c_str(), port, 0, Network::NoPreferredMac, password, token);
+                     "127.0.0.1", static_cast<u16>(port), 0, Network::NoPreferredMac, password,
+                     token);
 
         // Store settings
         UISettings::values.room_nickname = ui->username->text();
