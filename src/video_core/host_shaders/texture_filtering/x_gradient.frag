@@ -28,7 +28,7 @@ layout(location = 0) out vec2 frag_color;
 
 layout(binding = 0) uniform sampler2D tex_input;
 
-const vec3 K = vec3(0.2627, 0.6780, 0.0593);
+const vec3 K = vec3(0.2627f, 0.6780f, 0.0593f);
 // TODO: improve handling of alpha channel
 #define GetLum(xoffset) dot(K, textureLodOffset(tex_input, tex_coord, 0.0, ivec2(xoffset, 0)).rgb)
 

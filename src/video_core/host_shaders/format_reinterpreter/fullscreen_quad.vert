@@ -18,9 +18,9 @@ layout(location = 0) uniform mediump ivec2 dst_size;
 #endif
 
 const vec2 vertices[4] =
-vec2[4](vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0), vec2(1.0, 1.0));
+vec2[4](vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f), vec2(-1.0f, 1.0f), vec2(1.0f, 1.0f));
 
 void main() {
-    gl_Position = vec4(vertices[gl_VertexID], 0.0, 1.0);
-    dst_coord = (vertices[gl_VertexID] / 2.0 + 0.5) * vec2(dst_size);
+    gl_Position = vec4(vertices[gl_VertexID], 0.0f, 1.0f);
+    dst_coord = (vertices[gl_VertexID] / 2.0f + 0.5f) * vec2(dst_size);
 }
