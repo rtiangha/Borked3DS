@@ -1,5 +1,6 @@
 // Copyright 2017 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -175,8 +176,8 @@ void Lobby::OnJoinRoom(const QModelIndex& source) {
         }
 #endif
         if (auto room_member = Network::GetRoomMember().lock()) {
-            room_member->Join(nickname, Service::CFG::GetConsoleIdHash(system), ip.c_str(), port, 0,
-                              Network::NoPreferredMac, password, token);
+            room_member->Join(nickname, Service::CFG::GetConsoleIdHash(system), ip.c_str(),
+                              static_cast<u16>(port), 0, Network::NoPreferredMac, password, token);
         }
     });
     watcher->setFuture(f);

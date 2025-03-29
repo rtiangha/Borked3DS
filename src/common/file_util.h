@@ -1,5 +1,6 @@
 // Copyright 2013 Dolphin Emulator Project / 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -10,14 +11,18 @@
 #include <functional>
 #include <ios>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/export.hpp>
 #include <boost/serialization/split_member.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <boost/serialization/wrapper.hpp>
 #include "common/common_types.h"
 #ifdef _MSC_VER
@@ -268,6 +273,8 @@ enum class DirectorySeparator {
     std::string_view path,
     DirectorySeparator directory_separator = DirectorySeparator::ForwardSlash);
 
+struct CryptoIOFileImpl;
+
 // simple wrapper for cstdlib file functions to
 // hopefully will make error checking easier
 // and make forgetting an fclose() harder
@@ -281,7 +288,7 @@ public:
     // it
     IOFile(const std::string& filename, const char openmode[], int flags = 0);
 
-    ~IOFile();
+    virtual ~IOFile();
 
     IOFile(IOFile&& other) noexcept;
     IOFile& operator=(IOFile&& other) noexcept;
@@ -371,14 +378,10 @@ public:
      * @returns Count of T data successfully read.
      */
     template <typename T>
-    [[nodiscard]] size_t ReadSpan(std::span<T> data) const {
+    [[nodiscard]] size_t ReadSpan(std::span<T> data) {
         static_assert(std::is_trivially_copyable_v<T>, "Data type must be trivially copyable.");
 
-        if (!IsOpen()) {
-            return 0;
-        }
-
-        return std::fread(data.data(), sizeof(T), data.size(), m_file);
+        return ReadImpl(data.data(), data.size(), sizeof(T));
     }
 
     /**
@@ -397,14 +400,10 @@ public:
      * @returns Count of T data successfully written.
      */
     template <typename T>
-    [[nodiscard]] size_t WriteSpan(std::span<const T> data) const {
+    [[nodiscard]] size_t WriteSpan(std::span<const T> data) {
         static_assert(std::is_trivially_copyable_v<T>, "Data type must be trivially copyable.");
 
-        if (!IsOpen()) {
-            return 0;
-        }
-
-        return std::fwrite(data.data(), sizeof(T), data.size(), m_file);
+        return WriteImpl(data.data(), data.size(), sizeof(T));
     }
 
     [[nodiscard]] bool IsOpen() const {
@@ -428,7 +427,9 @@ public:
         return IsGood();
     }
 
-    bool Seek(s64 off, int origin);
+    bool Seek(s64 off, int origin) {
+        return SeekImpl(off, origin);
+    }
     [[nodiscard]] u64 Tell() const;
     [[nodiscard]] u64 GetSize() const;
     bool Resize(u64 size);
@@ -440,12 +441,24 @@ public:
         std::clearerr(m_file);
     }
 
-private:
-    std::size_t ReadImpl(void* data, std::size_t length, std::size_t data_size);
-    std::size_t ReadAtImpl(void* data, std::size_t length, std::size_t data_size,
-                           std::size_t offset);
-    std::size_t WriteImpl(const void* data, std::size_t length, std::size_t data_size);
+    virtual bool IsCrypto() {
+        return false;
+    }
 
+    const std::string& Filename() const {
+        return filename;
+    }
+
+protected:
+    friend struct CryptoIOFileImpl;
+    virtual std::size_t ReadImpl(void* data, std::size_t length, std::size_t data_size);
+    virtual std::size_t ReadAtImpl(void* data, std::size_t length, std::size_t data_size,
+                                   std::size_t offset);
+    virtual std::size_t WriteImpl(const void* data, std::size_t length, std::size_t data_size);
+
+    virtual bool SeekImpl(s64 off, int origin);
+
+private:
     bool Open();
 
     std::FILE* m_file = nullptr;
@@ -474,6 +487,37 @@ private:
     friend class boost::serialization::access;
 };
 
+class CryptoIOFile : public IOFile {
+public:
+    CryptoIOFile();
+
+    // flags is used for windows specific file open mode flags, which
+    // allows citra to open the logs in shared write mode, so that the file
+    // isn't considered "locked" while citra is open and people can open the log file and view it
+    CryptoIOFile(const std::string& filename, const char openmode[], const std::vector<u8>& aes_key,
+                 const std::vector<u8>& aes_iv, int flags = 0);
+
+    bool IsCrypto() override {
+        return true;
+    }
+
+    ~CryptoIOFile() override;
+
+private:
+    std::unique_ptr<CryptoIOFileImpl> impl;
+
+    std::size_t ReadImpl(void* data, std::size_t length, std::size_t data_size) override;
+    std::size_t ReadAtImpl(void* data, std::size_t length, std::size_t data_size,
+                           std::size_t offset) override;
+    std::size_t WriteImpl(const void* data, std::size_t length, std::size_t data_size) override;
+
+    bool SeekImpl(s64 off, int origin) override;
+
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int);
+    friend class boost::serialization::access;
+};
+
 template <std::ios_base::openmode o, typename T>
 void OpenFStream(T& fstream, const std::string& filename);
 } // namespace FileUtil
@@ -487,3 +531,6 @@ void OpenFStream(T& fstream, const std::string& filename, std::ios_base::openmod
     fstream.open(filename, openmode);
 #endif
 }
+
+BOOST_CLASS_EXPORT_KEY(FileUtil::IOFile)
+BOOST_CLASS_EXPORT_KEY(FileUtil::CryptoIOFile)

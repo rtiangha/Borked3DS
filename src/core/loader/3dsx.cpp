@@ -1,5 +1,6 @@
 // Copyright 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -315,8 +316,9 @@ ResultStatus AppLoader_THREEDSX::ReadRomFS(std::shared_ptr<FileSys::RomFSReader>
         LOG_DEBUG(Loader, "RomFS size:             {:#010X}", romfs_size);
 
         // We reopen the file, to allow its position to be independent from file's
-        FileUtil::IOFile romfs_file_inner(filepath, "rb");
-        if (!romfs_file_inner.IsOpen())
+        std::unique_ptr<FileUtil::IOFile> romfs_file_inner =
+            std::make_unique<FileUtil::IOFile>(filepath, "rb");
+        if (!romfs_file_inner->IsOpen())
             return ResultStatus::Error;
 
         romfs_file = std::make_shared<FileSys::DirectRomFSReader>(std::move(romfs_file_inner),

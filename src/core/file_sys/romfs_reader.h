@@ -1,3 +1,7 @@
+// Copyright Citra Emulator Project / Azahar Emulator Project
+// Licensed under GPLv2 or any later version
+// Refer to the license.txt file included.
+
 #pragma once
 
 #include <array>
@@ -41,13 +45,14 @@ private:
  */
 class DirectRomFSReader : public RomFSReader {
 public:
-    DirectRomFSReader(FileUtil::IOFile&& file, std::size_t file_offset, std::size_t data_size)
+    DirectRomFSReader(std::unique_ptr<FileUtil::IOFile>&& file, std::size_t file_offset,
+                      std::size_t data_size)
         : is_encrypted(false), file(std::move(file)), file_offset(file_offset),
           data_size(data_size) {}
 
-    DirectRomFSReader(FileUtil::IOFile&& file, std::size_t file_offset, std::size_t data_size,
-                      const std::array<u8, 16>& key, const std::array<u8, 16>& ctr,
-                      std::size_t crypto_offset)
+    DirectRomFSReader(std::unique_ptr<FileUtil::IOFile>&& file, std::size_t file_offset,
+                      std::size_t data_size, const std::array<u8, 16>& key,
+                      const std::array<u8, 16>& ctr, std::size_t crypto_offset)
         : is_encrypted(true), file(std::move(file)), key(key), ctr(ctr), file_offset(file_offset),
           crypto_offset(crypto_offset), data_size(data_size) {}
 
@@ -65,7 +70,7 @@ public:
 
 private:
     bool is_encrypted;
-    FileUtil::IOFile file;
+    std::unique_ptr<FileUtil::IOFile> file;
     std::array<u8, 16> key;
     std::array<u8, 16> ctr;
     u64 file_offset;
