@@ -8,14 +8,20 @@
 #include <sstream>
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/stream.hpp>
+#include <cryptopp/aes.h>
+#include <cryptopp/modes.h>
 #include "common/common_paths.h"
 #include "common/file_util.h"
 #include "common/logging/log.h"
 #include "common/string_util.h"
+#include "core/file_sys/certificate.h"
+#include "core/file_sys/otp.h"
 #include "core/hle/service/fs/archive.h"
 #include "core/hw/aes/arithmetic128.h"
 #include "core/hw/aes/key.h"
+#include "core/hw/default_keys.h"
 #include "core/hw/rsa/rsa.h"
+#include "core/loader/loader.h"
 
 namespace HW::AES {
 
@@ -27,8 +33,8 @@ namespace {
 // On a real 3DS the generation for the normal key is hardware based, and thus the constant can't
 // get dumped. Generated normal keys are also not accessible on a 3DS. The used formula for
 // calculating the constant is a software implementation of what the hardware generator does.
-constexpr AESKey generator_constant = {{0x1F, 0xF9, 0xE9, 0xAA, 0xC5, 0xFE, 0x04, 0x08, 0x02, 0x45,
-                                        0x91, 0xDC, 0x5D, 0x52, 0x76, 0x8A}};
+AESKey generator_constant = {{0x1F, 0xF9, 0xE9, 0xAA, 0xC5, 0xFE, 0x04, 0x08, 0x02, 0x45, 0x91,
+                              0xDC, 0x5D, 0x52, 0x76, 0x8A}};
 
 AESKey HexToKey(const std::string& hex) {
     if (hex.size() < 32) {
@@ -126,6 +132,12 @@ std::array<std::optional<AESKey>, NumDlpNfcKeyYs> dlp_nfc_key_y_slots;
 std::array<NfcSecret, NumNfcSecrets> nfc_secrets;
 AESIV nfc_iv;
 
+AESKey otp_key;
+AESIV otp_iv;
+
+KeySlot movable_key;
+KeySlot movable_cmac;
+
 struct KeyDesc {
     char key_type;
     std::size_t slot_id;
@@ -205,21 +217,25 @@ void LoadBootromKeys() {
 }
 
 void LoadPresetKeys() {
-    const std::string filepath = FileUtil::GetUserPath(FileUtil::UserPath::SysDataDir) + AES_KEYS;
-    FileUtil::CreateFullPath(filepath); // Create path if not already created
+    auto s = GetKeysStream();
 
-    boost::iostreams::stream<boost::iostreams::file_descriptor_source> file;
-    FileUtil::OpenFStream<std::ios_base::in>(file, filepath);
-    if (!file.is_open()) {
-        return;
-    }
+    std::string mode = "";
 
-    while (!file.eof()) {
+    while (!s.eof()) {
         std::string line;
-        std::getline(file, line);
+        std::getline(s, line);
 
         // Ignore empty or commented lines.
         if (line.empty() || line.starts_with("#")) {
+            continue;
+        }
+
+        if (line.starts_with(":")) {
+            mode = line.substr(1);
+            continue;
+        }
+
+        if (mode != "AES") {
             continue;
         }
 
@@ -263,6 +279,31 @@ void LoadPresetKeys() {
             } else {
                 common_key_y_slots[common_key.value()] = key;
             }
+            continue;
+        }
+
+        if (name == "generatorConstant") {
+            generator_constant = key;
+            continue;
+        }
+
+        if (name == "otpKey") {
+            otp_key = key;
+            continue;
+        }
+
+        if (name == "otpIV") {
+            otp_iv = key;
+            continue;
+        }
+
+        if (name == "movableKeyY") {
+            movable_key.SetKeyY(key);
+            continue;
+        }
+
+        if (name == "movableCmacY") {
+            movable_cmac.SetKeyY(key);
             continue;
         }
 
@@ -311,15 +352,42 @@ void LoadPresetKeys() {
 
 } // namespace
 
+std::istringstream GetKeysStream() {
+    const std::string filepath = FileUtil::GetUserPath(FileUtil::UserPath::SysDataDir) + KEYS_FILE;
+    FileUtil::CreateFullPath(filepath); // Create path if not already created
+
+    boost::iostreams::stream<boost::iostreams::file_descriptor_source> file;
+    FileUtil::OpenFStream<std::ios_base::in>(file, filepath);
+    std::istringstream ret;
+    if (file.is_open()) {
+        return std::istringstream(std::string(std::istreambuf_iterator<char>(file), {}));
+    } else {
+        // The key data is encrypted in the source to prevent easy access to it for unintended
+        // purposes.
+        std::vector<u8> kiv(16);
+        std::string s(default_keys_enc_size, ' ');
+        CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption(kiv.data(), kiv.size(), kiv.data())
+            .ProcessData(reinterpret_cast<u8*>(s.data()), default_keys_enc, s.size());
+        return std::istringstream(s);
+    }
+}
+
 void InitKeys(bool force) {
     static bool initialized = false;
     if (initialized && !force) {
         return;
     }
     initialized = true;
+
     HW::RSA::InitSlots();
     LoadBootromKeys();
     LoadPresetKeys();
+
+    movable_key.SetKeyX(key_slots[0x35].x);
+    movable_cmac.SetKeyX(key_slots[0x35].x);
+
+    HW::RSA::InitSlots();
+    HW::ECC::InitSlots();
 }
 
 void SetKeyX(std::size_t slot_id, const AESKey& key) {
@@ -370,6 +438,14 @@ const NfcSecret& GetNfcSecret(NfcSecretId secret_id) {
 
 const AESIV& GetNfcIv() {
     return nfc_iv;
+}
+
+std::pair<AESKey, AESIV> GetOTPKeyIV() {
+    return {otp_key, otp_iv};
+}
+
+const AESKey& GetMovableKey(bool cmac_key) {
+    return cmac_key ? movable_cmac.normal.value() : movable_key.normal.value();
 }
 
 } // namespace HW::AES

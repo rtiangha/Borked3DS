@@ -525,6 +525,8 @@ private:
      */
     void GetArchiveResource(Kernel::HLERequestContext& ctx);
 
+    void ExportIntegrityVerificationSeed(Kernel::HLERequestContext& ctx);
+
     /**
      * FS_User::GetFormatInfo service function.
      *  Inputs:
@@ -633,6 +635,14 @@ private:
      *      1 : Result of function, 0 on success, otherwise error code
      */
     void AddSeed(Kernel::HLERequestContext& ctx);
+
+    void GetSeed(Kernel::HLERequestContext& ctx);
+
+    void DeleteSeed(Kernel::HLERequestContext& ctx);
+
+    void SetUnknown0x80Data(Kernel::HLERequestContext& ctx);
+
+    void GetUnknown0x80Data(Kernel::HLERequestContext& ctx);
 
     /**
      * FS_User::SetSaveDataSecureValue service function.

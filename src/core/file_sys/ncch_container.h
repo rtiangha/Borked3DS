@@ -344,6 +344,7 @@ private:
     bool has_exefs = false;
     bool has_romfs = false;
 
+    bool is_proto = false;
     bool is_tainted = false; // Are there parts of this container being overridden?
     bool is_loaded = false;
     bool is_compressed = false;

@@ -29,6 +29,7 @@ struct SeedDB {
     bool Load();
     bool Save();
     void Add(const Seed& seed);
+    bool Delete(u64 title_id);
 
     std::size_t GetCount() const;
     auto FindSeedByTitleID(u64 title_id) const;
@@ -36,6 +37,7 @@ struct SeedDB {
 
 bool AddSeed(const Seed& seed);
 std::optional<Seed::Data> GetSeed(u64 title_id);
+bool DeleteSeed(u64 title_id);
 u32 GetSeedCount();
 
 } // namespace FileSys

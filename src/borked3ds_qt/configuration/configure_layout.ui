@@ -139,7 +139,7 @@
            </layout>
           </item>
           <item>
-           <widget class="QWidget" name="widget" native="true">
+           <widget class="QWidget" name="widget_screen_gap" native="true">
             <layout class="QHBoxLayout" name="screen_gap_layout">
              <property name="leftMargin">
               <number>0</number>
@@ -154,7 +154,7 @@
               <number>0</number>
              </property>
               <item>
-              <widget class="QLabel" name="label_3">
+              <widget class="QLabel" name="label_screen_gap">
                <property name="text">
                 <string>Screen Gap</string>
                </property>
@@ -180,7 +180,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QWidget" name="widget" native="true">
+           <widget class="QWidget" name="widget_proportion" native="true">
             <layout class="QHBoxLayout" name="proportion_layout">
              <property name="leftMargin">
               <number>0</number>
@@ -195,7 +195,7 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QLabel" name="label_3">
+              <widget class="QLabel" name="label_proportion">
                <property name="toolTip">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specifies the factor by which the large screen will be over the small screen in Large Screen layout mode.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>

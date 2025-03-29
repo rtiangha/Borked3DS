@@ -101,7 +101,7 @@ public:
          * AC::GetWifiStatus service function
          *  Outputs:
          *      1 : Result of function, 0 on success, otherwise error code
-         *      2 : Output wifi status
+         *      2 : WifiStatus
          */
         void GetWifiStatus(Kernel::HLERequestContext& ctx);
 
@@ -229,13 +229,12 @@ protected:
     static constexpr Result ErrorAlreadyConnected =
         Result(301, ErrorModule::AC, ErrorSummary::InvalidState, ErrorLevel::Usage);
 
-    enum class NetworkStatus {
+    enum class Status {
         STATUS_DISCONNECTED = 0,
         STATUS_ENABLED = 1,
-        STATUS_LOCAL = 2,
+        STATUS_CONNECTED = 2,
         STATUS_INTERNET = 3,
     };
-
     enum class WifiStatus {
         STATUS_DISCONNECTED = 0,
         STATUS_CONNECTED_SLOT1 = (1 << 0),
@@ -285,6 +284,7 @@ protected:
     bool CanAccessInternet();
 
 private:
+    [[maybe_unused]]
     Core::System& system;
 
     template <class Archive>

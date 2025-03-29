@@ -103,20 +103,20 @@ void Module::Interface::GetCloseResult(Kernel::HLERequestContext& ctx) {
     rb.Push(ac->close_result);
 }
 
-void Module::Interface::GetWifiStatus(Kernel::HLERequestContext& ctx) {
+void Module::Interface::GetStatus(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
 
-    if (!ac->ac_connected) {
-        IPC::RequestBuilder rb = rp.MakeBuilder(1, 0);
-        rb.Push(ErrorNotConnected);
-        return;
-    }
+    IPC::RequestBuilder rb = rp.MakeBuilder(2, 0);
+    rb.Push(ResultSuccess);
+    rb.Push<u32>(static_cast<u32>(Status::STATUS_INTERNET));
+}
+
+void Module::Interface::GetWifiStatus(Kernel::HLERequestContext& ctx) {
+    IPC::RequestParser rp(ctx);
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 0);
     rb.Push(ResultSuccess);
     rb.Push<u32>(static_cast<u32>(WifiStatus::STATUS_CONNECTED_SLOT1));
-
-    LOG_WARNING(Service_AC, "(STUBBED) called");
 }
 
 void Module::Interface::GetCurrentAPInfo(Kernel::HLERequestContext& ctx) {
@@ -179,13 +179,13 @@ void Module::Interface::GetConnectingInfraPriority(Kernel::HLERequestContext& ct
     LOG_WARNING(Service_AC, "(STUBBED) called");
 }
 
-void Module::Interface::GetStatus(Kernel::HLERequestContext& ctx) {
+void Module::Interface::GetInfraPriority(Kernel::HLERequestContext& ctx) {
     IPC::RequestParser rp(ctx);
+    [[maybe_unused]] const std::vector<u8>& ac_config = rp.PopStaticBuffer();
 
     IPC::RequestBuilder rb = rp.MakeBuilder(2, 0);
     rb.Push(ResultSuccess);
-    rb.Push<u32>(static_cast<u32>(ac->ac_connected ? NetworkStatus::STATUS_INTERNET
-                                                   : NetworkStatus::STATUS_DISCONNECTED));
+    rb.Push<u32>(static_cast<u32>(InfraPriority::PRIORITY_HIGH));
 
     LOG_WARNING(Service_AC, "(STUBBED) called");
 }
@@ -225,17 +225,6 @@ void Module::Interface::ScanAPs(Kernel::HLERequestContext& ctx) {
     rb.Push(1);
     rb.PushStaticBuffer(std::move(buffer), 0);
     LOG_WARNING(Service_AC, "(STUBBED) called, size={}, pid={}", size, pid);
-}
-
-void Module::Interface::GetInfraPriority(Kernel::HLERequestContext& ctx) {
-    IPC::RequestParser rp(ctx);
-    [[maybe_unused]] const std::vector<u8>& ac_config = rp.PopStaticBuffer();
-
-    IPC::RequestBuilder rb = rp.MakeBuilder(2, 0);
-    rb.Push(ResultSuccess);
-    rb.Push<u32>(static_cast<u32>(InfraPriority::PRIORITY_HIGH));
-
-    LOG_WARNING(Service_AC, "(STUBBED) called");
 }
 
 void Module::Interface::SetFromApplication(Kernel::HLERequestContext& ctx) {
