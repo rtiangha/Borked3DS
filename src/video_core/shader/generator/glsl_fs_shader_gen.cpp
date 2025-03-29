@@ -375,6 +375,72 @@ void FragmentModule::AppendAlphaModifier(
 }
 
 void FragmentModule::AppendColorCombiner(Pica::TexturingRegs::TevStageConfig::Operation operation) {
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "color_results_1";
+            case Operation::Modulate:
+                return "color_results_1 * color_results_2";
+            case Operation::Add:
+                return "color_results_1 + color_results_2";
+            case Operation::AddSigned:
+                return "color_results_1 + color_results_2 - vec3(0.5)";
+            case Operation::Lerp:
+                return "mix(color_results_2, color_results_1, color_results_3)";
+            case Operation::Subtract:
+                return "color_results_1 - color_results_2";
+            case Operation::MultiplyThenAdd:
+                return "(color_results_1 * color_results_2) + color_results_3";
+            case Operation::AddThenMultiply:
+                return "min(color_results_1 + color_results_2, vec3(1.0)) * color_results_3";
+            case Operation::Dot3_RGB:
+            case Operation::Dot3_RGBA:
+                return "vec3(dot(color_results_1 - vec3(0.5), color_results_2 - vec3(0.5)) * 4.0)";
+            default:
+                LOG_CRITICAL(Render, "Unknown color combiner operation: {}", operation);
+                return "vec3(0.0)";
+            }
+        };
+        out += fmt::format("clamp({}, vec3(0.0), vec3(1.0))", get_combiner());
+    } else {
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "color_results_1";
+            case Operation::Modulate:
+                return "color_results_1 * color_results_2";
+            case Operation::Add:
+                return "color_results_1 + color_results_2";
+            case Operation::AddSigned:
+                return "color_results_1 + color_results_2 - vec3(0.5)";
+            case Operation::Lerp:
+                return "mix(color_results_2, color_results_1, color_results_3)";
+            case Operation::Subtract:
+                return "color_results_1 - color_results_2";
+            case Operation::MultiplyThenAdd:
+                return "fma(color_results_1, color_results_2, color_results_3)";
+            case Operation::AddThenMultiply:
+                return "min(color_results_1 + color_results_2, vec3(1.0)) * color_results_3";
+            case Operation::Dot3_RGB:
+            case Operation::Dot3_RGBA:
+                return "vec3(dot(color_results_1 - vec3(0.5), color_results_2 - vec3(0.5)) * 4.0)";
+            default:
+                LOG_CRITICAL(Render, "Unknown color combiner operation: {}", operation);
+                return "vec3(0.0)";
+            }
+        };
+        out += fmt::format("clamp({}, vec3(0.0), vec3(1.0))", get_combiner());
+    }
+#else
     const auto get_combiner = [operation] {
         using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
         switch (operation) {
@@ -403,9 +469,68 @@ void FragmentModule::AppendColorCombiner(Pica::TexturingRegs::TevStageConfig::Op
         }
     };
     out += fmt::format("clamp({}, vec3(0.0), vec3(1.0))", get_combiner());
+#endif
 }
 
 void FragmentModule::AppendAlphaCombiner(Pica::TexturingRegs::TevStageConfig::Operation operation) {
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "alpha_results_1";
+            case Operation::Modulate:
+                return "alpha_results_1 * alpha_results_2";
+            case Operation::Add:
+                return "alpha_results_1 + alpha_results_2";
+            case Operation::AddSigned:
+                return "alpha_results_1 + alpha_results_2 - 0.5";
+            case Operation::Lerp:
+                return "mix(alpha_results_2, alpha_results_1, alpha_results_3)";
+            case Operation::Subtract:
+                return "alpha_results_1 - alpha_results_2";
+            case Operation::MultiplyThenAdd:
+                return "(alpha_results_1 * alpha_results_2) + alpha_results_3";
+            case Operation::AddThenMultiply:
+                return "min(alpha_results_1 + alpha_results_2, 1.0) * alpha_results_3";
+            default:
+                LOG_CRITICAL(Render, "Unknown alpha combiner operation: {}", operation);
+                return "0.0";
+            }
+        };
+        out += fmt::format("clamp({}, 0.0, 1.0)", get_combiner());
+    } else {
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "alpha_results_1";
+            case Operation::Modulate:
+                return "alpha_results_1 * alpha_results_2";
+            case Operation::Add:
+                return "alpha_results_1 + alpha_results_2";
+            case Operation::AddSigned:
+                return "alpha_results_1 + alpha_results_2 - 0.5";
+            case Operation::Lerp:
+                return "mix(alpha_results_2, alpha_results_1, alpha_results_3)";
+            case Operation::Subtract:
+                return "alpha_results_1 - alpha_results_2";
+            case Operation::MultiplyThenAdd:
+                return "fma(alpha_results_1, alpha_results_2, alpha_results_3)";
+            case Operation::AddThenMultiply:
+                return "min(alpha_results_1 + alpha_results_2, 1.0) * alpha_results_3";
+            default:
+                LOG_CRITICAL(Render, "Unknown alpha combiner operation: {}", operation);
+                return "0.0";
+            }
+        };
+        out += fmt::format("clamp({}, 0.0, 1.0)", get_combiner());
+    }
+#else
     const auto get_combiner = [operation] {
         using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
         switch (operation) {
@@ -431,6 +556,7 @@ void FragmentModule::AppendAlphaCombiner(Pica::TexturingRegs::TevStageConfig::Op
         }
     };
     out += fmt::format("clamp({}, 0.0, 1.0)", get_combiner());
+#endif
 }
 
 void FragmentModule::WriteAlphaTestCondition(FramebufferRegs::CompareFunc func) {
@@ -491,10 +617,29 @@ void FragmentModule::WriteTevStage(u32 index) {
             out += ");\n";
         }
 
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += fmt::format("combiner_output = vec4(clamp(color_output_{0} * vec3({1}.0), "
+                               "vec3(0.0), vec3(1.0)), "
+                               "clamp(alpha_output_{0} * float({1}.0), 0.0, 1.0));\n",
+                               index, stage.GetColorMultiplier());
+        } else {
+            out +=
+                fmt::format("combiner_output = vec4("
+                            "clamp(color_output_{} * {}.0, vec3(0.0), vec3(1.0)), "
+                            "clamp(alpha_output_{} * {}.0, 0.0, 1.0));\n",
+                            index, stage.GetColorMultiplier(), index, stage.GetAlphaMultiplier());
+        }
+#else
         out += fmt::format("combiner_output = vec4("
                            "clamp(color_output_{} * {}.0, vec3(0.0), vec3(1.0)), "
                            "clamp(alpha_output_{} * {}.0, 0.0, 1.0));\n",
                            index, stage.GetColorMultiplier(), index, stage.GetAlphaMultiplier());
+#endif
     }
 
     out += "combiner_buffer = next_combiner_buffer;\n";
@@ -1177,10 +1322,25 @@ float ProcTexNoiseCoef(vec2 x) {
     out += fmt::format("float lod = log2(abs(float({}) * proctex_bias) * (duv.x + duv.y));\n",
                        config.proctex.lut_width);
     out += "if (proctex_bias == 0.0) lod = 0.0;\n";
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += fmt::format("lod = clamp(lod, {:#}.0, {:#}.0);\n",
+                           std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
+                           std::min(7.0f, static_cast<f32>(config.proctex.lod_max)));
+    } else {
+        out += fmt::format("lod = clamp(lod, {:#}, {:#});\n",
+                           std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
+                           std::min(7.0f, static_cast<f32>(config.proctex.lod_max)));
+    }
+#else
     out += fmt::format("lod = clamp(lod, {:#}, {:#});\n",
                        std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
                        std::min(7.0f, static_cast<f32>(config.proctex.lod_max)));
-
+#endif
     // Get shift offset before noise generation
     out += "float u_shift = ";
     AppendProcTexShiftOffset("uv.y", config.proctex.u_shift, config.proctex.u_clamp);
@@ -1485,6 +1645,43 @@ float LookupLightingLUT(int lut_index, int index, float delta) {
     }
     out += "}\n";
 
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += R"(
+float LookupLightingLUTUnsigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 256.0), 0.0, 255.0));
+    float delta = pos * 256.0 - float(index);
+    return LookupLightingLUT(lut_index, index, delta);
+}
+
+float LookupLightingLUTSigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 128.0), -128.0, 127.0));
+    float delta = pos * 128.0 - float(index);
+    if (index < 0) index += 256;
+    return LookupLightingLUT(lut_index, index, delta);
+}
+)";
+    } else {
+        out += R"(
+float LookupLightingLUTUnsigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 256.0), 0.f, 255.f));
+    float delta = pos * 256.0 - float(index);
+    return LookupLightingLUT(lut_index, index, delta);
+}
+
+float LookupLightingLUTSigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 128.0), -128.f, 127.f));
+    float delta = pos * 128.0 - float(index);
+    if (index < 0) index += 256;
+    return LookupLightingLUT(lut_index, index, delta);
+}
+)";
+    }
+#else
     out += R"(
 float LookupLightingLUTUnsigned(int lut_index, float pos) {
     int index = int(clamp(floor(pos * 256.0), 0.f, 255.f));
@@ -1499,7 +1696,7 @@ float LookupLightingLUTSigned(int lut_index, float pos) {
     return LookupLightingLUT(lut_index, index, delta);
 }
 )";
-
+#endif
     if (use_fragment_shader_barycentric) {
         out += R"(
 bool AreQuaternionsOpposite(vec4 qa, vec4 qb) {
