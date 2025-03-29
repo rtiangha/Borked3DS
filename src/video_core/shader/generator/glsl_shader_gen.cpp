@@ -50,10 +50,10 @@ const vec2 EPSILON_Z = vec2(0.000001f, -1.00001f);
 
 vec4 SanitizeVertex(vec4 vtx_pos) {
     float ndc_z = vtx_pos.z / vtx_pos.w;
-    if (ndc_z > 0.f && ndc_z < EPSILON_Z[0]) {
-        vtx_pos.z = 0.f;
+    if (ndc_z > 0.0f && ndc_z < EPSILON_Z[0]) {
+        vtx_pos.z = 0.0f;
     }
-    if (ndc_z < -1.f && ndc_z > EPSILON_Z[1]) {
+    if (ndc_z < -1.0f && ndc_z > EPSILON_Z[1]) {
         vtx_pos.z = -vtx_pos.w;
     }
     return vtx_pos;
@@ -209,7 +209,7 @@ std::string GenerateVertexShader(const ShaderSetup& setup, const PicaVSConfig& c
             if (separable_shader) {
                 out += fmt::format("layout(location = {}) ", i);
             }
-            out += fmt::format("out vec4 vs_out_attr{};\n", i);
+            out += fmt::format("vec4 vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
         }
         out += "void EmitVtx() {}\n";
     } else {
@@ -217,7 +217,7 @@ std::string GenerateVertexShader(const ShaderSetup& setup, const PicaVSConfig& c
 
         // output attributes declaration
         for (u32 i = 0; i < config.state.num_outputs; ++i) {
-            out += fmt::format("vec4 vs_out_attr{};\n", i);
+            out += fmt::format("vec4 vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
         }
 
         const auto semantic =
@@ -259,7 +259,7 @@ std::string GenerateVertexShader(const ShaderSetup& setup, const PicaVSConfig& c
                semantic(VSOutputAttributes::COLOR_G) + ", " +
                semantic(VSOutputAttributes::COLOR_B) + ", " +
                semantic(VSOutputAttributes::COLOR_A) + ");\n";
-        out += "    primary_color = min(abs(vtx_color), vec4(1.0));\n\n";
+        out += "    primary_color = min(abs(vtx_color), vec4(1.0f));\n\n";
 
         out += "    texcoord0 = vec2(" + semantic(VSOutputAttributes::TEXCOORD0_U) + ", " +
                semantic(VSOutputAttributes::TEXCOORD0_V) + ");\n";
@@ -288,9 +288,16 @@ std::string GenerateVertexShader(const ShaderSetup& setup, const PicaVSConfig& c
         }
     }
     for (u32 i = 0; i < config.state.num_outputs; ++i) {
-        out += fmt::format("    vs_out_attr{} = vec4(0.0, 0.0, 0.0, 1.0);\n", i);
+        out += fmt::format("    vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
     }
-    out += "\n    exec_shader();\n    EmitVtx();\n}\n\n";
+    out += "    // Initialize all vertex attributes to zero\n";
+    for (u32 i = 0; i < config.state.num_outputs; ++i) {
+        out += fmt::format("    vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
+    }
+    out += "\n    // Execute shader and emit vertex\n"
+           "    exec_shader();\n"
+           "    EmitVtx();\n"
+           "}\n\n";
 
     out += program_source;
 
@@ -306,7 +313,7 @@ static std::string GetGSCommonSource(const PicaGSConfigState& state, bool separa
         if (separable_shader) {
             out += fmt::format("layout(location = {}) ", i);
         }
-        out += fmt::format("in vec4 vs_out_attr{}[];\n", i);
+        out += fmt::format("vec4 vs_out_attr{} = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n", i);
     }
 
     out += R"(
@@ -354,7 +361,7 @@ struct Vertex {
     out += "    vec4 vtx_color = vec4(" + semantic(VSOutputAttributes::COLOR_R) + ", " +
            semantic(VSOutputAttributes::COLOR_G) + ", " + semantic(VSOutputAttributes::COLOR_B) +
            ", " + semantic(VSOutputAttributes::COLOR_A) + ");\n";
-    out += "    primary_color = min(abs(vtx_color), vec4(1.0));\n\n";
+    out += "    primary_color = min(abs(vtx_color), vec4(1.0f));\n\n";
 
     out += "    texcoord0 = vec2(" + semantic(VSOutputAttributes::TEXCOORD0_U) + ", " +
            semantic(VSOutputAttributes::TEXCOORD0_V) + ");\n";
