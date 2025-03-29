@@ -16,7 +16,7 @@ uniform int reverse_interlaced;
 
 void main() {
     float screen_row = o_resolution.x * frag_tex_coord.x;
-    if (int(screen_row) % 2 == reverse_interlaced)
+    if (int(floor(screen_row)) % 2 == reverse_interlaced)
         color = texture(color_texture, frag_tex_coord);
     else
         color = texture(color_texture_r, frag_tex_coord);

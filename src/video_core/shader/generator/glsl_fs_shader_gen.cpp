@@ -3,7 +3,14 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#ifndef __APPLE__
+#include <glad/gl.h>
+#include "video_core/renderer_opengl/gl_driver.h"
+#include "video_core/renderer_opengl/gl_vars.h"
+#endif
+
 #include "video_core/shader/generator/glsl_fs_shader_gen.h"
+#include "video_core/shader/generator/shader_uniforms.h"
 
 namespace Pica::Shader::Generator::GLSL {
 
@@ -54,6 +61,24 @@ precision mediump uimage2D;
 #endif
 )";
 
+#ifndef __APPLE__
+// High precision may or may not be supported in GLES3. If it isn't, use medium precision instead.
+// For OpenGLES < 3.2.
+static constexpr char fragment_shader_precision_OES_2D[] = R"(
+#if GL_ES
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp int;
+precision highp float;
+precision highp uimage2D;
+#else
+precision mediump int;
+precision mediump float;
+precision mediump uimage2D;
+#endif // GL_FRAGMENT_PRECISION_HIGH
+#endif
+)";
+#endif
+
 constexpr static std::string_view FSUniformBlockDef = R"(
 #define NUM_TEV_STAGES 6
 #define NUM_LIGHTS 8
@@ -99,6 +124,7 @@ layout (binding = 2, std140) uniform fs_data {
     vec3 tex_lod_bias;
     vec4 tex_border_color[3];
     vec4 blend_color;
+    int use_texture2d_lut;
 };
 )";
 
@@ -349,6 +375,72 @@ void FragmentModule::AppendAlphaModifier(
 }
 
 void FragmentModule::AppendColorCombiner(Pica::TexturingRegs::TevStageConfig::Operation operation) {
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "color_results_1";
+            case Operation::Modulate:
+                return "color_results_1 * color_results_2";
+            case Operation::Add:
+                return "color_results_1 + color_results_2";
+            case Operation::AddSigned:
+                return "color_results_1 + color_results_2 - vec3(0.5)";
+            case Operation::Lerp:
+                return "mix(color_results_2, color_results_1, color_results_3)";
+            case Operation::Subtract:
+                return "color_results_1 - color_results_2";
+            case Operation::MultiplyThenAdd:
+                return "(color_results_1 * color_results_2) + color_results_3";
+            case Operation::AddThenMultiply:
+                return "min(color_results_1 + color_results_2, vec3(1.0)) * color_results_3";
+            case Operation::Dot3_RGB:
+            case Operation::Dot3_RGBA:
+                return "vec3(dot(color_results_1 - vec3(0.5), color_results_2 - vec3(0.5)) * 4.0)";
+            default:
+                LOG_CRITICAL(Render, "Unknown color combiner operation: {}", operation);
+                return "vec3(0.0)";
+            }
+        };
+        out += fmt::format("clamp({}, vec3(0.0), vec3(1.0))", get_combiner());
+    } else {
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "color_results_1";
+            case Operation::Modulate:
+                return "color_results_1 * color_results_2";
+            case Operation::Add:
+                return "color_results_1 + color_results_2";
+            case Operation::AddSigned:
+                return "color_results_1 + color_results_2 - vec3(0.5)";
+            case Operation::Lerp:
+                return "mix(color_results_2, color_results_1, color_results_3)";
+            case Operation::Subtract:
+                return "color_results_1 - color_results_2";
+            case Operation::MultiplyThenAdd:
+                return "fma(color_results_1, color_results_2, color_results_3)";
+            case Operation::AddThenMultiply:
+                return "min(color_results_1 + color_results_2, vec3(1.0)) * color_results_3";
+            case Operation::Dot3_RGB:
+            case Operation::Dot3_RGBA:
+                return "vec3(dot(color_results_1 - vec3(0.5), color_results_2 - vec3(0.5)) * 4.0)";
+            default:
+                LOG_CRITICAL(Render, "Unknown color combiner operation: {}", operation);
+                return "vec3(0.0)";
+            }
+        };
+        out += fmt::format("clamp({}, vec3(0.0), vec3(1.0))", get_combiner());
+    }
+#else
     const auto get_combiner = [operation] {
         using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
         switch (operation) {
@@ -377,9 +469,68 @@ void FragmentModule::AppendColorCombiner(Pica::TexturingRegs::TevStageConfig::Op
         }
     };
     out += fmt::format("clamp({}, vec3(0.0), vec3(1.0))", get_combiner());
+#endif
 }
 
 void FragmentModule::AppendAlphaCombiner(Pica::TexturingRegs::TevStageConfig::Operation operation) {
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "alpha_results_1";
+            case Operation::Modulate:
+                return "alpha_results_1 * alpha_results_2";
+            case Operation::Add:
+                return "alpha_results_1 + alpha_results_2";
+            case Operation::AddSigned:
+                return "alpha_results_1 + alpha_results_2 - 0.5";
+            case Operation::Lerp:
+                return "mix(alpha_results_2, alpha_results_1, alpha_results_3)";
+            case Operation::Subtract:
+                return "alpha_results_1 - alpha_results_2";
+            case Operation::MultiplyThenAdd:
+                return "(alpha_results_1 * alpha_results_2) + alpha_results_3";
+            case Operation::AddThenMultiply:
+                return "min(alpha_results_1 + alpha_results_2, 1.0) * alpha_results_3";
+            default:
+                LOG_CRITICAL(Render, "Unknown alpha combiner operation: {}", operation);
+                return "0.0";
+            }
+        };
+        out += fmt::format("clamp({}, 0.0, 1.0)", get_combiner());
+    } else {
+        const auto get_combiner = [operation] {
+            using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
+            switch (operation) {
+            case Operation::Replace:
+                return "alpha_results_1";
+            case Operation::Modulate:
+                return "alpha_results_1 * alpha_results_2";
+            case Operation::Add:
+                return "alpha_results_1 + alpha_results_2";
+            case Operation::AddSigned:
+                return "alpha_results_1 + alpha_results_2 - 0.5";
+            case Operation::Lerp:
+                return "mix(alpha_results_2, alpha_results_1, alpha_results_3)";
+            case Operation::Subtract:
+                return "alpha_results_1 - alpha_results_2";
+            case Operation::MultiplyThenAdd:
+                return "fma(alpha_results_1, alpha_results_2, alpha_results_3)";
+            case Operation::AddThenMultiply:
+                return "min(alpha_results_1 + alpha_results_2, 1.0) * alpha_results_3";
+            default:
+                LOG_CRITICAL(Render, "Unknown alpha combiner operation: {}", operation);
+                return "0.0";
+            }
+        };
+        out += fmt::format("clamp({}, 0.0, 1.0)", get_combiner());
+    }
+#else
     const auto get_combiner = [operation] {
         using Operation = Pica::TexturingRegs::TevStageConfig::Operation;
         switch (operation) {
@@ -405,6 +556,7 @@ void FragmentModule::AppendAlphaCombiner(Pica::TexturingRegs::TevStageConfig::Op
         }
     };
     out += fmt::format("clamp({}, 0.0, 1.0)", get_combiner());
+#endif
 }
 
 void FragmentModule::WriteAlphaTestCondition(FramebufferRegs::CompareFunc func) {
@@ -465,10 +617,29 @@ void FragmentModule::WriteTevStage(u32 index) {
             out += ");\n";
         }
 
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += fmt::format("combiner_output = vec4(clamp(color_output_{0} * vec3({1}.0), "
+                               "vec3(0.0), vec3(1.0)), "
+                               "clamp(alpha_output_{0} * float({1}.0), 0.0, 1.0));\n",
+                               index, stage.GetColorMultiplier());
+        } else {
+            out +=
+                fmt::format("combiner_output = vec4("
+                            "clamp(color_output_{} * {}.0, vec3(0.0), vec3(1.0)), "
+                            "clamp(alpha_output_{} * {}.0, 0.0, 1.0));\n",
+                            index, stage.GetColorMultiplier(), index, stage.GetAlphaMultiplier());
+        }
+#else
         out += fmt::format("combiner_output = vec4("
                            "clamp(color_output_{} * {}.0, vec3(0.0), vec3(1.0)), "
                            "clamp(alpha_output_{} * {}.0, 0.0, 1.0));\n",
                            index, stage.GetColorMultiplier(), index, stage.GetAlphaMultiplier());
+#endif
     }
 
     out += "combiner_buffer = next_combiner_buffer;\n";
@@ -820,10 +991,25 @@ void FragmentModule::WriteFog() {
 
     // Generate clamped fog factor from LUT for given fog index
     out += "float fog_i = clamp(floor(fog_index), 0.0, 127.0);\n"
-           "float fog_f = fog_index - fog_i;\n"
-           "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + "
-           "fog_lut_offset).rg;\n"
-           "float fog_factor = fog_lut_entry.r + fog_lut_entry.g * fog_f;\n"
+           "float fog_f = fog_index - fog_i;\n";
+
+    if (!profile.is_vulkan) {
+        out += R"(
+    vec2 fog_lut_entry;
+    if (use_texture2d_lut != 0) {
+        // 2D texture fallback path
+        vec2 tex_coord = vec2(float(fog_i)/128.0, 0.0);
+        fog_lut_entry = texture2D(texture_buffer_lut_lf, tex_coord).rg;
+    } else {
+        fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + fog_lut_offset).rg;
+    }
+)";
+    } else {
+        out += "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + "
+               "fog_lut_offset).rg;\n";
+    }
+
+    out += "float fog_factor = fog_lut_entry.r + fog_lut_entry.g * fog_f;\n"
            "fog_factor = clamp(fog_factor, 0.0, 1.0);\n";
 
     // Blend the fog
@@ -1136,10 +1322,25 @@ float ProcTexNoiseCoef(vec2 x) {
     out += fmt::format("float lod = log2(abs(float({}) * proctex_bias) * (duv.x + duv.y));\n",
                        config.proctex.lut_width);
     out += "if (proctex_bias == 0.0) lod = 0.0;\n";
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += fmt::format("lod = clamp(lod, {:#}.0, {:#}.0);\n",
+                           std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
+                           std::min(7.0f, static_cast<f32>(config.proctex.lod_max)));
+    } else {
+        out += fmt::format("lod = clamp(lod, {:#}, {:#});\n",
+                           std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
+                           std::min(7.0f, static_cast<f32>(config.proctex.lod_max)));
+    }
+#else
     out += fmt::format("lod = clamp(lod, {:#}, {:#});\n",
                        std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
                        std::min(7.0f, static_cast<f32>(config.proctex.lod_max)));
-
+#endif
     // Get shift offset before noise generation
     out += "float u_shift = ";
     AppendProcTexShiftOffset("uv.y", config.proctex.u_shift, config.proctex.u_clamp);
@@ -1207,7 +1408,11 @@ void FragmentModule::DefineExtensions() {
     if (config.framebuffer.shadow_rendering) {
         use_fragment_shader_interlock = true;
         if (profile.has_fragment_shader_interlock) {
+            out += "#ifdef GL_ES\n";
+            out += "#extension GL_EXT_fragment_shader_interlock : require\n";
+            out += "#else\n";
             out += "#extension GL_ARB_fragment_shader_interlock : enable\n";
+            out += "#endif\n";
             out += "#define beginInvocationInterlock beginInvocationInterlockARB\n";
             out += "#define endInvocationInterlock endInvocationInterlockARB\n";
         } else if (profile.has_gl_nv_fragment_shader_interlock) {
@@ -1251,7 +1456,19 @@ void FragmentModule::DefineExtensions() {
     }
 
     if (!profile.is_vulkan) {
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += fragment_shader_precision_OES_2D;
+        } else {
+            out += fragment_shader_precision_OES;
+        }
+#else
         out += fragment_shader_precision_OES;
+#endif
     }
 }
 
@@ -1317,11 +1534,18 @@ void FragmentModule::DefineBindingsVK() {
 }
 
 void FragmentModule::DefineBindingsGL() {
-    // Uniform and texture buffers
-    out += FSUniformBlockDef;
-    out += "layout(binding = 3) uniform samplerBuffer texture_buffer_lut_lf;\n";
-    out += "layout(binding = 4) uniform samplerBuffer texture_buffer_lut_rg;\n";
-    out += "layout(binding = 5) uniform samplerBuffer texture_buffer_lut_rgba;\n\n";
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += FSUniformBlockDef;
+        out += "layout(binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n";
+        out += "layout(binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n";
+        out += "layout(binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n\n";
+    }
+#endif
 
     // Texture samplers
     const auto texture_type = config.texture.texture0_type.Value();
@@ -1393,10 +1617,56 @@ void FragmentModule::DefineLightingHelpers() {
 
     out += R"(
 float LookupLightingLUT(int lut_index, int index, float delta) {
+)";
+
+    // Add the texture2d fallback path
+    if (!profile.is_vulkan) {
+        out += R"(
+    if (use_texture2d_lut != 0) {
+        // 2D texture fallback path
+        int x_offset = (lut_index % 4) * 256;  // 4 LUTs per row
+        int y_offset = lut_index / 4;          // Move to next row every 4 LUTs
+        int x_coord = x_offset + index;
+        vec2 tex_coord = vec2(float(x_coord)/1024.0, float(y_offset)/6.0);
+        return texture2D(texture_buffer_lut_rg, tex_coord).r + 
+               texture2D(texture_buffer_lut_rg, tex_coord).g * delta;
+    } else {
+)";
+    }
+
+    // Original texture buffer path
+    out += R"(
     vec2 entry = texelFetch(texture_buffer_lut_lf, lighting_lut_offset[lut_index >> 2][lut_index & 3] + index).rg;
     return entry.r + entry.g * delta;
+)";
+
+    if (!profile.is_vulkan) {
+        out += "}\n";
+    }
+    out += "}\n";
+
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += R"(
+float LookupLightingLUTUnsigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 256.0), 0.0, 255.0));
+    float delta = pos * 256.0 - float(index);
+    return LookupLightingLUT(lut_index, index, delta);
 }
 
+float LookupLightingLUTSigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 128.0), -128.0, 127.0));
+    float delta = pos * 128.0 - float(index);
+    if (index < 0) index += 256;
+    return LookupLightingLUT(lut_index, index, delta);
+}
+)";
+    } else {
+        out += R"(
 float LookupLightingLUTUnsigned(int lut_index, float pos) {
     int index = int(clamp(floor(pos * 256.0), 0.f, 255.f));
     float delta = pos * 256.0 - float(index);
@@ -1410,7 +1680,23 @@ float LookupLightingLUTSigned(int lut_index, float pos) {
     return LookupLightingLUT(lut_index, index, delta);
 }
 )";
+    }
+#else
+    out += R"(
+float LookupLightingLUTUnsigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 256.0), 0.f, 255.f));
+    float delta = pos * 256.0 - float(index);
+    return LookupLightingLUT(lut_index, index, delta);
+}
 
+float LookupLightingLUTSigned(int lut_index, float pos) {
+    int index = int(clamp(floor(pos * 128.0), -128.f, 127.f));
+    float delta = pos * 128.0 - float(index);
+    if (index < 0) index += 256;
+    return LookupLightingLUT(lut_index, index, delta);
+}
+)";
+#endif
     if (use_fragment_shader_barycentric) {
         out += R"(
 bool AreQuaternionsOpposite(vec4 qa, vec4 qb) {

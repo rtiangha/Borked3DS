@@ -33,9 +33,9 @@ uniform int layer;
 
 vec3 correct_color(vec3 col) {
     vec3 result;
-    result.r = pow(col.r, 1.0 / g.r);
-    result.g = pow(col.g, 1.0 / g.g);
-    result.b = pow(col.b, 1.0 / g.b);
+    result.r = pow(max(col.r, 0.0), 1.0 / g.r);
+    result.g = pow(max(col.g, 0.0), 1.0 / g.g);
+    result.b = pow(max(col.b, 0.0), 1.0 / g.b);
     return result;
 }
 void main() {

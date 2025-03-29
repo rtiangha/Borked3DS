@@ -10,12 +10,12 @@
 // "Conversion of a Stereo Pair to Anaglyph with
 // the Least-Squares Projection Method"
 // Eric Dubois, March 2009
-const mat3 l = mat3( 0.437, 0.449, 0.164,
-              -0.062,-0.062,-0.024,
-              -0.048,-0.050,-0.017);
-const mat3 r = mat3(-0.011,-0.032,-0.007,
-               0.377, 0.761, 0.009,
-              -0.026,-0.093, 1.234);
+const mat3 l = mat3( 0.437f, 0.449f, 0.164f,
+              -0.062f,-0.062f,-0.024f,
+              -0.048f,-0.050f,-0.017f);
+const mat3 r = mat3(-0.011f,-0.032f,-0.007f,
+               0.377f, 0.761f, 0.009f,
+              -0.026f,-0.093f, 1.234f);
 
 layout(location = 0) in vec2 frag_tex_coord;
 layout(location = 0) out vec4 color;

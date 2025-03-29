@@ -40,4 +40,4 @@ struct ScopeHelper {
  * \endcode
  */
 #define SCOPE_EXIT(body)                                                                           \
-    auto CONCAT2(scope_exit_helper_, __LINE__) = detail::ScopeHelper([]() {}, [&]() body)
+    auto CONCAT2(scope_exit_helper_, __LINE__) = ::detail::ScopeHelper([]() {}, [&]() body)
