@@ -52,11 +52,17 @@ precision highp int;
 precision highp float;
 precision highp samplerBuffer;
 precision highp uimage2D;
+precision highp sampler2D;
+precision highp isampler2D;
+precision highp usampler2D;
 #else
 precision mediump int;
 precision mediump float;
 precision mediump samplerBuffer;
 precision mediump uimage2D;
+precision mediump sampler2D;
+precision mediump isampler2D;
+precision mediump usampler2D;
 #endif // GL_FRAGMENT_PRECISION_HIGH
 #endif
 )";
@@ -1023,6 +1029,11 @@ void FragmentModule::WriteGas() {
 }
 
 void FragmentModule::WriteShadow() {
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+#endif
     out += R"(
 uint d = uint(clamp(depth, 0.0, 1.0) * float(0xFFFFFF));
 uint s = uint(combiner_output.g * float(0xFF));
@@ -1030,6 +1041,25 @@ ivec2 image_coord = ivec2(gl_FragCoord.xy);
 )";
 
     if (use_fragment_shader_interlock) {
+#ifndef __APPLE__
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += R"(
+beginInvocationInterlock();
+uint old_shadow = texelFetch(shadow_buffer, image_coord, 0).x;
+uint new_shadow = UpdateShadow(old_shadow, d, s);
+imageStore(shadow_buffer, image_coord, uvec4(new_shadow));
+endInvocationInterlock();
+)";
+        } else {
+            out += R"(
+beginInvocationInterlock();
+uint old_shadow = imageLoad(shadow_buffer, image_coord).x;
+uint new_shadow = UpdateShadow(old_shadow, d, s);
+imageStore(shadow_buffer, image_coord, uvec4(new_shadow));
+endInvocationInterlock();
+)";
+        }
+#else
         out += R"(
 beginInvocationInterlock();
 uint old_shadow = imageLoad(shadow_buffer, image_coord).x;
@@ -1037,7 +1067,31 @@ uint new_shadow = UpdateShadow(old_shadow, d, s);
 imageStore(shadow_buffer, image_coord, uvec4(new_shadow));
 endInvocationInterlock();
 )";
+#endif
     } else {
+#ifndef __APPLE__
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += R"(
+uint old = texelFetch(shadow_buffer, image_coord, 0).x;
+uint new1;
+uint old2;
+do {
+    old2 = old;
+    new1 = UpdateShadow(old, d, s);
+} while ((old = imageAtomicCompSwap(shadow_buffer, image_coord, old, new1)) != old2);
+)";
+        } else {
+            out += R"(
+uint old = imageLoad(shadow_buffer, image_coord).x;
+uint new1;
+uint old2;
+do {
+    old2 = old;
+    new1 = UpdateShadow(old, d, s);
+} while ((old = imageAtomicCompSwap(shadow_buffer, image_coord, old, new1)) != old2);
+)";
+        }
+#else
         out += R"(
 uint old = imageLoad(shadow_buffer, image_coord).x;
 uint new1;
@@ -1047,6 +1101,7 @@ do {
     new1 = UpdateShadow(old, d, s);
 } while ((old = imageAtomicCompSwap(shadow_buffer, image_coord, old, new1)) != old2);
 )";
+#endif
     }
 }
 
@@ -1222,6 +1277,36 @@ void FragmentModule::DefineProcTexSampler() {
     // For NoiseLUT/ColorMap/AlphaMap, coord=0.0 is lut[0], coord=127.0/128.0 is lut[127] and
     // coord=1.0 is lut[127]+lut_diff[127]. For other indices, the result is interpolated using
     // value entries and difference entries.
+
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        out += R"(
+float ProcTexLookupLUT(int offset, float coord) {
+    coord = coord * 128.0;
+    float index_i = clamp(floor(coord), 0.0, 127.0);
+    float index_f = coord - index_i; // fract() cannot be used here because 128.0 needs to be
+                                     // extracted as index_i = 127.0 and index_f = 1.0
+vec2 entry = texelFetch(texture_buffer_lut_rg, ivec2(int(index_i) + offset, 0), 0).rg;
+    return clamp(entry.r + entry.g * index_f, 0.0, 1.0);
+}
+    )";
+    } else {
+        out += R"(
+float ProcTexLookupLUT(int offset, float coord) {
+    coord = coord * 128.0;
+    float index_i = clamp(floor(coord), 0.0, 127.0);
+    float index_f = coord - index_i; // fract() cannot be used here because 128.0 needs to be
+                                     // extracted as index_i = 127.0 and index_f = 1.0
+    vec2 entry = texelFetch(texture_buffer_lut_rg, int(index_i) + offset).rg;
+    return clamp(entry.r + entry.g * index_f, 0.0, 1.0);
+}
+    )";
+    }
+#else
     out += R"(
 float ProcTexLookupLUT(int offset, float coord) {
     coord = coord * 128.0;
@@ -1232,7 +1317,7 @@ float ProcTexLookupLUT(int offset, float coord) {
     return clamp(entry.r + entry.g * index_f, 0.0, 1.0);
 }
     )";
-
+#endif
     // Noise utility
     if (config.proctex.noise_enable) {
         // See swrasterizer/proctex.cpp for more information about these functions
@@ -1298,8 +1383,18 @@ float ProcTexNoiseCoef(vec2 x) {
     case ProcTexFilter::NearestMipmapLinear:
     case ProcTexFilter::NearestMipmapNearest:
         out += "lut_coord += float(lut_offset);\n";
+#ifndef __APPLE__
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += "return texelFetch(texture_buffer_lut_rgba, ivec2(int(round(lut_coord)) + "
+                   "proctex_lut_offset, 0), 0);\n";
+        } else {
+            out += "return texelFetch(texture_buffer_lut_rgba, int(round(lut_coord)) + "
+                   "proctex_lut_offset);\n";
+        }
+#else
         out += "return texelFetch(texture_buffer_lut_rgba, int(round(lut_coord)) + "
                "proctex_lut_offset);\n";
+#endif
         break;
     }
 
@@ -1323,10 +1418,6 @@ float ProcTexNoiseCoef(vec2 x) {
                        config.proctex.lut_width);
     out += "if (proctex_bias == 0.0) lod = 0.0;\n";
 #ifndef __APPLE__
-    GLint majorVersion = 0, minorVersion = 0;
-    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-
     if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
         out += fmt::format("lod = clamp(lod, {:#}.0, {:#}.0);\n",
                            std::max(0.0f, static_cast<f32>(config.proctex.lod_min)),
@@ -1567,13 +1658,33 @@ void FragmentModule::DefineBindingsGL() {
     if (texture_type == TextureType::Shadow2D || texture_type == TextureType::ShadowCube) {
         static constexpr std::array postfixes = {"px", "nx", "py", "ny", "pz", "nz"};
         for (u32 i = 0; i < postfixes.size(); i++) {
+#ifndef __APPLE__
+            if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+                out += fmt::format(
+                    "layout(binding = {}) uniform readonly sampler2D shadow_texture_{};\n", i,
+                    postfixes[i]);
+            } else {
+                out += fmt::format(
+                    "layout(binding = {}, r32ui) uniform readonly uimage2D shadow_texture_{};\n", i,
+                    postfixes[i]);
+            }
+#else
             out += fmt::format(
                 "layout(binding = {}, r32ui) uniform readonly uimage2D shadow_texture_{};\n", i,
                 postfixes[i]);
+#endif
         }
     }
     if (config.framebuffer.shadow_rendering) {
+#ifndef __APPLE__
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += "layout(binding = 6) uniform sampler2D shadow_buffer;\n\n";
+        } else {
+            out += "layout(binding = 6, r32ui) uniform uimage2D shadow_buffer;\n\n";
+        }
+#else
         out += "layout(binding = 6, r32ui) uniform uimage2D shadow_buffer;\n\n";
+#endif
     }
 }
 
@@ -1634,22 +1745,37 @@ float LookupLightingLUT(int lut_index, int index, float delta) {
 )";
     }
 
-    // Original texture buffer path
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        // Original texture buffer path
+        out += R"(
+    ivec2 coord = ivec2(lighting_lut_offset[lut_index >> 2][lut_index & 3] + index, 0);
+    vec2 entry = texelFetch(texture_buffer_lut_lf, coord, 0).rg;
+    return entry.r + entry.g * delta;
+)";
+    } else {
+        out += R"(
+    vec2 entry = texelFetch(texture_buffer_lut_lf, lighting_lut_offset[lut_index >> 2][lut_index & 3] + index).rg;
+    return entry.r + entry.g * delta;
+)";
+    }
+#else
     out += R"(
     vec2 entry = texelFetch(texture_buffer_lut_lf, lighting_lut_offset[lut_index >> 2][lut_index & 3] + index).rg;
     return entry.r + entry.g * delta;
 )";
 
+#endif
     if (!profile.is_vulkan) {
         out += "}\n";
     }
     out += "}\n";
 
 #ifndef __APPLE__
-    GLint majorVersion = 0, minorVersion = 0;
-    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-
     if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
         out += R"(
 float LookupLightingLUTUnsigned(int lut_index, float pos) {
@@ -1772,6 +1898,33 @@ vec4 shadowTexture(vec2 uv, float w) {
 )";
 
             } else {
+#ifndef __APPLE__
+                GLint majorVersion = 0, minorVersion = 0;
+                glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+                glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+                if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+                    out += R"(
+float SampleShadow2D(ivec2 uv, uint z) {
+    if (any(bvec4(lessThan(uv, ivec2(0)), greaterThanEqual(uv, imageSize(shadow_texture_px)))))
+        return 1.0;
+    return CompareShadow(texelFetch(shadow_texture_px, uv, 0).x, z);
+}
+
+vec4 shadowTexture(vec2 uv, float w) {
+)";
+                } else {
+                    out += R"(
+float SampleShadow2D(ivec2 uv, uint z) {
+    if (any(bvec4(lessThan(uv, ivec2(0)), greaterThanEqual(uv, imageSize(shadow_texture_px)))))
+        return 1.0;
+    return CompareShadow(imageLoad(shadow_texture_px, uv).x, z);
+}
+
+vec4 shadowTexture(vec2 uv, float w) {
+)";
+                }
+#else
                 out += R"(
 float SampleShadow2D(ivec2 uv, uint z) {
     if (any(bvec4(lessThan(uv, ivec2(0)), greaterThanEqual(uv, imageSize(shadow_texture_px)))))
@@ -1781,6 +1934,7 @@ float SampleShadow2D(ivec2 uv, uint z) {
 
 vec4 shadowTexture(vec2 uv, float w) {
 )";
+#endif
                 if (!config.texture.shadow_texture_orthographic) {
                     out += "uv /= w;";
                 }
@@ -1866,6 +2020,185 @@ vec4 shadowTextureCube(vec2 uv, float w) {
 }
     )";
             } else {
+#ifndef __APPLE__
+                GLint majorVersion = 0, minorVersion = 0;
+                glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+                glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+                if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+                    out += R"(
+vec4 shadowTextureCube(vec2 uv, float w) {
+    ivec2 size = imageSize(shadow_texture_px);
+    vec3 c = vec3(uv, w);
+    vec3 a = abs(c);
+    if (a.x > a.y && a.x > a.z) {
+        w = a.x;
+        uv = -c.zy;
+        if (c.x < 0.0) uv.x = -uv.x;
+    } else if (a.y > a.z) {
+        w = a.y;
+        uv = c.xz;
+        if (c.y < 0.0) uv.y = -uv.y;
+    } else {
+        w = a.z;
+        uv = -c.xy;
+        if (c.z > 0.0) uv.x = -uv.x;
+    }
+    uint z = uint(max(0, int(min(w, 1.0) * float(0xFFFFFF)) - shadow_texture_bias));
+    vec2 coord = vec2(size) * (uv / w * vec2(0.5) + vec2(0.5)) - vec2(0.5);
+    vec2 coord_floor = floor(coord);
+    vec2 f = coord - coord_floor;
+    ivec2 i00 = ivec2(coord_floor);
+    ivec2 i10 = i00 + ivec2(1, 0);
+    ivec2 i01 = i00 + ivec2(0, 1);
+    ivec2 i11 = i00 + ivec2(1, 1);
+    ivec2 cmin = ivec2(0), cmax = size - ivec2(1, 1);
+    i00 = clamp(i00, cmin, cmax);
+    i10 = clamp(i10, cmin, cmax);
+    i01 = clamp(i01, cmin, cmax);
+    i11 = clamp(i11, cmin, cmax);
+    uvec4 pixels;
+    // This part should have been refactored into functions,
+    // but many drivers don't like passing uimage2D as parameters
+    if (a.x > a.y && a.x > a.z) {
+        if (c.x > 0.0)
+            pixels = uvec4(
+                texelFetch(shadow_texture_px, i00, 0).r,  // Replaced imageLoad
+                texelFetch(shadow_texture_px, i10, 0).r,
+                texelFetch(shadow_texture_px, i01, 0).r,
+                texelFetch(shadow_texture_px, i11, 0).r
+            );
+        else
+            pixels = uvec4(
+                texelFetch(shadow_texture_nx, i00, 0).r,  // Replaced imageLoad
+                texelFetch(shadow_texture_nx, i10, 0).r,
+                texelFetch(shadow_texture_nx, i01, 0).r,
+                texelFetch(shadow_texture_nx, i11, 0).r
+            );
+    } else if (a.y > a.z) {
+        if (c.y > 0.0)
+            pixels = uvec4(
+                texelFetch(shadow_texture_py, i00, 0).r,  // Replaced imageLoad
+                texelFetch(shadow_texture_py, i10, 0).r,
+                texelFetch(shadow_texture_py, i01, 0).r,
+                texelFetch(shadow_texture_py, i11, 0).r
+            );
+        else
+            pixels = uvec4(
+                texelFetch(shadow_texture_ny, i00, 0).r,  // Replaced imageLoad
+                texelFetch(shadow_texture_ny, i10, 0).r,
+                texelFetch(shadow_texture_ny, i01, 0).r,
+                texelFetch(shadow_texture_ny, i11, 0).r
+            );
+    } else {
+        if (c.z > 0.0)
+            pixels = uvec4(
+                texelFetch(shadow_texture_pz, i00, 0).r,  // Replaced imageLoad
+                texelFetch(shadow_texture_pz, i10, 0).r,
+                texelFetch(shadow_texture_pz, i01, 0).r,
+                texelFetch(shadow_texture_pz, i11, 0).r
+            );
+        else
+            pixels = uvec4(
+                texelFetch(shadow_texture_nz, i00, 0).r,  // Replaced imageLoad
+                texelFetch(shadow_texture_nz, i10, 0).r,
+                texelFetch(shadow_texture_nz, i01, 0).r,
+                texelFetch(shadow_texture_nz, i11, 0).r
+            );
+    }
+    vec4 s = vec4(
+        CompareShadow(pixels.x, z),
+        CompareShadow(pixels.y, z),
+        CompareShadow(pixels.z, z),
+        CompareShadow(pixels.w, z));
+    return vec4(mix2(s, f));
+}
+    )";
+                } else {
+                    out += R"(
+vec4 shadowTextureCube(vec2 uv, float w) {
+    ivec2 size = imageSize(shadow_texture_px);
+    vec3 c = vec3(uv, w);
+    vec3 a = abs(c);
+    if (a.x > a.y && a.x > a.z) {
+        w = a.x;
+        uv = -c.zy;
+        if (c.x < 0.0) uv.x = -uv.x;
+    } else if (a.y > a.z) {
+        w = a.y;
+        uv = c.xz;
+        if (c.y < 0.0) uv.y = -uv.y;
+    } else {
+        w = a.z;
+        uv = -c.xy;
+        if (c.z > 0.0) uv.x = -uv.x;
+    }
+    uint z = uint(max(0, int(min(w, 1.0) * float(0xFFFFFF)) - shadow_texture_bias));
+    vec2 coord = vec2(size) * (uv / w * vec2(0.5) + vec2(0.5)) - vec2(0.5);
+    vec2 coord_floor = floor(coord);
+    vec2 f = coord - coord_floor;
+    ivec2 i00 = ivec2(coord_floor);
+    ivec2 i10 = i00 + ivec2(1, 0);
+    ivec2 i01 = i00 + ivec2(0, 1);
+    ivec2 i11 = i00 + ivec2(1, 1);
+    ivec2 cmin = ivec2(0), cmax = size - ivec2(1, 1);
+    i00 = clamp(i00, cmin, cmax);
+    i10 = clamp(i10, cmin, cmax);
+    i01 = clamp(i01, cmin, cmax);
+    i11 = clamp(i11, cmin, cmax);
+    uvec4 pixels;
+    // This part should have been refactored into functions,
+    // but many drivers don't like passing uimage2D as parameters
+    if (a.x > a.y && a.x > a.z) {
+        if (c.x > 0.0)
+            pixels = uvec4(
+                imageLoad(shadow_texture_px, i00).r,
+                imageLoad(shadow_texture_px, i10).r,
+                imageLoad(shadow_texture_px, i01).r,
+                imageLoad(shadow_texture_px, i11).r);
+        else
+            pixels = uvec4(
+                imageLoad(shadow_texture_nx, i00).r,
+                imageLoad(shadow_texture_nx, i10).r,
+                imageLoad(shadow_texture_nx, i01).r,
+                imageLoad(shadow_texture_nx, i11).r);
+    } else if (a.y > a.z) {
+        if (c.y > 0.0)
+            pixels = uvec4(
+                imageLoad(shadow_texture_py, i00).r,
+                imageLoad(shadow_texture_py, i10).r,
+                imageLoad(shadow_texture_py, i01).r,
+                imageLoad(shadow_texture_py, i11).r);
+        else
+            pixels = uvec4(
+                imageLoad(shadow_texture_ny, i00).r,
+                imageLoad(shadow_texture_ny, i10).r,
+                imageLoad(shadow_texture_ny, i01).r,
+                imageLoad(shadow_texture_ny, i11).r);
+    } else {
+        if (c.z > 0.0)
+            pixels = uvec4(
+                imageLoad(shadow_texture_pz, i00).r,
+                imageLoad(shadow_texture_pz, i10).r,
+                imageLoad(shadow_texture_pz, i01).r,
+                imageLoad(shadow_texture_pz, i11).r);
+        else
+            pixels = uvec4(
+                imageLoad(shadow_texture_nz, i00).r,
+                imageLoad(shadow_texture_nz, i10).r,
+                imageLoad(shadow_texture_nz, i01).r,
+                imageLoad(shadow_texture_nz, i11).r);
+    }
+    vec4 s = vec4(
+        CompareShadow(pixels.x, z),
+        CompareShadow(pixels.y, z),
+        CompareShadow(pixels.z, z),
+        CompareShadow(pixels.w, z));
+    return vec4(mix2(s, f));
+}
+    )";
+                }
+#else
                 out += R"(
 vec4 shadowTextureCube(vec2 uv, float w) {
     ivec2 size = imageSize(shadow_texture_px);
@@ -1948,6 +2281,7 @@ vec4 shadowTextureCube(vec2 uv, float w) {
     return vec4(mix2(s, f));
 }
     )";
+#endif
             }
         }
     }
