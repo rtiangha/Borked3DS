@@ -71,7 +71,6 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES = {{
     {GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x6, GL_UNSIGNED_BYTE},
 }};
 
-#ifndef __ANDROID__
 static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
     DEFAULT_TUPLE,
     {GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_UNSIGNED_BYTE},
@@ -82,7 +81,6 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
     {GL_COMPRESSED_RGBA_ASTC_6x6_KHR, GL_COMPRESSED_RGBA_ASTC_6x6_KHR, GL_UNSIGNED_BYTE},
     {GL_COMPRESSED_RGBA_ASTC_8x6_KHR, GL_COMPRESSED_RGBA_ASTC_8x6_KHR, GL_UNSIGNED_BYTE},
 }};
-#endif
 
 [[nodiscard]] GLbitfield MakeBufferMask(SurfaceType type) {
     switch (type) {
@@ -121,6 +119,10 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
     OGLTexture texture{};
     texture.Create();
 
+    GLint majorVersion, minorVersion;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     glBindTexture(target, texture.handle);
     glTexStorage2D(target, levels, tuple.internal_format, width, height);
 
@@ -129,7 +131,7 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     if (!debug_name.empty()) {
-        if (Settings::values.use_gles.GetValue()) {
+        if (Settings::values.use_gles.GetValue() && majorVersion == 3 && minorVersion < 2) {
             glObjectLabelKHR(GL_TEXTURE, texture.handle, -1, debug_name.data());
         } else {
             glObjectLabel(GL_TEXTURE, texture.handle, -1, debug_name.data());
@@ -210,18 +212,16 @@ const FormatTuple& TextureRuntime::GetFormatTuple(PixelFormat pixel_format) cons
 
 const FormatTuple& TextureRuntime::GetFormatTuple(VideoCore::CustomPixelFormat pixel_format) {
     const std::size_t format_index = static_cast<std::size_t>(pixel_format);
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
-#ifdef __ANDROID__
-    return CUSTOM_TUPLES[format_index];
-#else
-    if (Settings::values.use_gles.GetValue()) {
-        LOG_DEBUG(Render_OpenGL, "use_gles == TRUE");
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         return CUSTOM_TUPLES_KHR[format_index];
     } else {
-        LOG_DEBUG(Render_OpenGL, "use_gles == FALSE");
         return CUSTOM_TUPLES[format_index];
     }
-#endif
 }
 
 bool TextureRuntime::Reinterpret(Surface& source, Surface& dest,
@@ -244,6 +244,11 @@ bool TextureRuntime::Reinterpret(Surface& source, Surface& dest,
 
 bool TextureRuntime::ClearTextureWithoutFbo(Surface& surface,
                                             const VideoCore::TextureClear& clear) {
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (!(driver.HasArbClearTexture() && driver.HasExtClearTexture()) ||
         driver.HasBug(DriverBug::BrokenClearTexture)) {
         return false;
@@ -268,7 +273,7 @@ bool TextureRuntime::ClearTextureWithoutFbo(Surface& surface,
         UNREACHABLE_MSG("Unknown surface type {}", surface.type);
     }
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         glClearTexSubImageEXT(surface.Handle(), clear.texture_level, clear.texture_rect.left,
                               clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
                               clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
@@ -387,12 +392,18 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
         return;
     }
 
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     glActiveTexture(TEMP_UNIT);
     const GLenum target =
         texture_type == VideoCore::TextureType::CubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
 
     // For GLES, ensure proper handling of depth/stencil formats
-    if (driver->IsOpenGLES() && (type == SurfaceType::Depth || type == SurfaceType::DepthStencil)) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2 &&
+        (type == SurfaceType::Depth || type == SurfaceType::DepthStencil)) {
         const bool is_depth_stencil = type == SurfaceType::DepthStencil;
         tuple.internal_format = is_depth_stencil ? GL_DEPTH24_STENCIL8_OES : GL_DEPTH_COMPONENT24;
         tuple.format = is_depth_stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT;
@@ -461,10 +472,15 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
                      const VideoCore::StagingData& staging) {
     ASSERT(stride * GetFormatBytesPerPixel(pixel_format) % 4 == 0);
 
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     const u32 unscaled_width = upload.texture_rect.GetWidth();
     const u32 unscaled_height = upload.texture_rect.GetHeight();
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, unscaled_width);
     } else {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
@@ -477,7 +493,7 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
                     upload.texture_rect.bottom, unscaled_width, unscaled_height, tuple.format,
                     tuple.type, staging.mapped.data());
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
     } else {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
@@ -495,6 +511,11 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
 }
 
 void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     const u32 width = material->width;
     const u32 height = material->height;
     const auto color = material->textures[0];
@@ -502,7 +523,7 @@ void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
 
     glActiveTexture(TEMP_UNIT);
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, width);
     } else {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
@@ -537,7 +558,7 @@ void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
         upload(i + 1, texture);
     }
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
     } else {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
@@ -548,10 +569,15 @@ void Surface::Download(const VideoCore::BufferTextureCopy& download,
                        const VideoCore::StagingData& staging) {
     ASSERT(stride * GetFormatBytesPerPixel(pixel_format) % 4 == 0);
 
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     const u32 unscaled_width = download.texture_rect.GetWidth();
     const u32 unscaled_height = download.texture_rect.GetHeight();
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, unscaled_width);
     } else {
         glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
@@ -779,7 +805,11 @@ DebugScope::DebugScope(TextureRuntime& runtime, Common::Vec4f, std::string_view 
         return;
     }
 
-    if (Settings::values.use_gles.GetValue()) {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (Settings::values.use_gles.GetValue() && majorVersion == 3 && minorVersion < 2) {
         glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION_KHR, local_scope_depth,
                             static_cast<GLsizei>(label.size()), label.data());
     } else {
@@ -793,7 +823,11 @@ DebugScope::~DebugScope() {
         return;
     }
 
-    if (Settings::values.use_gles.GetValue()) {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (Settings::values.use_gles.GetValue() && majorVersion == 3 && minorVersion < 2) {
         glPopDebugGroupKHR();
     } else {
         glPopDebugGroup();
