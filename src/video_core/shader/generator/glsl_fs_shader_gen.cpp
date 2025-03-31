@@ -999,6 +999,45 @@ void FragmentModule::WriteFog() {
     out += "float fog_i = clamp(floor(fog_index), 0.0, 127.0);\n"
            "float fog_f = fog_index - fog_i;\n";
 
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        if (!profile.is_vulkan) {
+            out += R"(
+    vec2 fog_lut_entry;
+    if (use_texture2d_lut != 0) {
+        // 2D texture fallback path
+        vec2 tex_coord = vec2(float(fog_i)/128.0, 0.0);
+        fog_lut_entry = texture2D(texture_buffer_lut_lf, tex_coord).rg;
+    } else {
+        fog_lut_entry = texelFetch(texture_buffer_lut_lf, ivec2(int(fog_i) + fog_lut_offset, 0), 0).rg;
+    }
+)";
+        } else {
+            out += "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, ivec2(int(fog_i) + "
+                   "fog_lut_offset, 0), 0).rg;\n";
+        }
+    } else {
+        if (!profile.is_vulkan) {
+            out += R"(
+    vec2 fog_lut_entry;
+    if (use_texture2d_lut != 0) {
+        // 2D texture fallback path
+        vec2 tex_coord = vec2(float(fog_i)/128.0, 0.0);
+        fog_lut_entry = texture2D(texture_buffer_lut_lf, tex_coord).rg;
+    } else {
+        fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + fog_lut_offset).rg;
+    }
+)";
+        } else {
+            out += "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + "
+                   "fog_lut_offset).rg;\n";
+        }
+    }
+#else
     if (!profile.is_vulkan) {
         out += R"(
     vec2 fog_lut_entry;
@@ -1014,6 +1053,7 @@ void FragmentModule::WriteFog() {
         out += "vec2 fog_lut_entry = texelFetch(texture_buffer_lut_lf, int(fog_i) + "
                "fog_lut_offset).rg;\n";
     }
+#endif
 
     out += "float fog_factor = fog_lut_entry.r + fog_lut_entry.g * fog_f;\n"
            "fog_factor = clamp(fog_factor, 0.0, 1.0);\n";
