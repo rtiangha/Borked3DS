@@ -1,5 +1,6 @@
 // Copyright 2022 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -64,7 +65,6 @@ GLenum MakeAttributeType(Pica::PipelineRegs::VertexAttributeFormat format) {
 
 [[nodiscard]] GLsizeiptr TextureBufferSize(const Driver& driver, bool is_lf) {
     const bool is_gles = driver.IsOpenGLES();
-
     if (is_gles) {
         GLint max_size;
         glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &max_size);
@@ -193,8 +193,9 @@ RasterizerOpenGL::RasterizerOpenGL(Memory::MemorySystem& memory, Pica::PicaCore&
             glTexBufferEXT(GL_TEXTURE_BUFFER, GL_RGBA32F, texture_buffer.GetHandle());
         } else {
             // Fallback: Use 1D textures emulated as 2D textures for GLES
-            LOG_INFO(Render_OpenGL,
-                     "GL_EXT_texture_buffer not available, falling back to 2D texture LUTs");
+            LOG_INFO(Render_OpenGL, "GL_EXT_texture_buffer not available, falling "
+                                    "back to 2D texture LUTs");
+
             using_texture2d_lut = true;
 
             // Setup LF buffer texture (256 entries)
@@ -306,8 +307,8 @@ void RasterizerOpenGL::SetupVertexArray(u8* array_ptr, GLintptr buffer_offset,
                     offset += vertex_attributes.GetStride(attribute_index);
                 }
             } else {
-                // Attribute ids 12, 13, 14 and 15 signify 4, 8, 12 and 16-byte paddings,
-                // respectively
+                // Attribute ids 12, 13, 14 and 15 signify 4, 8, 12 and 16-byte
+                // paddings, respectively
                 offset = Common::AlignUp(offset, 4);
                 offset += (attribute_index - 11) * 4;
             }
@@ -360,9 +361,9 @@ bool RasterizerOpenGL::SetupGeometryShader() {
         return false;
     }
 
-    // Enable the quaternion fix-up geometry-shader only if we are actually doing per-fragment
-    // lighting and care about proper quaternions. Otherwise just use standard vertex+fragment
-    // shaders
+    // Enable the quaternion fix-up geometry-shader only if we are actually doing
+    // per-fragment lighting and care about proper quaternions. Otherwise just use
+    // standard vertex+fragment shaders
     if (regs.lighting.disable) {
         shader_manager.UseTrivialGeometryShader();
     } else {
@@ -449,33 +450,6 @@ void RasterizerOpenGL::DrawTriangles() {
 bool RasterizerOpenGL::Draw(bool accelerate, bool is_indexed) {
 
     BORKED3DS_PROFILE("OpenGL", "Drawing");
-
-    const bool is_gles = driver.IsOpenGLES();
-    GLint majorVersion = 0, minorVersion = 0;
-    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-
-    if (is_gles && majorVersion == 3 && minorVersion < 2 &&
-        regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::Clear) {
-        // Check if this Clear operation makes sense in context
-        if (regs.framebuffer.output_merger.alphablend_enable ||
-            regs.framebuffer.output_merger.red_enable ||
-            regs.framebuffer.output_merger.green_enable ||
-            regs.framebuffer.output_merger.blue_enable) {
-            LOG_WARNING(Render_OpenGL,
-                        "Suspicious Clear logic op detected - forcing Copy operation");
-            // Temporarily override the logic op
-            auto saved_op = regs.framebuffer.output_merger.logic_op;
-            regs.framebuffer.output_merger.logic_op.Assign(Pica::FramebufferRegs::LogicOp::Copy);
-
-            // Update the logic op state
-            SyncLogicOp();
-
-            // Restore the original op after drawing
-            regs.framebuffer.output_merger.logic_op = saved_op;
-        }
-    }
-
     const bool shadow_rendering = regs.framebuffer.IsShadowRendering();
     const bool has_stencil = regs.framebuffer.HasStencil();
 
@@ -708,7 +682,6 @@ bool RasterizerOpenGL::IsFeedbackLoop(u32 texture_index, const Framebuffer* fram
                                       Surface& surface) {
     const GLuint color_attachment = framebuffer->Attachment(SurfaceType::Color);
     const bool is_feedback_loop = color_attachment == surface.Handle();
-
     if (!is_feedback_loop) {
         return false;
     }
@@ -767,7 +740,8 @@ void RasterizerOpenGL::NotifyFixedFunctionPicaRegisterChanged(u32 id) {
         break;
 
     // Sync GL depth test + depth and color write mask
-    // (Pica depth test function register also contains a depth and color write mask)
+    // (Pica depth test function register also contains a depth and color write
+    // mask)
     case PICA_REG_INDEX(framebuffer.output_merger.depth_test_enable):
         SyncDepthTest();
         SyncDepthWriteMask();
@@ -903,23 +877,12 @@ void RasterizerOpenGL::SyncBlendEnabled() {
 }
 
 void RasterizerOpenGL::SyncBlendFuncs() {
-    const bool is_gles = driver.IsOpenGLES();
     const bool has_minmax_factor = driver.HasBlendMinMaxFactor();
-    GLint majorVersion = 0, minorVersion = 0;
-    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
-    if (is_gles && majorVersion == 3 && minorVersion < 2) {
-        // GLES doesn't support advanced blend equations, use standard ones
-        state.blend.rgb_equation = GL_FUNC_ADD;
-        state.blend.a_equation = GL_FUNC_ADD;
-    } else {
-        state.blend.rgb_equation = PicaToGL::BlendEquation(
-            regs.framebuffer.output_merger.alpha_blending.blend_equation_rgb, has_minmax_factor);
-        state.blend.a_equation = PicaToGL::BlendEquation(
-            regs.framebuffer.output_merger.alpha_blending.blend_equation_a, has_minmax_factor);
-    }
-
+    state.blend.rgb_equation = PicaToGL::BlendEquation(
+        regs.framebuffer.output_merger.alpha_blending.blend_equation_rgb, has_minmax_factor);
+    state.blend.a_equation = PicaToGL::BlendEquation(
+        regs.framebuffer.output_merger.alpha_blending.blend_equation_a, has_minmax_factor);
     state.blend.src_rgb_func =
         PicaToGL::BlendFunc(regs.framebuffer.output_merger.alpha_blending.factor_source_rgb);
     state.blend.dst_rgb_func =
@@ -964,213 +927,26 @@ void RasterizerOpenGL::SyncBlendColor() {
 }
 
 void RasterizerOpenGL::SyncLogicOp() {
-    const bool is_gles = driver.IsOpenGLES();
-    GLint majorVersion = 0, minorVersion = 0;
-    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
-    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
-
-    // Set the base logic op state
     state.logic_op = PicaToGL::LogicOp(regs.framebuffer.output_merger.logic_op);
 
-    if (is_gles && majorVersion == 3 && minorVersion < 2) {
-        // Check if we're in a state where logic ops should be applied
-        bool should_apply_logic_op =
-            regs.framebuffer.output_merger.logic_op != Pica::FramebufferRegs::LogicOp::NoOp;
-
-        // Check if we're in a valid rendering state
-        bool valid_render_state = (regs.framebuffer.output_merger.red_enable ||
-                                   regs.framebuffer.output_merger.green_enable ||
-                                   regs.framebuffer.output_merger.blue_enable ||
-                                   regs.framebuffer.output_merger.alpha_enable);
-
-        if (should_apply_logic_op && !valid_render_state) {
-            LOG_WARNING(Render_OpenGL, "Logic op requested but output not enabled - forcing NoOp");
-            should_apply_logic_op = false;
-        }
-
-        // Only try to emulate other logic ops through blending if it's not NoOp
-        if (should_apply_logic_op) {
-
-            // Add debug logging
-            LOG_DEBUG(Render_OpenGL, "Logic op state: {}, Blend enabled: {}",
-                      static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()),
-                      static_cast<u32>(regs.framebuffer.output_merger.alphablend_enable.Value()));
-
-            state.blend.enabled = true;
-
-            // Get the actual operation the 3DS hardware would perform
-            auto& logic_op = regs.framebuffer.output_merger.logic_op;
-
-            // If we detect Clear operation, verify this is really intended
-            if (logic_op.Value() == Pica::FramebufferRegs::LogicOp::Clear) {
-                // Check if this might be an incorrect state
-                if (regs.framebuffer.output_merger.alphablend_enable) {
-                    LOG_WARNING(
-                        Render_OpenGL,
-                        "Clear logic op with alpha blend enabled - possible incorrect state");
-                    // Use Copy instead of Clear to preserve the texture
-                    logic_op.Assign(Pica::FramebufferRegs::LogicOp::Copy);
-                }
-            }
-
-            switch (logic_op) {
-            case Pica::FramebufferRegs::LogicOp::Clear:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Clear");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ZERO;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_ZERO;
-                state.blend.dst_a_func = GL_ZERO;
-                break;
-            case Pica::FramebufferRegs::LogicOp::And:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: And");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_DST_COLOR;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_DST_ALPHA;
-                state.blend.dst_a_func = GL_ZERO;
-                break;
-            case Pica::FramebufferRegs::LogicOp::AndReverse:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: AndReverse");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_ONE_MINUS_DST_ALPHA;
-                state.blend.dst_a_func = GL_ZERO;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Copy:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Copy");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_ONE;
-                state.blend.dst_a_func = GL_ZERO;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Set:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Set");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE;
-                state.blend.dst_rgb_func = GL_ONE;
-                state.blend.src_a_func = GL_ONE;
-                state.blend.dst_a_func = GL_ONE;
-                break;
-            case Pica::FramebufferRegs::LogicOp::CopyInverted:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: CopyInverted");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                state.blend.dst_a_func = GL_ZERO;
-                break;
-            case Pica::FramebufferRegs::LogicOp::NoOp:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: NoOp");
+    if (driver.IsOpenGLES()) {
+        if (!regs.framebuffer.output_merger.alphablend_enable) {
+            if (regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::NoOp) {
+                // Color output is disabled by logic operation. We use color write mask
+                // to skip color but allow depth write.
                 state.color_mask = {};
-                break;
-            case Pica::FramebufferRegs::LogicOp::Invert:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Invert");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
-                state.blend.dst_rgb_func = GL_ZERO;
-                state.blend.src_a_func = GL_ONE_MINUS_DST_ALPHA;
-                state.blend.dst_a_func = GL_ZERO;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Nand:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Nand");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
-                state.blend.dst_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.src_a_func = GL_ONE_MINUS_DST_ALPHA;
-                state.blend.dst_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Or:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Or");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE;
-                state.blend.dst_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.src_a_func = GL_ONE;
-                state.blend.dst_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Nor:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Nor");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.dst_rgb_func = GL_ONE_MINUS_DST_COLOR;
-                state.blend.src_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                state.blend.dst_a_func = GL_ONE_MINUS_DST_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Xor:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Xor");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_DST_COLOR;
-                state.blend.dst_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.src_a_func = GL_ONE_MINUS_DST_ALPHA;
-                state.blend.dst_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::Equiv:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: Equiv");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_DST_COLOR;
-                state.blend.dst_rgb_func = GL_SRC_COLOR;
-                state.blend.src_a_func = GL_DST_ALPHA;
-                state.blend.dst_a_func = GL_SRC_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::AndInverted:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: AndInverted");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.dst_rgb_func = GL_DST_COLOR;
-                state.blend.src_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                state.blend.dst_a_func = GL_DST_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::OrReverse:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: OrReverse");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE;
-                state.blend.dst_rgb_func = GL_ONE_MINUS_DST_COLOR;
-                state.blend.src_a_func = GL_ONE;
-                state.blend.dst_a_func = GL_ONE_MINUS_DST_ALPHA;
-                break;
-            case Pica::FramebufferRegs::LogicOp::OrInverted:
-                LOG_DEBUG(Render_OpenGL, "Logic op on GLES: OrInverted");
-                state.blend.rgb_equation = GL_FUNC_ADD;
-                state.blend.a_equation = GL_FUNC_ADD;
-                state.blend.src_rgb_func = GL_ONE_MINUS_SRC_COLOR;
-                state.blend.dst_rgb_func = GL_ONE;
-                state.blend.src_a_func = GL_ONE_MINUS_SRC_ALPHA;
-                state.blend.dst_a_func = GL_ONE;
-                break;
-            default:
-                LOG_WARNING(Render_OpenGL, "Unsupported logic op on GLES: {}",
-                            static_cast<u32>(regs.framebuffer.output_merger.logic_op.Value()));
-                break;
             }
-            return;
         }
     }
-    // Desktop GL path
-    state.logic_op = PicaToGL::LogicOp(regs.framebuffer.output_merger.logic_op);
 }
 
 void RasterizerOpenGL::SyncColorWriteMask() {
     if (driver.IsOpenGLES()) {
         if (!regs.framebuffer.output_merger.alphablend_enable) {
             if (regs.framebuffer.output_merger.logic_op == Pica::FramebufferRegs::LogicOp::NoOp) {
-                // Color output is disabled by logic operation. We use color write mask to skip
-                // color but allow depth write. Return early to avoid overwriting this.
+                // Color output is disabled by logic operation. We use color write mask
+                // to skip color but allow depth write. Return early to avoid
+                // overwriting this.
                 return;
             }
         }
@@ -1261,7 +1037,8 @@ void RasterizerOpenGL::SyncAndUploadLUTsLF() {
                         lighting_lut_data[index] = new_data;
                         glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
                         glBindTexture(GL_TEXTURE_2D, texture_buffer_lut_rg.handle);
-                        // Each LUT has 256 entries, store them sequentially in the 2D texture
+                        // Each LUT has 256 entries, store them sequentially in the 2D
+                        // texture
                         const int x_offset = (index % 4) * 256; // 4 LUTs per row
                         const int y_offset = index / 4;         // Move to next row every 4 LUTs
                         glTexSubImage2D(GL_TEXTURE_2D, 0, x_offset, y_offset, 256, 1, GL_RG,
@@ -1559,8 +1336,8 @@ void RasterizerOpenGL::SyncAndUploadLUTs() {
 }
 
 void RasterizerOpenGL::UploadUniforms(bool accelerate_draw) {
-    // glBindBufferRange also changes the generic buffer binding point, so we sync the state
-    // first.
+    // glBindBufferRange also changes the generic buffer binding point, so we sync
+    // the state first.
     state.draw.uniform_buffer = uniform_buffer.GetHandle();
     state.Apply();
 

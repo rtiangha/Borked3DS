@@ -160,6 +160,7 @@ private:
     OGLTexture texture_buffer_lut_rg;
     OGLTexture texture_buffer_lut_rgba;
     bool emulate_minmax_blend{};
+
     bool using_texture2d_lut{false}; // Track if we're using 2D texture fallback
 };
 
