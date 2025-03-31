@@ -53,12 +53,8 @@ static OGLProgram GeneratePrecompiledProgram(const ShaderDiskCacheDump& dump,
 
     auto shader = OGLProgram();
     shader.handle = glCreateProgram();
-    if (separable) {
-        if (Settings::values.use_gles.GetValue()) {
-            glProgramParameteriEXT(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
-        } else {
-            glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
-        }
+    if (separable && GLAD_GL_EXT_separate_shader_objects) {
+        glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
     }
     glProgramBinary(shader.handle, dump.binary_format, dump.binary.data(),
                     static_cast<GLsizei>(dump.binary.size()));

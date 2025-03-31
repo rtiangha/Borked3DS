@@ -203,11 +203,12 @@ GLuint LoadProgram(bool separable_program, std::span<const GLuint> shaders) {
         }
     }
 
-    if (separable_program) {
+    if (separable_program && GLAD_GL_EXT_separate_shader_objects) {
         glProgramParameteri(program_id, GL_PROGRAM_SEPARABLE, GL_TRUE);
     }
 
     glProgramParameteri(program_id, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+
     glLinkProgram(program_id);
 
     // Check the program
