@@ -42,9 +42,9 @@ interface SettingsFragmentView {
      * Tell the Fragment to tell the containing activity to display a toast message.
      *
      * @param message Text to be shown in the Toast
-     * @param is_long Whether this should be a long Toast or short one.
+     * @param isLong Whether this should be a long Toast or short one.
      */
-    fun showToastMessage(message: String?, is_long: Boolean)
+    fun showToastMessage(message: String?, isLong: Boolean)
 
     /**
      * Have the fragment add a setting to the HashMap.

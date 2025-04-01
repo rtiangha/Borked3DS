@@ -1,5 +1,6 @@
 // Copyright 2023 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -9,6 +10,7 @@ import android.content.res.Resources
 import android.os.Bundle
 import android.text.Html
 import android.text.method.LinkMovementMethod
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,6 +19,14 @@ import android.widget.ArrayAdapter
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.text.HtmlCompat
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -25,11 +35,16 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.findNavController
 import androidx.preference.PreferenceManager
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.textview.MaterialTextView
 import com.google.android.material.transition.MaterialSharedAxis
 import io.github.borked3ds.android.Borked3DSApplication
 import io.github.borked3ds.android.HomeNavigationDirections
 import io.github.borked3ds.android.NativeLibrary
 import io.github.borked3ds.android.R
+
+import io.github.borked3ds.android.databinding.DialogSoftwareKeyboardBinding
 import io.github.borked3ds.android.databinding.FragmentSystemFilesBinding
 import io.github.borked3ds.android.features.settings.model.Settings
 import io.github.borked3ds.android.model.Game
@@ -37,7 +52,10 @@ import io.github.borked3ds.android.utils.SystemSaveGame
 import io.github.borked3ds.android.viewmodel.GamesViewModel
 import io.github.borked3ds.android.viewmodel.HomeViewModel
 import io.github.borked3ds.android.viewmodel.SystemFilesViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SystemFilesFragment : Fragment() {
     private var _binding: FragmentSystemFilesBinding? = null
@@ -47,11 +65,9 @@ class SystemFilesFragment : Fragment() {
     private val systemFilesViewModel: SystemFilesViewModel by activityViewModels()
     private val gamesViewModel: GamesViewModel by activityViewModels()
 
-    private lateinit var regionValues: IntArray
-
     private val systemTypeDropdown = DropdownItem(R.array.systemFileTypeValues)
     private val systemRegionDropdown = DropdownItem(R.array.systemFileRegionValues)
-
+ 
     private val SYS_TYPE = "SysType"
     private val REGION = "Region"
     private val REGION_START = "RegionStart"
@@ -59,10 +75,10 @@ class SystemFilesFragment : Fragment() {
     private val homeMenuMap: MutableMap<String, String> = mutableMapOf()
 
     private val WARNING_SHOWN = "SystemFilesWarningShown"
-
+ 
     private class DropdownItem(val valuesId: Int) : AdapterView.OnItemClickListener {
         var position = 0
-
+ 
         fun getValue(resources: Resources): Int {
             return resources.getIntArray(valuesId)[position]
         }
@@ -71,6 +87,9 @@ class SystemFilesFragment : Fragment() {
             this.position = position
         }
     }
+
+    private var setupStateCached: BooleanArray? = null
+    private lateinit var regionValues: IntArray
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -147,12 +166,47 @@ class SystemFilesFragment : Fragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(SYS_TYPE, systemTypeDropdown.position)
         outState.putInt(REGION, systemRegionDropdown.position)
-        outState.putString(REGION_START, binding.dropdownSystemRegionStart.text.toString())
+        outState.putString(REGION_START, binding.dropdownSystemRegionStart.text.toString()) 
     }
 
     override fun onPause() {
         super.onPause()
         SystemSaveGame.save()
+    }
+
+    private fun showProgressDialog(
+        main_title: CharSequence,
+        main_text: CharSequence
+    ): AlertDialog? {
+        val context = requireContext()
+        val progressIndicator = CircularProgressIndicator(context).apply {
+            isIndeterminate = true
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER // Center the progress indicator
+            ).apply {
+                setMargins(50, 50, 50, 50) // Add margins (left, top, right, bottom)
+            }
+        }
+
+        val pleaseWaitText = MaterialTextView(context).apply {
+            text = main_text
+        }
+
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(40, 40, 40, 40) // Optional: Add padding to the entire layout
+            addView(pleaseWaitText)
+            addView(progressIndicator)
+        }
+
+        return MaterialAlertDialogBuilder(context)
+            .setTitle(main_title)
+            .setView(container)
+            .setCancelable(false)
+            .show()
     }
 
     private fun reloadUi() {
@@ -198,6 +252,153 @@ class SystemFilesFragment : Fragment() {
                 childFragmentManager,
                 DownloadSystemFilesDialogFragment.TAG
             )
+        }
+
+        binding.setupSystemFilesDescription?.apply {
+            text = HtmlCompat.fromHtml(
+                context.getString(R.string.setup_system_files_preamble),
+                HtmlCompat.FROM_HTML_MODE_COMPACT
+            )
+            movementMethod = LinkMovementMethod.getInstance()
+        }
+
+        binding.buttonSetUpSystemFiles?.setOnClickListener {
+            val inflater = LayoutInflater.from(context)
+            val inputBinding = DialogSoftwareKeyboardBinding.inflate(inflater)
+            var textInputValue: String = preferences.getString("last_artic_base_addr", "")!!
+
+            val progressDialog = showProgressDialog(
+                getText(R.string.setup_system_files),
+                getString(R.string.setup_system_files_detect)
+            )
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val setupState = setupStateCached ?: NativeLibrary.areSystemTitlesInstalled().also {
+                    setupStateCached = it
+                }
+
+                withContext(Dispatchers.Main) {
+                    progressDialog?.dismiss()
+
+                    inputBinding.editTextInput.setText(textInputValue)
+                    inputBinding.editTextInput.doOnTextChanged { text, _, _, _ ->
+                        textInputValue = text.toString()
+                    }
+
+                    val buttonGroup = context?.let { it1 -> RadioGroup(it1) }!!
+
+                    val buttonO3ds = context?.let { it1 ->
+                        RadioButton(it1).apply {
+                            text = context.getString(R.string.setup_system_files_o3ds)
+                            isChecked = false
+                        }
+                    }!!
+
+                    val buttonN3ds = context?.let { it1 ->
+                        RadioButton(it1).apply {
+                            text = context.getString(R.string.setup_system_files_n3ds)
+                            isChecked = false
+                        }
+                    }!!
+
+                    val textO3ds: String
+                    val textN3ds: String
+
+                    val colorO3ds: Int
+                    val colorN3ds: Int
+
+                    if (!setupStateCached!![0]) {
+                        textO3ds = getString(R.string.setup_system_files_possible)
+                        colorO3ds = R.color.borked3ds_primary_blue
+
+                        textN3ds = getString(R.string.setup_system_files_o3ds_needed)
+                        colorN3ds = R.color.borked3ds_primary_yellow
+
+                        buttonN3ds.isEnabled = false
+                    } else {
+                        textO3ds = getString(R.string.setup_system_files_completed)
+                        colorO3ds = R.color.borked3ds_primary_green
+
+                        if (!setupStateCached!![1]) {
+                            textN3ds = getString(R.string.setup_system_files_possible)
+                            colorN3ds = R.color.borked3ds_primary_blue
+                        } else {
+                            textN3ds = getString(R.string.setup_system_files_completed)
+                            colorN3ds = R.color.borked3ds_primary_green
+                        }
+                    }
+
+                    val tooltipO3ds = context?.let { it1 ->
+                        MaterialTextView(it1).apply {
+                            text = textO3ds
+                            textSize = 12f
+                            setTextColor(ContextCompat.getColor(requireContext(), colorO3ds))
+                        }
+                    }
+
+                    val tooltipN3ds = context?.let { it1 ->
+                        MaterialTextView(it1).apply {
+                            text = textN3ds
+                            textSize = 12f
+                            setTextColor(ContextCompat.getColor(requireContext(), colorN3ds))
+                        }
+                    }
+
+                    buttonGroup.apply {
+                        addView(buttonO3ds)
+                        addView(tooltipO3ds)
+                        addView(buttonN3ds)
+                        addView(tooltipN3ds)
+                    }
+
+                    inputBinding.root.apply {
+                        addView(buttonGroup)
+                    }
+
+                    val dialog = context?.let {
+                        MaterialAlertDialogBuilder(it)
+                            .setView(inputBinding.root)
+                            .setTitle(getString(R.string.setup_system_files_enter_address))
+                            .setPositiveButton(android.R.string.ok) { diag, _ ->
+                                if (textInputValue.isNotEmpty() && !(!buttonO3ds.isChecked && !buttonN3ds.isChecked)) {
+                                    preferences.edit()
+                                        .putString("last_artic_base_addr", textInputValue)
+                                        .apply()
+                                    val menu = Game(
+                                        title = getString(R.string.artic_base),
+                                        path = if (buttonO3ds.isChecked) {
+                                            "articinio://$textInputValue"
+                                        } else {
+                                            "articinin://$textInputValue"
+                                        },
+                                        filename = ""
+                                    )
+                                    val progressDialog2 = showProgressDialog(
+                                        getText(R.string.setup_system_files),
+                                        getString(
+                                            R.string.setup_system_files_preparing
+                                        )
+                                    )
+
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        NativeLibrary.uninstallSystemFiles(buttonO3ds.isChecked)
+                                        withContext(Dispatchers.Main) {
+                                            setupStateCached = null
+                                            progressDialog2?.dismiss()
+                                            val action =
+                                                HomeNavigationDirections.actionGlobalEmulationActivity(
+                                                    menu
+                                                )
+                                            binding.root.findNavController().navigate(action)
+                                        }
+                                    }
+                                }
+                            }
+                            .setNegativeButton(android.R.string.cancel) { _, _ -> }
+                            .show()
+                    }
+                }
+            }
         }
 
         populateHomeMenuOptions()

@@ -1,5 +1,6 @@
 // Copyright 2023 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -186,6 +187,10 @@ object NativeLibrary {
     external fun getSystemTitleIds(systemType: Int, region: Int): LongArray
 
     external fun downloadTitleFromNus(title: Long): InstallStatus
+
+    external fun areSystemTitlesInstalled(): BooleanArray
+
+    external fun uninstallSystemFiles(old3DS: Boolean)
 
 
     /**

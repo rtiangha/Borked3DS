@@ -5,15 +5,17 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="app_name" translatable="false">Borked3DS</string>
-    <string name="app_disclaimer">This software will run games for the Nintendo 3DS handheld game console. No game titles are included.\n\nBefore you can begin with emulating, please select a folder to store Borked3DS\'s user data in.\n\nWhat\'s this:\n<a href='https://web.archive.org/web/20240304193549/https://github.com/Borked3DS/Borked3DS/wiki/Borked3DS-Android-user-data-and-storage'>Wiki - Borked3DS Android user data and storage</a></string>
+    <string name="app_disclaimer">This software will run applications for the Nintendo 3DS handheld game console. No game titles are included.\n\nBefore you can begin with emulating, please select a folder to store Borked3DS\'s user data in.\n\nWhat\'s this:\n<a href='https://web.archive.org/web/20240304193549/https://github.com/citra-emu/citra/wiki/Citra-Android-user-data-and-storage'>Wiki - Citra Android user data and storage</a></string>
     <string name="app_notification_channel_name" translatable="false">Borked3DS</string>
     <string name="app_notification_channel_id" translatable="false">Borked3DS</string>
     <string name="app_notification_channel_description">Borked3DS emulator notifications</string>
     <string name="app_notification_running">Borked3DS is Running</string>
-    <string name="app_game_install_description">Next, you will need to select a Game Folder. Borked3DS will display all of the 3DS ROMs inside of the selected folder in the app.\n\nCIA ROMs, updates and DLC will need to be installed separately by clicking on the folder icon and selecting Install CIA.</string>
+    <string name="app_game_install_description">Next, you will need to select a Applications Folder. Borked3DS will display all of the 3DS ROMs inside of the selected folder in the app.\n\nCIA ROMs, updates and DLC will need to be installed separately by clicking on the folder icon and selecting Install CIA.</string>
     <string name="id_label">ID</string>
     <string name="file_label">File</string>
     <string name="unknown_error">Unknown error</string>
+    <string name="start">Start</string>
+    <string name="cancelling">Cancelling…</string>
 
     <!-- Home Strings -->
     <string name="grid_menu_core_settings">Settings</string>
@@ -169,15 +171,19 @@
     <!-- System files strings -->
     <string name="system_files">System Files</string>
     <string name="system_files_description">Download system files to get Mii files, boot the HOME menu, and more</string>
-    <string name="download_system_files">Download System Files</string>
-    <string name="boot_home_menu">Boot the HOME Menu</string>
-    <string name="system_type">System Type</string>
-    <string name="download">Download</string>
-    <string name="start">Start</string>
-    <string name="keys_missing">Borked3DS is missing keys to download system files.</string>
-    <string name="how_to_get_keys"><![CDATA[<a href="https://web.archive.org/web/20240304203412/https://borked3ds-emu.org/wiki/aes-keys/">How to get keys?</a>]]></string>
-    <string name="show_home_apps">Show HOME menu apps in games list</string>
-    <string name="run_system_setup">Run System Setup when the HOME Menu is launched</string>
+    <string name="download_system_files">Download System Files (from Nintendo servers)</string>
+    <string name="setup_system_files">System Files</string>
+    <string name="setup_system_files_description">Perform system file operations such as installing system files or booting the Home Menu</string>
+    <string name="setup_tool_connect">Connect to Artic Setup Tool</string>
+    <string name="setup_system_files_preamble"><![CDATA[Borked3DS needs files from a real console to be able to use some of its features. You can get such files with the <a href=https://github.com/azahar-emu/ArticSetupTool>Azahar Artic Setup Tool</a>.<br> Notes:<ul><li><b>This operation will install console unique files to Borked3DS, do not share your user or nand folders after performing the setup process!</b></li><li>Old 3DS setup is needed for the New 3DS setup to work.</li><li>Both setup modes will work regardless of the model of the console running the setup tool.</li></ul>]]></string>
+    <string name="setup_system_files_detect">Fetching current system files status, please wait...</string>
+    <string name="setup_system_files_o3ds">Old 3DS Setup</string>
+    <string name="setup_system_files_n3ds">New 3DS Setup</string>
+    <string name="setup_system_files_possible">Setup is possible.</string>
+    <string name="setup_system_files_o3ds_needed">Old 3DS setup is required first.</string>
+    <string name="setup_system_files_completed">Setup already completed.</string>
+    <string name="setup_system_files_enter_address">Enter Artic Setup Tool address</string>
+    <string name="setup_system_files_preparing">Preparing setup, please wait...</string>
     <string name="system_type_minimal">Minimal</string>
     <string name="system_type_old_3ds">Old 3DS</string>
     <string name="system_type_new_3ds">New 3DS</string>
@@ -188,7 +194,13 @@
     <string name="download_success">Download Complete!</string>
     <string name="download_cancelled">Download Cancelled</string>
     <string name="download_cancelled_description">Please restart the download to prevent issues with having incomplete system files.</string>
-    <string name="cancelling">Cancelling…</string>
+    <string name="boot_home_menu">Boot the HOME Menu</string>
+    <string name="system_type">System Type</string>
+    <string name="download">Download</string>
+    <string name="keys_missing">Borked3DS is missing keys to download system files.</string>
+    <string name="how_to_get_keys"><![CDATA[<a href="https://web.archive.org/web/20240304203412/https://citra-emu.org/wiki/aes-keys/">How to get keys?</a>]]></string>
+    <string name="show_home_apps">Show HOME menu apps in Applications list</string>
+    <string name="run_system_setup">Run System Setup when the HOME Menu is launched</string>
     <string name="home_menu">HOME Menu</string>
     <string name="home_menu_warning">System Files Warning</string>
     <string name="home_menu_warning_description">Due to how slow Android\'s storage access framework is for accessing Borked3DS\'s files, downloading multiple versions of system files can dramatically slow down loading for games, save states, and the games list. Only download the files that you require to avoid any issues with loading speeds.</string>
