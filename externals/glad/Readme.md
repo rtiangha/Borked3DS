@@ -33,6 +33,7 @@ GL_EXT_geometry_shader
 GL_EXT_separate_shader_objects
 GL_EXT_shader_framebuffer_fetch
 GL_EXT_shadow_samplers
+GL_EXT_texture_border_clamp
 GL_EXT_texture_buffer
 GL_EXT_texture_compression_bptc
 GL_EXT_texture_compression_s3tc
@@ -48,6 +49,7 @@ GL_KHR_texture_compression_astc_ldr
 GL_NV_blend_minmax_factor
 GL_NV_fragment_shader_interlock
 GL_OES_depth_texture
+GL_OES_draw_elements_base_vertex
 GL_OES_packed_depth_stencil
 GL_OES_standard_derivatives
 GL_OES_texture_float

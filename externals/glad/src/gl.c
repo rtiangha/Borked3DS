@@ -71,12 +71,14 @@ int GLAD_GL_EXT_clip_cull_distance = 0;
 int GLAD_GL_EXT_color_buffer_half_float = 0;
 int GLAD_GL_EXT_geometry_shader = 0;
 int GLAD_GL_EXT_shadow_samplers = 0;
+int GLAD_GL_EXT_texture_border_clamp = 0;
 int GLAD_GL_EXT_texture_buffer = 0;
 int GLAD_GL_EXT_texture_compression_bptc = 0;
 int GLAD_GL_EXT_texture_format_BGRA8888 = 0;
 int GLAD_GL_EXT_texture_type_2_10_10_10_REV = 0;
 int GLAD_GL_EXT_unpack_subimage = 0;
 int GLAD_GL_OES_depth_texture = 0;
+int GLAD_GL_OES_draw_elements_base_vertex = 0;
 int GLAD_GL_OES_packed_depth_stencil = 0;
 int GLAD_GL_OES_standard_derivatives = 0;
 int GLAD_GL_OES_texture_float = 0;
@@ -653,6 +655,9 @@ PFNGLDEBUGMESSAGECONTROLKHRPROC glad_glDebugMessageControlKHR = NULL;
 PFNGLDEBUGMESSAGEINSERTKHRPROC glad_glDebugMessageInsertKHR = NULL;
 PFNGLDELETEPROGRAMPIPELINESEXTPROC glad_glDeleteProgramPipelinesEXT = NULL;
 PFNGLDELETEVERTEXARRAYSOESPROC glad_glDeleteVertexArraysOES = NULL;
+PFNGLDRAWELEMENTSBASEVERTEXOESPROC glad_glDrawElementsBaseVertexOES = NULL;
+PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESPROC glad_glDrawElementsInstancedBaseVertexOES = NULL;
+PFNGLDRAWRANGEELEMENTSBASEVERTEXOESPROC glad_glDrawRangeElementsBaseVertexOES = NULL;
 PFNGLFRAMEBUFFERTEXTUREEXTPROC glad_glFramebufferTextureEXT = NULL;
 PFNGLGENPROGRAMPIPELINESEXTPROC glad_glGenProgramPipelinesEXT = NULL;
 PFNGLGENVERTEXARRAYSOESPROC glad_glGenVertexArraysOES = NULL;
@@ -663,12 +668,17 @@ PFNGLGETOBJECTPTRLABELKHRPROC glad_glGetObjectPtrLabelKHR = NULL;
 PFNGLGETPOINTERVKHRPROC glad_glGetPointervKHR = NULL;
 PFNGLGETPROGRAMPIPELINEINFOLOGEXTPROC glad_glGetProgramPipelineInfoLogEXT = NULL;
 PFNGLGETPROGRAMPIPELINEIVEXTPROC glad_glGetProgramPipelineivEXT = NULL;
+PFNGLGETSAMPLERPARAMETERIIVEXTPROC glad_glGetSamplerParameterIivEXT = NULL;
+PFNGLGETSAMPLERPARAMETERIUIVEXTPROC glad_glGetSamplerParameterIuivEXT = NULL;
+PFNGLGETTEXPARAMETERIIVEXTPROC glad_glGetTexParameterIivEXT = NULL;
+PFNGLGETTEXPARAMETERIUIVEXTPROC glad_glGetTexParameterIuivEXT = NULL;
 PFNGLGETNUNIFORMFVPROC glad_glGetnUniformfv = NULL;
 PFNGLGETNUNIFORMIVPROC glad_glGetnUniformiv = NULL;
 PFNGLGETNUNIFORMUIVPROC glad_glGetnUniformuiv = NULL;
 PFNGLISPROGRAMPIPELINEEXTPROC glad_glIsProgramPipelineEXT = NULL;
 PFNGLISVERTEXARRAYOESPROC glad_glIsVertexArrayOES = NULL;
 PFNGLMEMORYBARRIERBYREGIONPROC glad_glMemoryBarrierByRegion = NULL;
+PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTPROC glad_glMultiDrawElementsBaseVertexEXT = NULL;
 PFNGLOBJECTLABELKHRPROC glad_glObjectLabelKHR = NULL;
 PFNGLOBJECTPTRLABELKHRPROC glad_glObjectPtrLabelKHR = NULL;
 PFNGLPOPDEBUGGROUPKHRPROC glad_glPopDebugGroupKHR = NULL;
@@ -709,8 +719,12 @@ PFNGLPROGRAMUNIFORMMATRIX4X2FVEXTPROC glad_glProgramUniformMatrix4x2fvEXT = NULL
 PFNGLPROGRAMUNIFORMMATRIX4X3FVEXTPROC glad_glProgramUniformMatrix4x3fvEXT = NULL;
 PFNGLPUSHDEBUGGROUPKHRPROC glad_glPushDebugGroupKHR = NULL;
 PFNGLREADNPIXELSPROC glad_glReadnPixels = NULL;
+PFNGLSAMPLERPARAMETERIIVEXTPROC glad_glSamplerParameterIivEXT = NULL;
+PFNGLSAMPLERPARAMETERIUIVEXTPROC glad_glSamplerParameterIuivEXT = NULL;
 PFNGLTEXBUFFEREXTPROC glad_glTexBufferEXT = NULL;
 PFNGLTEXBUFFERRANGEEXTPROC glad_glTexBufferRangeEXT = NULL;
+PFNGLTEXPARAMETERIIVEXTPROC glad_glTexParameterIivEXT = NULL;
+PFNGLTEXPARAMETERIUIVEXTPROC glad_glTexParameterIuivEXT = NULL;
 PFNGLTEXTUREVIEWOESPROC glad_glTextureViewOES = NULL;
 PFNGLUSEPROGRAMSTAGESEXTPROC glad_glUseProgramStagesEXT = NULL;
 PFNGLVALIDATEPROGRAMPIPELINEEXTPROC glad_glValidateProgramPipelineEXT = NULL;
@@ -1863,10 +1877,28 @@ static void glad_gl_load_GL_EXT_geometry_shader( GLADuserptrloadfunc load, void*
     if(!GLAD_GL_EXT_geometry_shader) return;
     glad_glFramebufferTextureEXT = (PFNGLFRAMEBUFFERTEXTUREEXTPROC) load(userptr, "glFramebufferTextureEXT");
 }
+static void glad_gl_load_GL_EXT_texture_border_clamp( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_GL_EXT_texture_border_clamp) return;
+    glad_glGetSamplerParameterIivEXT = (PFNGLGETSAMPLERPARAMETERIIVEXTPROC) load(userptr, "glGetSamplerParameterIivEXT");
+    glad_glGetSamplerParameterIuivEXT = (PFNGLGETSAMPLERPARAMETERIUIVEXTPROC) load(userptr, "glGetSamplerParameterIuivEXT");
+    glad_glGetTexParameterIivEXT = (PFNGLGETTEXPARAMETERIIVEXTPROC) load(userptr, "glGetTexParameterIivEXT");
+    glad_glGetTexParameterIuivEXT = (PFNGLGETTEXPARAMETERIUIVEXTPROC) load(userptr, "glGetTexParameterIuivEXT");
+    glad_glSamplerParameterIivEXT = (PFNGLSAMPLERPARAMETERIIVEXTPROC) load(userptr, "glSamplerParameterIivEXT");
+    glad_glSamplerParameterIuivEXT = (PFNGLSAMPLERPARAMETERIUIVEXTPROC) load(userptr, "glSamplerParameterIuivEXT");
+    glad_glTexParameterIivEXT = (PFNGLTEXPARAMETERIIVEXTPROC) load(userptr, "glTexParameterIivEXT");
+    glad_glTexParameterIuivEXT = (PFNGLTEXPARAMETERIUIVEXTPROC) load(userptr, "glTexParameterIuivEXT");
+}
 static void glad_gl_load_GL_EXT_texture_buffer( GLADuserptrloadfunc load, void* userptr) {
     if(!GLAD_GL_EXT_texture_buffer) return;
     glad_glTexBufferEXT = (PFNGLTEXBUFFEREXTPROC) load(userptr, "glTexBufferEXT");
     glad_glTexBufferRangeEXT = (PFNGLTEXBUFFERRANGEEXTPROC) load(userptr, "glTexBufferRangeEXT");
+}
+static void glad_gl_load_GL_OES_draw_elements_base_vertex( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_GL_OES_draw_elements_base_vertex) return;
+    glad_glDrawElementsBaseVertexOES = (PFNGLDRAWELEMENTSBASEVERTEXOESPROC) load(userptr, "glDrawElementsBaseVertexOES");
+    glad_glDrawElementsInstancedBaseVertexOES = (PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESPROC) load(userptr, "glDrawElementsInstancedBaseVertexOES");
+    glad_glDrawRangeElementsBaseVertexOES = (PFNGLDRAWRANGEELEMENTSBASEVERTEXOESPROC) load(userptr, "glDrawRangeElementsBaseVertexOES");
+    glad_glMultiDrawElementsBaseVertexEXT = (PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTPROC) load(userptr, "glMultiDrawElementsBaseVertexEXT");
 }
 static void glad_gl_load_GL_OES_texture_view( GLADuserptrloadfunc load, void* userptr) {
     if(!GLAD_GL_OES_texture_view) return;
@@ -2115,12 +2147,14 @@ static int glad_gl_find_extensions_gles2(void) {
     GLAD_GL_EXT_color_buffer_half_float = glad_gl_has_extension(exts, exts_i, "GL_EXT_color_buffer_half_float");
     GLAD_GL_EXT_geometry_shader = glad_gl_has_extension(exts, exts_i, "GL_EXT_geometry_shader");
     GLAD_GL_EXT_shadow_samplers = glad_gl_has_extension(exts, exts_i, "GL_EXT_shadow_samplers");
+    GLAD_GL_EXT_texture_border_clamp = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_border_clamp");
     GLAD_GL_EXT_texture_buffer = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_buffer");
     GLAD_GL_EXT_texture_compression_bptc = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_compression_bptc");
     GLAD_GL_EXT_texture_format_BGRA8888 = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_format_BGRA8888");
     GLAD_GL_EXT_texture_type_2_10_10_10_REV = glad_gl_has_extension(exts, exts_i, "GL_EXT_texture_type_2_10_10_10_REV");
     GLAD_GL_EXT_unpack_subimage = glad_gl_has_extension(exts, exts_i, "GL_EXT_unpack_subimage");
     GLAD_GL_OES_depth_texture = glad_gl_has_extension(exts, exts_i, "GL_OES_depth_texture");
+    GLAD_GL_OES_draw_elements_base_vertex = glad_gl_has_extension(exts, exts_i, "GL_OES_draw_elements_base_vertex");
     GLAD_GL_OES_packed_depth_stencil = glad_gl_has_extension(exts, exts_i, "GL_OES_packed_depth_stencil");
     GLAD_GL_OES_standard_derivatives = glad_gl_has_extension(exts, exts_i, "GL_OES_standard_derivatives");
     GLAD_GL_OES_texture_float = glad_gl_has_extension(exts, exts_i, "GL_OES_texture_float");
@@ -2187,7 +2221,9 @@ int gladLoadGLES2UserPtr( GLADuserptrloadfunc load, void *userptr) {
     glad_gl_load_GL_EXT_buffer_storage(load, userptr);
     glad_gl_load_GL_EXT_clear_texture(load, userptr);
     glad_gl_load_GL_EXT_geometry_shader(load, userptr);
+    glad_gl_load_GL_EXT_texture_border_clamp(load, userptr);
     glad_gl_load_GL_EXT_texture_buffer(load, userptr);
+    glad_gl_load_GL_OES_draw_elements_base_vertex(load, userptr);
     glad_gl_load_GL_OES_texture_view(load, userptr);
     glad_gl_load_GL_OES_vertex_array_object(load, userptr);
 
