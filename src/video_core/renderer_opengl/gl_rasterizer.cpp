@@ -431,10 +431,26 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
         std::memcpy(buffer_ptr, index_data, index_buffer_size);
         index_buffer.Unmap(index_buffer_size);
 
-        glDrawRangeElementsBaseVertex(
-            primitive_mode, vs_input_index_min, vs_input_index_max, regs.pipeline.num_vertices,
-            index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
-            reinterpret_cast<const void*>(buffer_offset), -static_cast<GLint>(vs_input_index_min));
+        // Ensure vs_input_index_min is not zero before applying the negative offset
+        if (vs_input_index_min < 0 || vs_input_index_min > vs_input_index_max) {
+            LOG_ERROR(Render_OpenGL, "Invalid vertex index range");
+            return false;
+        }
+
+        // Use extension if available, otherwise fallback
+        if (GLAD_GL_OES_draw_elements_base_vertex) {
+            glDrawRangeElementsBaseVertex(primitive_mode, vs_input_index_min, vs_input_index_max,
+                                          regs.pipeline.num_vertices,
+                                          index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
+                                          reinterpret_cast<const void*>(buffer_offset),
+                                          -static_cast<GLint>(vs_input_index_min));
+        } else {
+            // Fallback: Use glDrawRangeElements and adjust indices manually
+            glDrawRangeElements(primitive_mode, vs_input_index_min, vs_input_index_max,
+                                regs.pipeline.num_vertices,
+                                index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
+                                reinterpret_cast<const void*>(buffer_offset));
+        }
     } else {
         glDrawArrays(primitive_mode, 0, regs.pipeline.num_vertices);
     }
