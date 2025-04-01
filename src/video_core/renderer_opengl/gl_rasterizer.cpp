@@ -398,6 +398,11 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
     const GLenum primitive_mode = MakePrimitiveMode(regs.pipeline.triangle_topology);
     auto [vs_input_index_min, vs_input_index_max, vs_input_size] = AnalyzeVertexArray(is_indexed);
 
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (vs_input_size > VERTEX_BUFFER_SIZE) {
         LOG_WARNING(Render_OpenGL, "Too large vertex input size {}", vs_input_size);
         return false;
@@ -438,18 +443,18 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
         }
 
         // Use extension if available, otherwise fallback
-        if (GLAD_GL_OES_draw_elements_base_vertex) {
+        if ((is_gles && majorVersion == 3 && minorVersion < 2) ||
+            !GLAD_GL_OES_draw_elements_base_vertex) {
+            glDrawElementsBaseVertex(primitive_mode, regs.pipeline.num_vertices,
+                                     index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
+                                     reinterpret_cast<const void*>(buffer_offset),
+                                     -static_cast<GLint>(vs_input_index_min));
+        } else {
             glDrawRangeElementsBaseVertex(primitive_mode, vs_input_index_min, vs_input_index_max,
                                           regs.pipeline.num_vertices,
                                           index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
                                           reinterpret_cast<const void*>(buffer_offset),
                                           -static_cast<GLint>(vs_input_index_min));
-        } else {
-            // Fallback: Use glDrawRangeElements and adjust indices manually
-            glDrawRangeElements(primitive_mode, vs_input_index_min, vs_input_index_max,
-                                regs.pipeline.num_vertices,
-                                index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
-                                reinterpret_cast<const void*>(buffer_offset));
         }
     } else {
         glDrawArrays(primitive_mode, 0, regs.pipeline.num_vertices);
