@@ -1,5 +1,6 @@
 // Copyright 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -275,8 +276,8 @@ enum class SystemInfoMemUsageRegion {
  * Accepted by svcGetSystemInfo param with BORKED3DS_INFORMATION type. Selects which information
  * to fetch from Borked3DS. Some string params don't fit in 7 bytes, so they are split.
  */
-enum class SystemInfoBorked3DSInformation {
-    IS_BORKED3DS = 0,      // Always set the output to 1, signaling the app is running on Borked3DS.
+enum class SystemInfoEmulatorInformation {
+    EMULATOR_ID = 0,       // Always set the output to 1, signaling the app is running on Citra.
     HOST_TICK = 1,         // Tick reference from the host in ns, unaffected by lag or cpu speed.
     EMULATION_SPEED = 2,   // Gets the emulation speed set by the user or by KernelSetState.
     BUILD_NAME = 10,       // (ie: Nightly, Canary).
@@ -290,6 +291,15 @@ enum class SystemInfoBorked3DSInformation {
     BUILD_GIT_BRANCH_PART2 = 31,      // Git branch last 7 characters.
     BUILD_GIT_DESCRIPTION_PART1 = 40, // Git description (commit) first 7 characters.
     BUILD_GIT_DESCRIPTION_PART2 = 41, // Git description (commit) last 7 characters.
+};
+
+/**
+ * Used by the IS_EMULATOR information
+ */
+enum class EmulatorIDs {
+    NONE = 0,
+    CITRA_EMULATOR = 1,
+    BORKED3DS_EMULATOR = 2,
 };
 
 /**
@@ -1444,7 +1454,11 @@ Result SVC::KernelSetState(u32 kernel_state, u32 varg1, u32 varg2) {
     // Borked3DS specific states.
     case KernelState::KERNEL_STATE_BORKED3DS_EMULATION_SPEED: {
         u16 new_value = static_cast<u16>(varg1);
-        Settings::values.frame_limit.SetValue(new_value);
+        if (new_value == 0xFFFF) {
+            Settings::is_temporary_frame_limit = false;
+        } else {
+            Settings::temporary_frame_limit = static_cast<double>(new_value);
+        }
     } break;
     default:
         LOG_ERROR(Kernel_SVC, "Unknown KernelSetState state={} varg1={} varg2={}", kernel_state,
@@ -1812,25 +1826,25 @@ Result SVC::GetSystemInfo(s64* out, u32 type, s32 param) {
         *out = 0;
         return (system.GetNumCores() == 4) ? ResultSuccess : ResultInvalidEnumValue;
     case SystemInfoType::BORKED3DS_INFORMATION:
-        switch ((SystemInfoBorked3DSInformation)param) {
-        case SystemInfoBorked3DSInformation::IS_BORKED3DS:
-            *out = 1;
+        switch ((SystemInfoEmulatorInformation)param) {
+        case SystemInfoEmulatorInformation::EMULATOR_ID:
+            *out = static_cast<s64>(EmulatorIDs::BORKED3DS_EMULATOR);
             break;
-        case SystemInfoBorked3DSInformation::HOST_TICK:
+        case SystemInfoEmulatorInformation::HOST_TICK:
             *out = static_cast<s64>(std::chrono::duration_cast<std::chrono::nanoseconds>(
                                         std::chrono::steady_clock::now().time_since_epoch())
                                         .count());
             break;
-        case SystemInfoBorked3DSInformation::EMULATION_SPEED:
+        case SystemInfoEmulatorInformation::EMULATION_SPEED:
             *out = static_cast<s64>(Settings::values.frame_limit.GetValue());
             break;
-        case SystemInfoBorked3DSInformation::BUILD_NAME:
+        case SystemInfoEmulatorInformation::BUILD_NAME:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_build_name, 0, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_VERSION:
+        case SystemInfoEmulatorInformation::BUILD_VERSION:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_build_version, 0, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_PLATFORM: {
+        case SystemInfoEmulatorInformation::BUILD_PLATFORM: {
 #if defined(_WIN32)
             *out = static_cast<s64>(SystemInfoBorked3DSPlatform::PLATFORM_WINDOWS);
 #elif defined(ANDROID)
@@ -1844,35 +1858,35 @@ Result SVC::GetSystemInfo(s64* out, u32 type, s32 param) {
 #endif
             break;
         }
-        case SystemInfoBorked3DSInformation::BUILD_DATE_PART1:
+        case SystemInfoEmulatorInformation::BUILD_DATE_PART1:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_build_date,
                            (sizeof(s64) - 1) * 0, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_DATE_PART2:
+        case SystemInfoEmulatorInformation::BUILD_DATE_PART2:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_build_date,
                            (sizeof(s64) - 1) * 1, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_DATE_PART3:
+        case SystemInfoEmulatorInformation::BUILD_DATE_PART3:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_build_date,
                            (sizeof(s64) - 1) * 2, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_DATE_PART4:
+        case SystemInfoEmulatorInformation::BUILD_DATE_PART4:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_build_date,
                            (sizeof(s64) - 1) * 3, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_GIT_BRANCH_PART1:
+        case SystemInfoEmulatorInformation::BUILD_GIT_BRANCH_PART1:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_scm_branch,
                            (sizeof(s64) - 1) * 0, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_GIT_BRANCH_PART2:
+        case SystemInfoEmulatorInformation::BUILD_GIT_BRANCH_PART2:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_scm_branch,
                            (sizeof(s64) - 1) * 1, sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_GIT_DESCRIPTION_PART1:
+        case SystemInfoEmulatorInformation::BUILD_GIT_DESCRIPTION_PART1:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_scm_desc, (sizeof(s64) - 1) * 0,
                            sizeof(s64));
             break;
-        case SystemInfoBorked3DSInformation::BUILD_GIT_DESCRIPTION_PART2:
+        case SystemInfoEmulatorInformation::BUILD_GIT_DESCRIPTION_PART2:
             CopyStringPart(reinterpret_cast<char*>(out), Common::g_scm_desc, (sizeof(s64) - 1) * 1,
                            sizeof(s64));
             break;

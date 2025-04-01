@@ -241,6 +241,7 @@ ConfigureSystem::ConfigureSystem(Core::System& system_, QWidget* parent)
             &ConfigureSystem::RefreshConsoleID);
     connect(ui->button_start_download, &QPushButton::clicked, this,
             &ConfigureSystem::DownloadFromNUS);
+    connect(ui->button_regenerate_mac, &QPushButton::clicked, this, &ConfigureSystem::RefreshMAC);
 
     connect(ui->button_secure_info, &QPushButton::clicked, this, [this] {
         ui->button_secure_info->setEnabled(false);
@@ -398,6 +399,8 @@ void ConfigureSystem::ReadSystemSettings() {
     u64 console_id = cfg->GetConsoleUniqueId();
     ui->label_console_id->setText(
         tr("Console ID: 0x%1").arg(QString::number(console_id, 16).toUpper()));
+    mac_address = cfg->GetMacAddress();
+    ui->label_mac->setText(tr("MAC: %1").arg(QString::fromStdString(mac_address)));
 
     // set play coin
     play_coin = Service::PTM::Module::GetPlayCoins();
@@ -497,6 +500,9 @@ void ConfigureSystem::ApplyConfiguration() {
 
         Settings::values.plugin_loader_enabled.SetValue(ui->plugin_loader->isChecked());
         Settings::values.allow_plugin_loader.SetValue(ui->allow_plugin_loader->isChecked());
+
+        cfg->GetMacAddress() = mac_address;
+        cfg->SaveMacAddress();
     }
 }
 
@@ -576,6 +582,21 @@ void ConfigureSystem::RefreshConsoleID() {
     cfg->UpdateConfigNANDSavegame();
     ui->label_console_id->setText(
         tr("Console ID: 0x%1").arg(QString::number(console_id, 16).toUpper()));
+}
+
+void ConfigureSystem::RefreshMAC() {
+    QMessageBox::StandardButton reply;
+    QString warning_text = tr("This will replace your current MAC address with a new one. "
+                              "It is not recommended to do this if you got the MAC address from "
+                              "your real console using the setup tool. Continue?");
+    reply =
+        QMessageBox::warning(this, tr("Warning"), warning_text, QMessageBox::No | QMessageBox::Yes);
+    if (reply == QMessageBox::No) {
+        return;
+    }
+
+    mac_address = Service::CFG::GenerateRandomMAC();
+    ui->label_mac->setText(tr("MAC: %1").arg(QString::fromStdString(mac_address)));
 }
 
 void ConfigureSystem::InstallSecureData(const std::string& from_path, const std::string& to_path) {
@@ -692,6 +713,7 @@ void ConfigureSystem::SetupPerGameUI() {
     ui->label_plugin_loader->setVisible(false);
     ui->plugin_loader->setVisible(false);
     ui->allow_plugin_loader->setVisible(false);
+
     // Disable the system firmware downloader.
     ui->label_nus_download->setVisible(false);
     ui->body_nus_download->setVisible(false);

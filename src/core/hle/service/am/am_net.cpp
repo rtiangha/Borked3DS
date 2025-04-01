@@ -1,5 +1,6 @@
 // Copyright 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -58,18 +59,18 @@ AM_NET::AM_NET(std::shared_ptr<Module> am) : Module::Interface(std::move(am), "a
         {0x002D, &AM_NET::CheckContentRightsIgnorePlatform, "CheckContentRightsIgnorePlatform"},
         {0x0401, nullptr, "UpdateFirmwareTo"},
         {0x0402, &AM_NET::BeginImportProgram, "BeginImportProgram"},
-        {0x0403, nullptr, "BeginImportProgramTemporarily"},
+        {0x0403, &AM_NET::BeginImportProgramTemporarily, "BeginImportProgramTemporarily"},
         {0x0404, nullptr, "CancelImportProgram"},
         {0x0405, &AM_NET::EndImportProgram, "EndImportProgram"},
-        {0x0406, nullptr, "EndImportProgramWithoutCommit"},
-        {0x0407, nullptr, "CommitImportPrograms"},
+        {0x0406, &AM_NET::EndImportProgramWithoutCommit, "EndImportProgramWithoutCommit"},
+        {0x0407, &AM_NET::CommitImportPrograms, "CommitImportPrograms"},
         {0x0408, &AM_NET::GetProgramInfoFromCia, "GetProgramInfoFromCia"},
         {0x0409, &AM_NET::GetSystemMenuDataFromCia, "GetSystemMenuDataFromCia"},
         {0x040A, &AM_NET::GetDependencyListFromCia, "GetDependencyListFromCia"},
         {0x040B, &AM_NET::GetTransferSizeFromCia, "GetTransferSizeFromCia"},
         {0x040C, &AM_NET::GetCoreVersionFromCia, "GetCoreVersionFromCia"},
         {0x040D, &AM_NET::GetRequiredSizeFromCia, "GetRequiredSizeFromCia"},
-        {0x040E, nullptr, "CommitImportProgramsAndUpdateFirmwareAuto"},
+        {0x040E, &AM_NET::CommitImportProgramsAndUpdateFirmwareAuto, "CommitImportProgramsAndUpdateFirmwareAuto"},
         {0x040F, nullptr, "UpdateFirmwareAuto"},
         {0x0410, &AM_NET::DeleteProgram, "DeleteProgram"},
         {0x0411, nullptr, "GetTwlProgramListForReboot"},
@@ -89,7 +90,7 @@ AM_NET::AM_NET(std::shared_ptr<Module> am) : Module::Interface(std::move(am), "a
         {0x0806, &AM_NET::ResumeImportTitle, "ResumeImportTitle"},
         {0x0807, &AM_NET::CancelImportTitle, "CancelImportTitle"},
         {0x0808, &AM_NET::EndImportTitle, "EndImportTitle"},
-        {0x0809, nullptr, "CommitImportTitles"},
+        {0x0809, &AM_NET::CommitImportTitles, "CommitImportTitles"},
         {0x080A, &AM_NET::BeginImportTmd, "BeginImportTmd"},
         {0x080B, nullptr, "CancelImportTmd"},
         {0x080C, &AM_NET::EndImportTmd, "EndImportTmd"},
@@ -107,7 +108,7 @@ AM_NET::AM_NET(std::shared_ptr<Module> am) : Module::Interface(std::move(am), "a
         {0x0818, &AM_NET::GetDeviceCert, "GetDeviceCert"},
         {0x0819, nullptr, "ImportCertificates"},
         {0x081A, nullptr, "ImportCertificate"},
-        {0x081B, nullptr, "CommitImportTitlesAndUpdateFirmwareAuto"},
+        {0x081B, &AM_NET::CommitImportTitlesAndUpdateFirmwareAuto, "CommitImportTitlesAndUpdateFirmwareAuto"},
         {0x081C, &AM_NET::DeleteTicketId, "DeleteTicketId"},
         {0x081D, &AM_NET::GetNumTicketIds, "GetNumTicketIds"},
         {0x081E, &AM_NET::GetTicketIdList, "GetTicketIdList"},

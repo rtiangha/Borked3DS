@@ -1,5 +1,6 @@
 // Copyright 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -88,6 +89,8 @@ std::string_view GetTextureSamplingName(TextureSampling sampling) {
 
 Values values = {};
 static bool configuring_global = true;
+bool is_temporary_frame_limit;
+double temporary_frame_limit;
 
 void LogSettings() {
     const auto log_setting = [](std::string_view name, const auto& value) {
@@ -298,5 +301,4 @@ void DeleteProfile(int index) {
 void RenameCurrentProfile(std::string new_name) {
     Settings::values.current_input_profile.name = std::move(new_name);
 }
-
 } // namespace Settings

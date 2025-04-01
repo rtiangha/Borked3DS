@@ -1,5 +1,6 @@
 // Copyright 2015 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -35,7 +36,7 @@ void Module::Interface::GetAdapterState(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
     rb.Push(ptm->battery_is_charging);
 
-    LOG_WARNING(Service_PTM, "(STUBBED) called");
+    LOG_DEBUG(Service_PTM, "(STUBBED) called");
 }
 
 void Module::Interface::GetShellState(Kernel::HLERequestContext& ctx) {
@@ -53,7 +54,7 @@ void Module::Interface::GetBatteryLevel(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
     rb.Push(static_cast<u32>(ChargeLevels::CompletelyFull)); // Set to a completely full battery
 
-    LOG_WARNING(Service_PTM, "(STUBBED) called");
+    LOG_DEBUG(Service_PTM, "(STUBBED) called");
 }
 
 void Module::Interface::GetBatteryChargeState(Kernel::HLERequestContext& ctx) {
@@ -63,7 +64,7 @@ void Module::Interface::GetBatteryChargeState(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
     rb.Push(ptm->battery_is_charging);
 
-    LOG_WARNING(Service_PTM, "(STUBBED) called");
+    LOG_DEBUG(Service_PTM, "(STUBBED) called");
 }
 
 void Module::Interface::GetPedometerState(Kernel::HLERequestContext& ctx) {
@@ -73,7 +74,7 @@ void Module::Interface::GetPedometerState(Kernel::HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
     rb.Push(ptm->pedometer_is_counting);
 
-    LOG_WARNING(Service_PTM, "(STUBBED) called");
+    LOG_DEBUG(Service_PTM, "(STUBBED) called");
 }
 
 void Module::Interface::GetStepHistory(Kernel::HLERequestContext& ctx) {

@@ -1,5 +1,6 @@
 // Copyright 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -111,9 +112,14 @@ System::ResultStatus System::RunLoop(bool tight_loop) {
         }
     }
     switch (signal) {
-    case Signal::Reset:
+    case Signal::Reset: {
+        if (app_loader && app_loader->DoingInitialSetup()) {
+            // Treat reset as shutdown if we are doing the initial setup
+            return ResultStatus::ShutdownRequested;
+        }
         Reset();
         return ResultStatus::Success;
+    }
     case Signal::Shutdown:
         return ResultStatus::ShutdownRequested;
     case Signal::Load: {
@@ -906,6 +912,10 @@ void System::ApplySettings() {
 
 void System::RegisterAppLoaderEarly(std::unique_ptr<Loader::AppLoader>& loader) {
     early_app_loader = std::move(loader);
+}
+
+bool System::IsInitialSetup() {
+    return app_loader && app_loader->DoingInitialSetup();
 }
 
 template <class Archive>

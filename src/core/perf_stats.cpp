@@ -1,5 +1,6 @@
 // Copyright 2017 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -160,9 +161,9 @@ void FrameLimiter::DoFrameLimiting(microseconds current_system_time_us) {
     }
 
     auto now = Clock::now();
-    double sleep_scale = Settings::values.frame_limit.GetValue() / 100.0;
+    double sleep_scale = Settings::GetFrameLimit() / 100.0;
 
-    if (Settings::values.frame_limit.GetValue() == 0) {
+    if (Settings::GetFrameLimit() == 0) {
         return;
     }
 

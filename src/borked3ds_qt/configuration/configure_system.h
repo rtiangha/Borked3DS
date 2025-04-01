@@ -1,5 +1,6 @@
 // Copyright 2016 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -52,6 +53,7 @@ private:
     void UpdateInitTime(int init_clock);
     void UpdateInitTicks(int init_ticks_type);
     void RefreshConsoleID();
+    void RefreshMAC();
 
     void InstallSecureData(const std::string& from_path, const std::string& to_path);
     void InstallCTCert(const std::string& from_path);
@@ -77,4 +79,5 @@ private:
     u8 country_code;
     u16 play_coin;
     bool system_setup;
+    std::string mac_address;
 };

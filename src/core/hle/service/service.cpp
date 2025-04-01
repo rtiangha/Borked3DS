@@ -1,5 +1,6 @@
 // Copyright 2014 Citra Emulator Project
 // Copyright 2024 Borked3DS Emulator Project
+// Copyright 2025 Azahar Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -208,7 +209,14 @@ static bool AttemptLLE(const ServiceModuleInfo& service_module) {
         return false;
     }
     std::shared_ptr<Kernel::Process> process;
-    loader->Load(process);
+    Loader::ResultStatus load_result = loader->Load(process);
+    if (load_result != Loader::ResultStatus::Success) {
+        LOG_ERROR(Service,
+                  "Service module \"{}\" could not be loaded (ResultStatus={}); Defaulting to HLE "
+                  "implementation.",
+                  service_module.name, static_cast<int>(load_result));
+        return false;
+    }
     LOG_DEBUG(Service, "Service module \"{}\" has been successfully loaded.", service_module.name);
     return true;
 }

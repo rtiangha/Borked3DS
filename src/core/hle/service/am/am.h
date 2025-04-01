@@ -138,7 +138,7 @@ using ProgressCallback = void(std::size_t, std::size_t);
 
 class NCCHCryptoFile final {
 public:
-    NCCHCryptoFile(const std::string& out_file);
+    NCCHCryptoFile(const std::string& out_file, bool encrypted_content);
 
     void Write(const u8* buffer, std::size_t length);
     bool IsError() {
@@ -154,7 +154,7 @@ private:
 
     std::size_t written = 0;
 
-    NCCH_Header ncch_header;
+    NCCH_Header ncch_header{};
     std::size_t header_size = 0;
     bool header_parsed = false;
 
@@ -182,7 +182,7 @@ private:
 
     std::vector<CryptoRegion> regions;
 
-    ExeFs_Header exefs_header;
+    ExeFs_Header exefs_header{};
     std::size_t exefs_header_written = 0;
     bool exefs_header_processed = false;
 };
@@ -229,7 +229,7 @@ private:
 
     // Sections (tik, tmd, contents) are being imported individually
     bool from_cdn;
-    bool decryption_authorized;
+    bool decryption_authorized = true;
     bool is_done = false;
     bool is_closed = false;
 
@@ -448,6 +448,9 @@ public:
 
     protected:
         void GetProgramInfosImpl(Kernel::HLERequestContext& ctx, bool ignore_platform);
+
+        void CommitImportTitlesImpl(Kernel::HLERequestContext& ctx, bool is_update_firm_auto,
+                                    bool is_titles);
 
         /**
          * AM::GetNumPrograms service function
@@ -908,6 +911,8 @@ public:
          */
         void GetRequiredSizeFromCia(Kernel::HLERequestContext& ctx);
 
+        void CommitImportProgramsAndUpdateFirmwareAuto(Kernel::HLERequestContext& ctx);
+
         /**
          * AM::DeleteProgram service function
          * Deletes a program
@@ -984,6 +989,8 @@ public:
 
         void EndImportTitle(Kernel::HLERequestContext& ctx);
 
+        void CommitImportTitles(Kernel::HLERequestContext& ctx);
+
         void BeginImportTmd(Kernel::HLERequestContext& ctx);
 
         void EndImportTmd(Kernel::HLERequestContext& ctx);
@@ -1018,6 +1025,8 @@ public:
          */
         void GetDeviceCert(Kernel::HLERequestContext& ctx);
 
+        void CommitImportTitlesAndUpdateFirmwareAuto(Kernel::HLERequestContext& ctx);
+
         void DeleteTicketId(Kernel::HLERequestContext& ctx);
 
         void GetNumTicketIds(Kernel::HLERequestContext& ctx);
@@ -1048,6 +1057,14 @@ public:
      * @returns CTCertLoadStatus indicating the file load status.
      */
     static CTCertLoadStatus LoadCTCertFile(CTCert& output);
+
+    void ForceO3DSDeviceID() {
+        force_old_device_id = true;
+    }
+
+    void ForceN3DSDeviceID() {
+        force_new_device_id = true;
+    }
 
 private:
     void ScanForTickets();
