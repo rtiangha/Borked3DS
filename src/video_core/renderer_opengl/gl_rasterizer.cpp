@@ -471,9 +471,9 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
                     dst[i] = index_data[i] - vs_input_index_min;
                 }
             }
-            glDrawElementsBaseVertex(primitive_mode, regs.pipeline.num_vertices,
-                                     index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
-                                     reinterpret_cast<const void*>(buffer_offset), 0);
+            glDrawElements(primitive_mode, regs.pipeline.num_vertices,
+                           index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
+                           reinterpret_cast<const void*>(buffer_offset));
         } else {
             glDrawRangeElementsBaseVertex(primitive_mode, vs_input_index_min, vs_input_index_max,
                                           regs.pipeline.num_vertices,
