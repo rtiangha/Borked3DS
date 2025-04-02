@@ -414,6 +414,7 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
     u8* buffer_ptr;
     GLintptr buffer_offset;
     std::tie(buffer_ptr, buffer_offset, std::ignore) = vertex_buffer.Map(vs_input_size, 4);
+    LOG_DEBUG(Render_OpenGL, "Index buffer offset: {}", buffer_offset);
     SetupVertexArray(buffer_ptr, buffer_offset, vs_input_index_min, vs_input_index_max);
     vertex_buffer.Unmap(vs_input_size);
 
@@ -423,7 +424,6 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
     if (is_indexed) {
         bool index_u16 = regs.pipeline.index_array.format != 0;
         std::size_t index_buffer_size = regs.pipeline.num_vertices * (index_u16 ? 2 : 1);
-
         if (index_buffer_size > INDEX_BUFFER_SIZE) {
             LOG_WARNING(Render_OpenGL, "Too large index input size {}", index_buffer_size);
             return false;
@@ -432,7 +432,15 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
         const u8* index_data =
             memory.GetPhysicalPointer(regs.pipeline.vertex_attributes.GetPhysicalBaseAddress() +
                                       regs.pipeline.index_array.offset);
+        if (index_u16) {
+            const u16* indices = reinterpret_cast<const u16*>(index_data);
+            u16 min_idx = *std::min_element(indices, indices + regs.pipeline.num_vertices);
+            u16 max_idx = *std::max_element(indices, indices + regs.pipeline.num_vertices);
+            LOG_DEBUG(Render_OpenGL, "Index range: {} to {}, vs_input_index_min: {}", min_idx,
+                      max_idx, vs_input_index_min);
+        }
         std::tie(buffer_ptr, buffer_offset, std::ignore) = index_buffer.Map(index_buffer_size, 4);
+        LOG_DEBUG(Render_OpenGL, "Index buffer offset: {}", buffer_offset);
         std::memcpy(buffer_ptr, index_data, index_buffer_size);
         index_buffer.Unmap(index_buffer_size);
 
@@ -442,13 +450,30 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
             return false;
         }
 
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer.GetHandle());
+
+        LOG_DEBUG(Render_OpenGL, "Drawing: mode={}, count={}, type={}, offset={}, basevertex=0",
+                  primitive_mode, regs.pipeline.num_vertices,
+                  index_u16 ? "GL_UNSIGNED_SHORT" : "GL_UNSIGNED_BYTE", buffer_offset);
+
         // Use extension if available, otherwise fallback
         if ((is_gles && majorVersion == 3 && minorVersion < 2) ||
             !GLAD_GL_OES_draw_elements_base_vertex) {
+            if (index_u16) {
+                u16* dst = reinterpret_cast<u16*>(buffer_ptr);
+                const u16* src = reinterpret_cast<const u16*>(index_data);
+                for (std::size_t i = 0; i < regs.pipeline.num_vertices; ++i) {
+                    dst[i] = src[i] - vs_input_index_min;
+                }
+            } else {
+                u8* dst = buffer_ptr;
+                for (std::size_t i = 0; i < regs.pipeline.num_vertices; ++i) {
+                    dst[i] = index_data[i] - vs_input_index_min;
+                }
+            }
             glDrawElementsBaseVertex(primitive_mode, regs.pipeline.num_vertices,
                                      index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
-                                     reinterpret_cast<const void*>(buffer_offset),
-                                     -static_cast<GLint>(vs_input_index_min));
+                                     reinterpret_cast<const void*>(buffer_offset), 0);
         } else {
             glDrawRangeElementsBaseVertex(primitive_mode, vs_input_index_min, vs_input_index_max,
                                           regs.pipeline.num_vertices,
@@ -458,6 +483,11 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
         }
     } else {
         glDrawArrays(primitive_mode, 0, regs.pipeline.num_vertices);
+    }
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        LOG_ERROR(Render_OpenGL, "OpenGL error before draw: {}", error);
+        return false;
     }
     return true;
 }
