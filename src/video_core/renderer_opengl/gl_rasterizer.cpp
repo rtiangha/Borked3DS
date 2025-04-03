@@ -459,21 +459,34 @@ bool RasterizerOpenGL::AccelerateDrawBatchInternal(bool is_indexed) {
         // Use extension if available, otherwise fallback
         if ((is_gles && majorVersion == 3 && minorVersion < 2) ||
             !GLAD_GL_OES_draw_elements_base_vertex) {
-            if (index_u16) {
-                u16* dst = reinterpret_cast<u16*>(buffer_ptr);
-                const u16* src = reinterpret_cast<const u16*>(index_data);
-                for (std::size_t i = 0; i < regs.pipeline.num_vertices; ++i) {
-                    dst[i] = src[i] - vs_input_index_min;
+            // Adjust indices by subtracting vs_input_index_min
+            // Assuming index data is accessible and modifiable:
+            GLenum type = index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE;
+            GLsizei count = regs.pipeline.num_vertices;
+            const GLvoid* indices = reinterpret_cast<const void*>(buffer_offset);
+
+            // Map the index buffer to modify indices
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer.GetHandle());
+            void* mapped = glMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, buffer_offset,
+                                            count * (type == GL_UNSIGNED_SHORT ? 2 : 1),
+                                            GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+            if (mapped) {
+                if (type == GL_UNSIGNED_SHORT) {
+                    uint16_t* idx = static_cast<uint16_t*>(mapped);
+                    for (GLsizei i = 0; i < count; ++i) {
+                        idx[i] -= vs_input_index_min;
+                    }
+                } else {
+                    uint8_t* idx = static_cast<uint8_t*>(mapped);
+                    for (GLsizei i = 0; i < count; ++i) {
+                        idx[i] -= vs_input_index_min;
+                    }
                 }
-            } else {
-                u8* dst = buffer_ptr;
-                for (std::size_t i = 0; i < regs.pipeline.num_vertices; ++i) {
-                    dst[i] = index_data[i] - vs_input_index_min;
-                }
+                glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
             }
-            glDrawElements(primitive_mode, regs.pipeline.num_vertices,
-                           index_u16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE,
-                           reinterpret_cast<const void*>(buffer_offset));
+
+            // Draw with adjusted indices
+            glDrawElements(primitive_mode, count, type, indices);
         } else {
             glDrawRangeElementsBaseVertex(primitive_mode, vs_input_index_min, vs_input_index_max,
                                           regs.pipeline.num_vertices,
