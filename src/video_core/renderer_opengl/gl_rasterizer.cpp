@@ -16,6 +16,7 @@
 #include "video_core/pica/pica_core.h"
 #include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_rasterizer.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/renderer_opengl/pica_to_gl.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
 #include "video_core/shader/generator/shader_gen.h"
@@ -355,6 +356,16 @@ bool RasterizerOpenGL::SetupVertexShader() {
 
 bool RasterizerOpenGL::SetupGeometryShader() {
     BORKED3DS_PROFILE("OpenGL", "Geometry Shader Setup");
+
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
+        LOG_DEBUG(Render_OpenGL,
+                  "Accelerate draw under OpenGLES < 3.2 doesn't support geometry shader");
+        return false;
+    }
 
     if (regs.pipeline.use_gs != Pica::PipelineRegs::UseGS::No) {
         LOG_ERROR(Render_OpenGL, "Accelerate draw doesn't support geometry shader");
