@@ -9,6 +9,8 @@
 
 #ifndef __APPLE__
 #include <glad/gl.h>
+#include "video_core/renderer_opengl/gl_driver.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #endif
 
 #include "video_core/pica/regs_rasterizer.h"
@@ -100,8 +102,28 @@ static std::string GetVertexInterfaceDeclaration(bool is_output, bool use_clip_p
 
 std::string GenerateTrivialVertexShader(bool use_clip_planes, bool separable_shader) {
     std::string out;
+
     if (separable_shader) {
         out += "#extension GL_ARB_separate_shader_objects : enable\n";
+
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += R"(
+#extension GL_ARB_separate_shader_objects : enable  
+layout(location = ATTRIBUTE_COLOR) out vec4 primary_color;
+layout(location = ATTRIBUTE_TEXCOORD0) out vec2 texcoord0;
+layout(location = ATTRIBUTE_TEXCOORD1) out vec2 texcoord1; 
+layout(location = ATTRIBUTE_TEXCOORD2) out vec2 texcoord2;
+layout(location = ATTRIBUTE_TEXCOORD0_W) out float texcoord0_w;
+layout(location = ATTRIBUTE_NORMQUAT) out vec4 normquat;
+layout(location = ATTRIBUTE_VIEW) out vec3 view;
+)";
+        }
+#endif
     }
 
     out +=
@@ -163,6 +185,25 @@ std::string GenerateVertexShader(const ShaderSetup& setup, const PicaVSConfig& c
     std::string out;
     if (separable_shader) {
         out += "#extension GL_ARB_separate_shader_objects : enable\n";
+
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out += R"(
+#extension GL_ARB_separate_shader_objects : enable
+layout(location = ATTRIBUTE_COLOR) out vec4 primary_color;
+layout(location = ATTRIBUTE_TEXCOORD0) out vec2 texcoord0;
+layout(location = ATTRIBUTE_TEXCOORD1) out vec2 texcoord1;
+layout(location = ATTRIBUTE_TEXCOORD2) out vec2 texcoord2;
+layout(location = ATTRIBUTE_TEXCOORD0_W) out float texcoord0_w;
+layout(location = ATTRIBUTE_NORMQUAT) out vec4 normquat;
+layout(location = ATTRIBUTE_VIEW) out vec3 view;
+)";
+        }
+#endif
     }
 
     out += VSPicaUniformBlockDef;
@@ -397,6 +438,25 @@ std::string GenerateFixedGeometryShader(const PicaFixedGSConfig& config, bool se
 
     if (separable_shader) {
         out << "#extension GL_ARB_separate_shader_objects : enable\n";
+
+#ifndef __APPLE__
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+            out << R"(
+#extension GL_ARB_separate_shader_objects : enable
+layout(location = ATTRIBUTE_COLOR) out vec4 primary_color;
+layout(location = ATTRIBUTE_TEXCOORD0) out vec2 texcoord0;
+layout(location = ATTRIBUTE_TEXCOORD1) out vec2 texcoord1;
+layout(location = ATTRIBUTE_TEXCOORD2) out vec2 texcoord2;
+layout(location = ATTRIBUTE_TEXCOORD0_W) out float texcoord0_w;
+layout(location = ATTRIBUTE_NORMQUAT) out vec4 normquat;
+layout(location = ATTRIBUTE_VIEW) out vec3 view;
+)";
+        }
+#endif
     }
 
     out << R"(
