@@ -59,7 +59,11 @@ static void GLAD_API_PTR DebugHandler(GLenum source, GLenum type, GLuint id, GLe
                                       GLsizei length, const GLchar* message,
                                       const void* user_param) {
     auto level = Common::Log::Level::Info;
-    if (Settings::values.use_gles.GetValue()) {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH_KHR:
             level = Common::Log::Level::Critical;
@@ -94,15 +98,15 @@ Driver::Driver() {
     const bool enable_debug = Settings::values.renderer_debug.GetValue();
     if (enable_debug) {
 
-        if (Settings::values.use_gles.GetValue()) {
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
-        } else {
-            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        }
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
-        if (Settings::values.use_gles.GetValue()) {
+        if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
             glDebugMessageCallbackKHR(DebugHandler, nullptr);
         } else {
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             glDebugMessageCallback(DebugHandler, nullptr);
         }
     }

@@ -7,16 +7,18 @@
 
 #include "common/profiling.h"
 #include "common/settings.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/renderer_opengl/gl_shader_util.h"
 #include "video_core/renderer_opengl/gl_state.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 
 namespace OpenGL {
 
 namespace detail {
 
 bool IsGLES() {
-    if (Settings::values.use_gles.GetValue()) {
+    if (Settings::values.use_gles.GetValue() || OpenGL::GLES) {
         return true;
     } else {
         return false;
@@ -25,7 +27,11 @@ bool IsGLES() {
 
 bool SupportsTextureStorage() {
     static bool supports_texture_storage = [] {
-        if (Settings::values.use_gles.GetValue()) {
+        GLint majorVersion = 0, minorVersion = 0;
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+        if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
             return GLAD_GL_ES_VERSION_3_0 || GLAD_GL_EXT_texture_storage;
         } else {
             return true;
@@ -233,10 +239,14 @@ void OGLProgram::Release() {
 }
 
 void OGLPipeline::Create() {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (handle != 0)
         return;
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         glGenProgramPipelinesEXT(1, &handle);
     } else {
         glGenProgramPipelines(1, &handle);
@@ -269,10 +279,14 @@ void OGLBuffer::Release() {
 }
 
 void OGLVertexArray::Create() {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (handle != 0)
         return;
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         glGenVertexArraysOES(1, &handle);
     } else {
         glGenVertexArrays(1, &handle);
@@ -280,10 +294,14 @@ void OGLVertexArray::Create() {
 }
 
 void OGLVertexArray::Release() {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (handle == 0)
         return;
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         if (GLAD_GL_OES_vertex_array_object) {
             glDeleteVertexArraysOES(1, &handle);
         } else {

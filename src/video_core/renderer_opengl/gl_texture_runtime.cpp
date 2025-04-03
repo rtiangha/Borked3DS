@@ -14,6 +14,7 @@
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
 #include "video_core/renderer_opengl/gl_texture_runtime.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/renderer_opengl/pica_to_gl.h"
 
 namespace OpenGL {
@@ -116,12 +117,12 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
 
 [[nodiscard]] OGLTexture MakeHandle(GLenum target, u32 width, u32 height, u32 levels,
                                     const FormatTuple& tuple, std::string_view debug_name = "") {
-    OGLTexture texture{};
-    texture.Create();
-
-    GLint majorVersion, minorVersion;
+    GLint majorVersion = 0, minorVersion = 0;
     glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    OGLTexture texture{};
+    texture.Create();
 
     glBindTexture(target, texture.handle);
     glTexStorage2D(target, levels, tuple.internal_format, width, height);
@@ -131,7 +132,7 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     if (!debug_name.empty()) {
-        if (Settings::values.use_gles.GetValue() && majorVersion == 3 && minorVersion < 2) {
+        if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
             glObjectLabelKHR(GL_TEXTURE, texture.handle, -1, debug_name.data());
         } else {
             glObjectLabel(GL_TEXTURE, texture.handle, -1, debug_name.data());
@@ -809,7 +810,7 @@ DebugScope::DebugScope(TextureRuntime& runtime, Common::Vec4f, std::string_view 
     glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
-    if (Settings::values.use_gles.GetValue() && majorVersion == 3 && minorVersion < 2) {
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION_KHR, local_scope_depth,
                             static_cast<GLsizei>(label.size()), label.data());
     } else {
@@ -827,7 +828,7 @@ DebugScope::~DebugScope() {
     glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
     glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
-    if (Settings::values.use_gles.GetValue() && majorVersion == 3 && minorVersion < 2) {
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         glPopDebugGroupKHR();
     } else {
         glPopDebugGroup();

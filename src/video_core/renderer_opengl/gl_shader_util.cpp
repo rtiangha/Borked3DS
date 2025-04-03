@@ -10,6 +10,7 @@
 #include "common/assert.h"
 #include "common/logging/log.h"
 #include "common/settings.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_shader_util.h"
 #include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/shader/generator/shader_uniforms.h"
@@ -125,7 +126,7 @@ GLuint LoadShader(std::string_view source, GLenum type) {
 
     std::string_view debug_type;
 
-    if (Settings::values.use_gles.GetValue()) {
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
         switch (type) {
         case GL_VERTEX_SHADER:
             debug_type = "vertex";

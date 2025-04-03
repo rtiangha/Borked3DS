@@ -14,7 +14,6 @@ namespace OpenGL {
  * Utility function to create and compile an OpenGL GLSL shader
  * @param source String of the GLSL shader program
  * @param type Type of the shader (GL_VERTEX_SHADER, GL_GEOMETRY_SHADER or GL_FRAGMENT_SHADER)
- * NOTE: If using OpenGLES 3.1, use GL_GEOMETRY_SHADER_EXT
  */
 GLuint LoadShader(std::string_view source, GLenum type);
 

@@ -246,6 +246,9 @@ void RendererOpenGL::RenderToMailbox(const Layout::FramebufferLayout& layout,
  */
 void RendererOpenGL::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer,
                                         ScreenInfo& screen_info, bool right_eye) {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
     if (framebuffer.address_right1 == 0 || framebuffer.address_right2 == 0)
         right_eye = false;
@@ -284,7 +287,7 @@ void RendererOpenGL::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
 
         glActiveTexture(GL_TEXTURE0);
 
-        if (Settings::values.use_gles.GetValue()) {
+        if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
             glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, (GLint)pixel_stride);
         } else {
             glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
