@@ -19,6 +19,7 @@
 #include "video_core/renderer_opengl/gl_shader_disk_cache.h"
 #include "video_core/renderer_opengl/gl_shader_manager.h"
 #include "video_core/renderer_opengl/gl_state.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/shader/generator/glsl_fs_shader_gen.h"
 #include "video_core/shader/generator/glsl_shader_gen.h"
 #include "video_core/shader/generator/profile.h"
@@ -94,9 +95,20 @@ static std::tuple<PicaVSConfig, Pica::ShaderSetup> BuildVSConfigFromRaw(
     setup.program_code = program_code;
     setup.swizzle_data = swizzle_data;
 
-    // Enable the geometry-shader only if we are actually doing per-fragment lighting
-    // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
-    const bool use_geometry_shader = !raw.GetRawShaderConfig().lighting.disable;
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    bool use_geometry_shader;
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        use_geometry_shader = false;
+    } else {
+        // Enable the geometry-shader only if we are actually doing per-fragment lighting
+        // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
+        use_geometry_shader = !raw.GetRawShaderConfig().lighting.disable;
+    }
+
     return {PicaVSConfig{raw.GetRawShaderConfig(), setup, driver.HasClipCullDistance(),
                          use_geometry_shader, accurate_mul},
             setup};
@@ -379,9 +391,19 @@ ShaderProgramManager::~ShaderProgramManager() = default;
 bool ShaderProgramManager::UseProgrammableVertexShader(const Pica::RegsInternal& regs,
                                                        Pica::ShaderSetup& setup,
                                                        bool accurate_mul) {
-    // Enable the geometry-shader only if we are actually doing per-fragment lighting
-    // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
-    const bool use_geometry_shader = !regs.lighting.disable;
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    bool use_geometry_shader;
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        use_geometry_shader = false;
+    } else {
+        // Enable the geometry-shader only if we are actually doing per-fragment lighting
+        // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
+        use_geometry_shader = !regs.lighting.disable;
+    }
 
     PicaVSConfig config{regs, setup, driver.HasClipCullDistance(), use_geometry_shader,
                         accurate_mul};
