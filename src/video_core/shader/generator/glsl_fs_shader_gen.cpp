@@ -1675,6 +1675,11 @@ void FragmentModule::DefineBindingsGL() {
         out += "layout(binding = 3) uniform highp sampler2D texture_buffer_lut_lf;\n";
         out += "layout(binding = 4) uniform highp sampler2D texture_buffer_lut_rg;\n";
         out += "layout(binding = 5) uniform highp sampler2D texture_buffer_lut_rgba;\n\n";
+    } else {
+        out += FSUniformBlockDef;
+        out += "layout(binding = 3) uniform highp samplerBuffer texture_buffer_lut_lf;\n";
+        out += "layout(binding = 4) uniform highp samplerBuffer texture_buffer_lut_rg;\n";
+        out += "layout(binding = 5) uniform highp samplerBuffer texture_buffer_lut_rgba;\n\n";
     }
 #endif
 
