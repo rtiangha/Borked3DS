@@ -3,6 +3,12 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#ifndef __APPLE__
+#include <glad/gl.h>
+#include "video_core/renderer_opengl/gl_driver.h"
+#include "video_core/renderer_opengl/gl_vars.h"
+#endif
+
 #include "common/bit_set.h"
 #include "common/logging/log.h"
 #include "common/settings.h"
@@ -39,8 +45,21 @@ void PicaGSConfigState::Init(const Pica::RegsInternal& regs, bool use_clip_plane
 
 void PicaVSConfigState::Init(const Pica::RegsInternal& regs, Pica::ShaderSetup& setup,
                              bool use_clip_planes_, bool use_geometry_shader_, bool accurate_mul_) {
-    use_clip_planes = use_clip_planes_;
+#ifndef __APPLE__
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        use_geometry_shader = false;
+    } else {
+        use_geometry_shader = use_geometry_shader_;
+    }
+#else
     use_geometry_shader = use_geometry_shader_;
+#endif
+
+    use_clip_planes = use_clip_planes_;
     sanitize_mul = accurate_mul_;
 
     program_hash = setup.GetProgramCodeHash();

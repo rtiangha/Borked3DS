@@ -10,6 +10,7 @@
 #include <thread>
 #include <unordered_map>
 #include <variant>
+#include <glad/gl.h>
 #include "common/settings.h"
 #include "core/frontend/emu_window.h"
 #include "video_core/pica/shader_setup.h"
@@ -18,6 +19,7 @@
 #include "video_core/renderer_opengl/gl_shader_disk_cache.h"
 #include "video_core/renderer_opengl/gl_shader_manager.h"
 #include "video_core/renderer_opengl/gl_state.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/shader/generator/glsl_fs_shader_gen.h"
 #include "video_core/shader/generator/glsl_shader_gen.h"
 #include "video_core/shader/generator/profile.h"
@@ -52,7 +54,7 @@ static OGLProgram GeneratePrecompiledProgram(const ShaderDiskCacheDump& dump,
 
     auto shader = OGLProgram();
     shader.handle = glCreateProgram();
-    if (separable) {
+    if (separable && GLAD_GL_EXT_separate_shader_objects) {
         glProgramParameteri(shader.handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
     }
     glProgramBinary(shader.handle, dump.binary_format, dump.binary.data(),
@@ -93,9 +95,20 @@ static std::tuple<PicaVSConfig, Pica::ShaderSetup> BuildVSConfigFromRaw(
     setup.program_code = program_code;
     setup.swizzle_data = swizzle_data;
 
-    // Enable the geometry-shader only if we are actually doing per-fragment lighting
-    // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
-    const bool use_geometry_shader = !raw.GetRawShaderConfig().lighting.disable;
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    bool use_geometry_shader;
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        use_geometry_shader = false;
+    } else {
+        // Enable the geometry-shader only if we are actually doing per-fragment lighting
+        // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
+        use_geometry_shader = !raw.GetRawShaderConfig().lighting.disable;
+    }
+
     return {PicaVSConfig{raw.GetRawShaderConfig(), setup, driver.HasClipCullDistance(),
                          use_geometry_shader, accurate_mul},
             setup};
@@ -254,7 +267,7 @@ using ProgrammableVertexShaders =
     ShaderDoubleCache<PicaVSConfig, &GLSL::GenerateVertexShader, GL_VERTEX_SHADER>;
 
 using FixedGeometryShaders =
-    ShaderCache<PicaFixedGSConfig, &GLSL::GenerateFixedGeometryShader, GL_GEOMETRY_SHADER>;
+    ShaderCache<PicaFixedGSConfig, &GLSL::GenerateFixedGeometryShader, GL_GEOMETRY_SHADER_EXT>;
 
 using FragmentShaders = ShaderCache<FSConfig, &GLSL::GenerateFragmentShader, GL_FRAGMENT_SHADER>;
 
@@ -264,29 +277,66 @@ public:
         : separable(separable), programmable_vertex_shaders(separable),
           trivial_vertex_shader(driver, separable), fixed_geometry_shaders(separable),
           fragment_shaders(separable), disk_cache(separable) {
+
+        const bool is_gles = driver.IsOpenGLES();
+
         if (separable) {
+            if (is_gles && !driver.HasExtension("GL_EXT_separate_shader_objects")) {
+                LOG_ERROR(Render_OpenGL, "Separate shader objects not supported!");
+                throw std::runtime_error("Separate shader objects not supported!");
+            }
             pipeline.Create();
         }
-        profile = Pica::Shader::Profile{
-            .has_separable_shaders = separable,
-            .has_clip_planes = driver.HasClipCullDistance(),
-            .has_geometry_shader = true,
-            .has_custom_border_color = true,
-            .has_fragment_shader_interlock = driver.HasArbFragmentShaderInterlock(),
-            // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
-            .has_fragment_shader_barycentric = false,
-            .has_blend_minmax_factor = driver.HasBlendMinMaxFactor(),
-            .has_minus_one_to_one_range = true,
-            .has_logic_op = !driver.IsOpenGLES(),
-            .has_gl_ext_framebuffer_fetch = driver.HasExtFramebufferFetch(),
-            .has_gl_arm_framebuffer_fetch = driver.HasArmShaderFramebufferFetch(),
-            .has_gl_arb_shader_image_load_store = driver.HasArbShaderImageLoadStore(),
-            .has_gl_nv_fragment_shader_interlock = driver.HasNvFragmentShaderInterlock(),
-            .has_gl_intel_fragment_shader_ordering = driver.HasIntelFragmentShaderOrdering(),
-            // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
-            .has_gl_nv_fragment_shader_barycentric = false,
-            .is_vulkan = false,
-        };
+
+        if (is_gles) {
+            profile = Pica::Shader::Profile{
+                .has_separable_shaders = separable,
+                .has_clip_planes = driver.HasClipCullDistance(),
+                .has_geometry_shader = false,
+                .has_custom_border_color = (GLAD_GL_EXT_texture_border_clamp != 0),
+                .has_fragment_shader_interlock = driver.HasArbFragmentShaderInterlock(),
+                // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
+                .has_fragment_shader_barycentric = false,
+                .has_blend_minmax_factor = driver.HasBlendMinMaxFactor(),
+                .has_minus_one_to_one_range = true,
+                .has_logic_op = !driver.IsOpenGLES(),
+                .has_gl_ext_framebuffer_fetch = driver.HasExtFramebufferFetch(),
+                .has_gl_ext_texture_buffer = driver.HasExtTextureBuffer(),
+                .has_gl_arm_framebuffer_fetch = driver.HasArmShaderFramebufferFetch(),
+                .has_gl_arb_shader_image_load_store =
+                    !is_gles && driver.HasArbShaderImageLoadStore(),
+                .has_gl_nv_fragment_shader_interlock = driver.HasNvFragmentShaderInterlock(),
+                .has_gl_intel_fragment_shader_ordering =
+                    !is_gles && driver.HasIntelFragmentShaderOrdering(),
+                // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
+                .has_gl_nv_fragment_shader_barycentric = false,
+                .is_vulkan = false,
+            };
+        } else {
+            profile = Pica::Shader::Profile{
+                .has_separable_shaders = separable,
+                .has_clip_planes = driver.HasClipCullDistance(),
+                .has_geometry_shader = true,
+                .has_custom_border_color = (GLAD_GL_EXT_texture_border_clamp != 0),
+                .has_fragment_shader_interlock = driver.HasArbFragmentShaderInterlock(),
+                // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
+                .has_fragment_shader_barycentric = false,
+                .has_blend_minmax_factor = driver.HasBlendMinMaxFactor(),
+                .has_minus_one_to_one_range = true,
+                .has_logic_op = !driver.IsOpenGLES(),
+                .has_gl_ext_framebuffer_fetch = driver.HasExtFramebufferFetch(),
+                .has_gl_ext_texture_buffer = driver.HasExtTextureBuffer(),
+                .has_gl_arm_framebuffer_fetch = driver.HasArmShaderFramebufferFetch(),
+                .has_gl_arb_shader_image_load_store =
+                    !is_gles && driver.HasArbShaderImageLoadStore(),
+                .has_gl_nv_fragment_shader_interlock = driver.HasNvFragmentShaderInterlock(),
+                .has_gl_intel_fragment_shader_ordering =
+                    !is_gles && driver.HasIntelFragmentShaderOrdering(),
+                // TODO: This extension requires GLSL 450 / OpenGL 4.5 context.
+                .has_gl_nv_fragment_shader_barycentric = false,
+                .is_vulkan = false,
+            };
+        }
     }
 
     struct ShaderTuple {
@@ -341,9 +391,19 @@ ShaderProgramManager::~ShaderProgramManager() = default;
 bool ShaderProgramManager::UseProgrammableVertexShader(const Pica::RegsInternal& regs,
                                                        Pica::ShaderSetup& setup,
                                                        bool accurate_mul) {
-    // Enable the geometry-shader only if we are actually doing per-fragment lighting
-    // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
-    const bool use_geometry_shader = !regs.lighting.disable;
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    bool use_geometry_shader;
+
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        use_geometry_shader = false;
+    } else {
+        // Enable the geometry-shader only if we are actually doing per-fragment lighting
+        // and care about proper quaternions. Otherwise just use standard vertex+fragment shaders
+        use_geometry_shader = !regs.lighting.disable;
+    }
 
     PicaVSConfig config{regs, setup, driver.HasClipCullDistance(), use_geometry_shader,
                         accurate_mul};
@@ -374,10 +434,15 @@ void ShaderProgramManager::UseTrivialVertexShader() {
 }
 
 void ShaderProgramManager::UseFixedGeometryShader(const Pica::RegsInternal& regs) {
-    PicaFixedGSConfig gs_config(regs, driver.HasClipCullDistance());
-    auto [handle, _] = impl->fixed_geometry_shaders.Get(gs_config, impl->separable);
-    impl->current.gs = handle;
-    impl->current.gs_hash = gs_config.Hash();
+    if (driver.IsOpenGLES()) {
+        impl->current.gs = 0;
+        impl->current.gs_hash = 0;
+    } else {
+        PicaFixedGSConfig gs_config(regs, driver.HasClipCullDistance());
+        auto [handle, _] = impl->fixed_geometry_shaders.Get(gs_config, impl->separable);
+        impl->current.gs = handle;
+        impl->current.gs_hash = gs_config.Hash();
+    }
 }
 
 void ShaderProgramManager::UseTrivialGeometryShader() {
@@ -404,14 +469,25 @@ void ShaderProgramManager::UseFragmentShader(const Pica::RegsInternal& regs,
 void ShaderProgramManager::ApplyTo(OpenGLState& state, bool accurate_mul) {
     if (impl->separable) {
         if (driver.HasBug(DriverBug::ShaderStageChangeFreeze)) {
-            glUseProgramStages(
-                impl->pipeline.handle,
-                GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            if (driver.IsOpenGLES()) {
+                glUseProgramStages(impl->pipeline.handle,
+                                   GL_VERTEX_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            } else {
+                glUseProgramStages(
+                    impl->pipeline.handle,
+                    GL_VERTEX_SHADER_BIT | GL_GEOMETRY_SHADER_BIT | GL_FRAGMENT_SHADER_BIT, 0);
+            }
         }
 
-        glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
-        glUseProgramStages(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT, impl->current.gs);
-        glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        if (driver.IsOpenGLES()) {
+            glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
+            glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        } else {
+            glUseProgramStages(impl->pipeline.handle, GL_VERTEX_SHADER_BIT, impl->current.vs);
+            glUseProgramStages(impl->pipeline.handle, GL_GEOMETRY_SHADER_BIT, impl->current.gs);
+            glUseProgramStages(impl->pipeline.handle, GL_FRAGMENT_SHADER_BIT, impl->current.fs);
+        }
+
         state.draw.shader_program = 0;
         state.draw.program_pipeline = impl->pipeline.handle;
     } else {

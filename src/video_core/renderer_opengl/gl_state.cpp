@@ -3,7 +3,12 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <cstring>
+#include <glad/gl.h>
 #include "common/common_types.h"
+#include "common/logging/log.h"
+#include "common/settings.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_vars.h"
 
@@ -94,6 +99,10 @@ OpenGLState::OpenGLState() {
 }
 
 void OpenGLState::Apply() const {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     // Culling
     if (cull.enabled != cur_state.cull.enabled) {
         if (cull.enabled) {
@@ -221,25 +230,49 @@ void OpenGLState::Apply() const {
         }
     }
 
-    // Texture buffer LUTs
-    if (texture_buffer_lut_lf.texture_buffer != cur_state.texture_buffer_lut_lf.texture_buffer) {
-        glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
-        glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_lf.texture_buffer);
-    }
+    if (GLES && majorVersion == 3 && minorVersion < 2) {
+        // Texture buffer LUTs
+        if (texture_buffer_lut_lf.texture_buffer !=
+            cur_state.texture_buffer_lut_lf.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER_EXT, texture_buffer_lut_lf.texture_buffer);
+        }
 
-    // Texture buffer LUTs
-    if (texture_buffer_lut_rg.texture_buffer != cur_state.texture_buffer_lut_rg.texture_buffer) {
-        glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
-        glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rg.texture_buffer);
-    }
+        // Texture buffer LUTs
+        if (texture_buffer_lut_rg.texture_buffer !=
+            cur_state.texture_buffer_lut_rg.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER_EXT, texture_buffer_lut_rg.texture_buffer);
+        }
 
-    // Texture buffer LUTs
-    if (texture_buffer_lut_rgba.texture_buffer !=
-        cur_state.texture_buffer_lut_rgba.texture_buffer) {
-        glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
-        glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rgba.texture_buffer);
-    }
+        // Texture buffer LUTs
+        if (texture_buffer_lut_rgba.texture_buffer !=
+            cur_state.texture_buffer_lut_rgba.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER_EXT, texture_buffer_lut_rgba.texture_buffer);
+        }
+    } else {
+        // Texture buffer LUTs
+        if (texture_buffer_lut_lf.texture_buffer !=
+            cur_state.texture_buffer_lut_lf.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_LF.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_lf.texture_buffer);
+        }
 
+        // Texture buffer LUTs
+        if (texture_buffer_lut_rg.texture_buffer !=
+            cur_state.texture_buffer_lut_rg.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RG.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rg.texture_buffer);
+        }
+
+        // Texture buffer LUTs
+        if (texture_buffer_lut_rgba.texture_buffer !=
+            cur_state.texture_buffer_lut_rgba.texture_buffer) {
+            glActiveTexture(TextureUnits::TextureBufferLUT_RGBA.Enum());
+            glBindTexture(GL_TEXTURE_BUFFER, texture_buffer_lut_rgba.texture_buffer);
+        }
+    }
     // Color buffer
     if (color_buffer.texture_2d != cur_state.color_buffer.texture_2d) {
         glActiveTexture(TextureUnits::TextureColorBuffer.Enum());
@@ -292,7 +325,11 @@ void OpenGLState::Apply() const {
 
     // Vertex array
     if (draw.vertex_array != cur_state.draw.vertex_array) {
-        glBindVertexArray(draw.vertex_array);
+        if (GLES && majorVersion == 3 && minorVersion < 2) {
+            glBindVertexArrayOES(draw.vertex_array);
+        } else {
+            glBindVertexArray(draw.vertex_array);
+        }
     }
 
     // Vertex buffer
@@ -312,7 +349,11 @@ void OpenGLState::Apply() const {
 
     // Program pipeline
     if (draw.program_pipeline != cur_state.draw.program_pipeline) {
-        glBindProgramPipeline(draw.program_pipeline);
+        if (GLES && majorVersion == 3 && minorVersion < 2) {
+            glBindProgramPipelineEXT(draw.program_pipeline);
+        } else {
+            glBindProgramPipeline(draw.program_pipeline);
+        }
     }
 
     // Scissor test

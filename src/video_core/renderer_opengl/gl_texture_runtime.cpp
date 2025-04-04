@@ -3,6 +3,9 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
+#include "common/logging/log.h"
 #include "common/scope_exit.h"
 #include "common/settings.h"
 #include "video_core/custom_textures/material.h"
@@ -11,6 +14,7 @@
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
 #include "video_core/renderer_opengl/gl_texture_runtime.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/renderer_opengl/pica_to_gl.h"
 
 namespace OpenGL {
@@ -32,6 +36,13 @@ static constexpr std::array<FormatTuple, 4> DEPTH_TUPLES = {{
     {},
     {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT},   // D24
     {GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8}, // D24S8
+}};
+
+static constexpr std::array<FormatTuple, 4> DEPTH_TUPLES_OES = {{
+    {GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT}, // D16
+    {},
+    {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT},       // D24
+    {GL_DEPTH24_STENCIL8_OES, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8}, // D24S8
 }};
 
 static constexpr std::array<FormatTuple, 5> COLOR_TUPLES = {{
@@ -59,6 +70,17 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES = {{
     {GL_COMPRESSED_RGBA_ASTC_4x4, GL_COMPRESSED_RGBA_ASTC_4x4, GL_UNSIGNED_BYTE},
     {GL_COMPRESSED_RGBA_ASTC_6x6, GL_COMPRESSED_RGBA_ASTC_6x6, GL_UNSIGNED_BYTE},
     {GL_COMPRESSED_RGBA_ASTC_8x6, GL_COMPRESSED_RGBA_ASTC_8x6, GL_UNSIGNED_BYTE},
+}};
+
+static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES_KHR = {{
+    DEFAULT_TUPLE,
+    {GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RG_RGTC2, GL_COMPRESSED_RG_RGTC2, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_ASTC_4x4_KHR, GL_COMPRESSED_RGBA_ASTC_4x4_KHR, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_ASTC_6x6_KHR, GL_COMPRESSED_RGBA_ASTC_6x6_KHR, GL_UNSIGNED_BYTE},
+    {GL_COMPRESSED_RGBA_ASTC_8x6_KHR, GL_COMPRESSED_RGBA_ASTC_8x6_KHR, GL_UNSIGNED_BYTE},
 }};
 
 [[nodiscard]] GLbitfield MakeBufferMask(SurfaceType type) {
@@ -95,6 +117,10 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES = {{
 
 [[nodiscard]] OGLTexture MakeHandle(GLenum target, u32 width, u32 height, u32 levels,
                                     const FormatTuple& tuple, std::string_view debug_name = "") {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     OGLTexture texture{};
     texture.Create();
 
@@ -106,7 +132,11 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES = {{
     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     if (!debug_name.empty()) {
-        glObjectLabel(GL_TEXTURE, texture.handle, -1, debug_name.data());
+        if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
+            glObjectLabelKHR(GL_TEXTURE, texture.handle, -1, debug_name.data());
+        } else {
+            glObjectLabel(GL_TEXTURE, texture.handle, -1, debug_name.data());
+        }
     }
 
     return texture;
@@ -116,6 +146,22 @@ static constexpr std::array<FormatTuple, 8> CUSTOM_TUPLES = {{
 
 TextureRuntime::TextureRuntime(const Driver& driver_, VideoCore::RendererBase& renderer)
     : driver{driver_}, blit_helper{driver} {
+    GLint major, minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+
+    if (driver.IsOpenGLES()) {
+        // Verify required extensions
+        const bool has_depth_texture = driver.HasExtension("GL_OES_depth_texture");
+        const bool has_packed_depth_stencil = driver.HasExtension("GL_OES_packed_depth_stencil");
+        const bool has_depth24 = driver.HasExtension("GL_OES_depth24");
+
+        if (!has_depth_texture || !has_packed_depth_stencil || !has_depth24) {
+            LOG_CRITICAL(Render_OpenGL, "Required OpenGL ES extensions are not available");
+            throw std::runtime_error("Missing required OpenGL ES extensions");
+        }
+    }
+
     for (std::size_t i = 0; i < draw_fbos.size(); ++i) {
         draw_fbos[i].Create();
         read_fbos[i].Create();
@@ -159,7 +205,7 @@ const FormatTuple& TextureRuntime::GetFormatTuple(PixelFormat pixel_format) cons
     } else if (type == SurfaceType::Depth || type == SurfaceType::DepthStencil) {
         const std::size_t tuple_idx = format_index - 14;
         ASSERT(tuple_idx < DEPTH_TUPLES.size());
-        return DEPTH_TUPLES[tuple_idx];
+        return (driver.IsOpenGLES() ? DEPTH_TUPLES_OES : DEPTH_TUPLES)[tuple_idx];
     }
 
     return DEFAULT_TUPLE;
@@ -167,7 +213,16 @@ const FormatTuple& TextureRuntime::GetFormatTuple(PixelFormat pixel_format) cons
 
 const FormatTuple& TextureRuntime::GetFormatTuple(VideoCore::CustomPixelFormat pixel_format) {
     const std::size_t format_index = static_cast<std::size_t>(pixel_format);
-    return CUSTOM_TUPLES[format_index];
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        return CUSTOM_TUPLES_KHR[format_index];
+    } else {
+        return CUSTOM_TUPLES[format_index];
+    }
 }
 
 bool TextureRuntime::Reinterpret(Surface& source, Surface& dest,
@@ -190,6 +245,11 @@ bool TextureRuntime::Reinterpret(Surface& source, Surface& dest,
 
 bool TextureRuntime::ClearTextureWithoutFbo(Surface& surface,
                                             const VideoCore::TextureClear& clear) {
+    const bool is_gles = driver.IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     if (!(driver.HasArbClearTexture() && driver.HasExtClearTexture()) ||
         driver.HasBug(DriverBug::BrokenClearTexture)) {
         return false;
@@ -213,9 +273,17 @@ bool TextureRuntime::ClearTextureWithoutFbo(Surface& surface,
     default:
         UNREACHABLE_MSG("Unknown surface type {}", surface.type);
     }
-    glClearTexSubImage(surface.Handle(), clear.texture_level, clear.texture_rect.left,
-                       clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
-                       clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        glClearTexSubImageEXT(surface.Handle(), clear.texture_level, clear.texture_rect.left,
+                              clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
+                              clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
+    } else {
+        glClearTexSubImage(surface.Handle(), clear.texture_level, clear.texture_rect.left,
+                           clear.texture_rect.bottom, 0, clear.texture_rect.GetWidth(),
+                           clear.texture_rect.GetHeight(), 1, format, type, &clear.value);
+    }
+
     return true;
 }
 
@@ -325,9 +393,23 @@ Surface::Surface(TextureRuntime& runtime_, const VideoCore::SurfaceParams& param
         return;
     }
 
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     glActiveTexture(TEMP_UNIT);
     const GLenum target =
         texture_type == VideoCore::TextureType::CubeMap ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
+
+    // For GLES, ensure proper handling of depth/stencil formats
+    if (is_gles && majorVersion == 3 && minorVersion < 2 &&
+        (type == SurfaceType::Depth || type == SurfaceType::DepthStencil)) {
+        const bool is_depth_stencil = type == SurfaceType::DepthStencil;
+        tuple.internal_format = is_depth_stencil ? GL_DEPTH24_STENCIL8_OES : GL_DEPTH_COMPONENT24;
+        tuple.format = is_depth_stencil ? GL_DEPTH_STENCIL : GL_DEPTH_COMPONENT;
+        tuple.type = is_depth_stencil ? GL_UNSIGNED_INT_24_8 : GL_UNSIGNED_INT;
+    }
 
     textures[0] = MakeHandle(target, width, height, levels, tuple, DebugName(false));
     if (res_scale != 1) {
@@ -391,9 +473,19 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
                      const VideoCore::StagingData& staging) {
     ASSERT(stride * GetFormatBytesPerPixel(pixel_format) % 4 == 0);
 
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     const u32 unscaled_width = upload.texture_rect.GetWidth();
     const u32 unscaled_height = upload.texture_rect.GetHeight();
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, unscaled_width);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+    }
 
     glActiveTexture(TEMP_UNIT);
     glBindTexture(GL_TEXTURE_2D, Handle(0));
@@ -402,7 +494,11 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
                     upload.texture_rect.bottom, unscaled_width, unscaled_height, tuple.format,
                     tuple.type, staging.mapped.data());
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    }
 
     const VideoCore::TextureBlit blit = {
         .src_level = upload.texture_level,
@@ -416,13 +512,23 @@ void Surface::Upload(const VideoCore::BufferTextureCopy& upload,
 }
 
 void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     const u32 width = material->width;
     const u32 height = material->height;
     const auto color = material->textures[0];
     const Common::Rectangle filter_rect{0U, height, width, 0U};
 
     glActiveTexture(TEMP_UNIT);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, width);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+    }
 
     const auto upload = [&](u32 index, VideoCore::CustomTexture* texture) {
         glBindTexture(GL_TEXTURE_2D, Handle(index));
@@ -453,16 +559,30 @@ void Surface::UploadCustom(const VideoCore::Material* material, u32 level) {
         upload(i + 1, texture);
     }
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    }
 }
 
 void Surface::Download(const VideoCore::BufferTextureCopy& download,
                        const VideoCore::StagingData& staging) {
     ASSERT(stride * GetFormatBytesPerPixel(pixel_format) % 4 == 0);
 
+    const bool is_gles = driver->IsOpenGLES();
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
     const u32 unscaled_width = download.texture_rect.GetWidth();
     const u32 unscaled_height = download.texture_rect.GetHeight();
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, unscaled_width);
+    } else {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, unscaled_width);
+    }
 
     // Scale down upscaled data before downloading it
     if (res_scale != 1) {
@@ -685,15 +805,34 @@ DebugScope::DebugScope(TextureRuntime& runtime, Common::Vec4f, std::string_view 
     if (!Settings::values.renderer_debug) {
         return;
     }
-    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, local_scope_depth,
-                     static_cast<GLsizei>(label.size()), label.data());
+
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
+        glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION_KHR, local_scope_depth,
+                            static_cast<GLsizei>(label.size()), label.data());
+    } else {
+        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, local_scope_depth,
+                         static_cast<GLsizei>(label.size()), label.data());
+    }
 }
 
 DebugScope::~DebugScope() {
     if (!Settings::values.renderer_debug) {
         return;
     }
-    glPopDebugGroup();
+
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
+        glPopDebugGroupKHR();
+    } else {
+        glPopDebugGroup();
+    }
     global_scope_depth--;
 }
 

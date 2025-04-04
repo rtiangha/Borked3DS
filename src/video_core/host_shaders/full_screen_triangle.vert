@@ -17,7 +17,21 @@ layout(location = 0) out vec2 texcoord;
 #else // if OpenGL
 #define BEGIN_PUSH_CONSTANTS
 #define END_PUSH_CONSTANTS
-#define UNIFORM(n) layout (location = n) uniform
+#ifdef GL_ES
+#define UNIFORM(n) uniform  // GLES doesn't support layout locations for uniforms
+#else
+#define UNIFORM(n) layout(location = n) uniform  // Desktop OpenGL can keep locations
+#endif
+#endif
+
+// Define a custom fma function for GLSL ES 3.10
+#if defined(GL_ES) && __VERSION__ < 320
+    vec2 custom_fma(vec2 a, vec2 b, vec2 c) {
+        return a * b + c;
+    }
+    #define FMA custom_fma
+#else
+    #define FMA fma
 #endif
 
 BEGIN_PUSH_CONSTANTS
@@ -29,5 +43,5 @@ void main() {
     float x = float((gl_VertexID & 1) << 2);
     float y = float((gl_VertexID & 2) << 1);
     gl_Position = vec4(x - 1.0, y - 1.0, 0.0, 1.0);
-    texcoord = fma(vec2(x, y) / 2.0, tex_scale, tex_offset);
+    texcoord = FMA(vec2(x, y) / 2.0, tex_scale, tex_offset);
 }

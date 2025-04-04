@@ -24,6 +24,22 @@ precision mediump uimage2D;
 #endif
 )";
 
+// High precision may or may not be supported in GLES3. If it isn't, use medium precision instead.
+// For OpenGLES < 3.2.
+static constexpr char fragment_shader_precision_OES_2D[] = R"(
+#if GL_ES
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp int;
+precision highp float;
+precision highp uimage2D;
+#else
+precision mediump int;
+precision mediump float;
+precision mediump uimage2D;
+#endif // GL_FRAGMENT_PRECISION_HIGH
+#endif
+)";
+
 namespace Pica {
 struct ShaderSetup;
 }

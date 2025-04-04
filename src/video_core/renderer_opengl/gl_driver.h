@@ -5,8 +5,11 @@
 
 #pragma once
 
+#include <cstring>
 #include <string_view>
+#include <glad/gl.h>
 #include "common/common_types.h"
+#include "common/logging/log.h"
 
 namespace VideoCore {
 enum class CustomPixelFormat : u32;
@@ -53,6 +56,9 @@ public:
 
     /// Returns true of the driver has a particular bug stated in the DriverBug enum
     bool HasBug(DriverBug bug) const;
+
+    /// Returns true if the implementation supports the specified extension
+    bool HasExtension(std::string_view name) const;
 
     /// Returns true if any debug tool is attached
     bool HasDebugTool();
@@ -120,6 +126,25 @@ public:
         return ext_shader_framebuffer_fetch || arm_shader_framebuffer_fetch;
     }
 
+    /// Returns true if the implementation supports GL_EXT_texture_buffer
+    bool HasExtTextureBuffer() const {
+        return ext_texture_buffer;
+    }
+
+    bool HasTextureBuffer() const {
+        bool supportsTextureBuffer =
+            (glGetString(GL_VERSION) &&
+             strstr((const char*)glGetString(GL_EXTENSIONS), "GL_ARB_texture_buffer_object"));
+
+        if (supportsTextureBuffer) {
+            LOG_DEBUG(Render_OpenGL, "GL_ARB_texture_buffer_object == TRUE");
+            return true;
+        } else {
+            LOG_DEBUG(Render_OpenGL, "GL_ARB_texture_buffer_object == FALSE");
+            return false;
+        }
+    }
+
     bool HasExtFramebufferFetch() const {
         return ext_shader_framebuffer_fetch;
     }
@@ -165,6 +190,7 @@ private:
     bool arb_get_texture_sub_image{};
     bool arb_shader_image_load_store{};
     bool clip_cull_distance{};
+    bool ext_texture_buffer{};
     bool ext_texture_compression_s3tc{};
     bool arb_texture_compression_bptc{};
     bool ext_texture_compression_bptc{};

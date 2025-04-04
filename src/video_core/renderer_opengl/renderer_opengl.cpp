@@ -3,6 +3,8 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <glad/gl.h>
+
 #include "common/logging/log.h"
 #include "common/profiling.h"
 #include "common/settings.h"
@@ -11,8 +13,10 @@
 #include "core/frontend/framebuffer_layout.h"
 #include "core/memory.h"
 #include "video_core/pica/pica_core.h"
+#include "video_core/renderer_opengl/gl_driver.h"
 #include "video_core/renderer_opengl/gl_state.h"
 #include "video_core/renderer_opengl/gl_texture_mailbox.h"
+#include "video_core/renderer_opengl/gl_vars.h"
 #include "video_core/renderer_opengl/post_processing_opengl.h"
 #include "video_core/renderer_opengl/renderer_opengl.h"
 #include "video_core/shader/generator/glsl_shader_gen.h"
@@ -76,7 +80,20 @@ RendererOpenGL::RendererOpenGL(Core::System& system, Pica::PicaCore& pica_,
     : VideoCore::RendererBase{system, window, secondary_window}, pica{pica_},
       rasterizer{system.Memory(), pica, system.CustomTexManager(), *this, driver},
       frame_dumper{system, window} {
+    GLint major, minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+
     const bool has_debug_tool = driver.HasDebugTool();
+
+    // Check for required GLES extensions
+    if (driver.IsOpenGLES()) {
+        if (!driver.HasExtension("GL_OES_rgb8_rgba8")) {
+            LOG_CRITICAL(Render_OpenGL, "GL_OES_rgb8_rgba8 not supported! Exiting...");
+            throw std::runtime_error("GL_OES_rgb8_rgba8 not supported!");
+        }
+    }
+
     window.mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
     if (secondary_window) {
         secondary_window->mailbox = std::make_unique<OGLTextureMailbox>(has_debug_tool);
@@ -229,6 +246,9 @@ void RendererOpenGL::RenderToMailbox(const Layout::FramebufferLayout& layout,
  */
 void RendererOpenGL::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer,
                                         ScreenInfo& screen_info, bool right_eye) {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 
     if (framebuffer.address_right1 == 0 || framebuffer.address_right2 == 0)
         right_eye = false;
@@ -266,7 +286,12 @@ void RendererOpenGL::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
         state.Apply();
 
         glActiveTexture(GL_TEXTURE0);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
+
+        if (OpenGL::GLES && majorVersion == 3 && minorVersion < 2) {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, (GLint)pixel_stride);
+        } else {
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, (GLint)pixel_stride);
+        }
 
         // Update existing texture
         // TODO: Test what happens on hardware when you change the framebuffer dimensions so that
@@ -365,8 +390,17 @@ void RendererOpenGL::InitOpenGLObjects() {
 }
 
 void RendererOpenGL::ReloadShader() {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+    std::string shader_data;
+
     // Link shaders and get variable locations
-    std::string shader_data = fragment_shader_precision_OES;
+    if (OpenGL::GLES && (majorVersion == 3 && minorVersion < 2)) {
+        shader_data = fragment_shader_precision_OES_2D;
+    } else {
+        shader_data = fragment_shader_precision_OES;
+    }
     if (Settings::values.render_3d.GetValue() == Settings::StereoRenderOption::Anaglyph) {
         if (Settings::values.anaglyph_shader_name.GetValue() == "rendepth (builtin)") {
             shader_data += HostShaders::OPENGL_PRESENT_ANAGLYPH_RENDEPTH_FRAG;
