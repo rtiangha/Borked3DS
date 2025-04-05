@@ -7,18 +7,12 @@
 
 precision highp int;
 precision highp float;
-precision highp sampler2D;
 
 layout(location = 0) in mediump vec2 tex_coord;
 layout(location = 0) out lowp vec4 frag_color;
 
-#if defined(GL_ES) && __VERSION__ < 320
-// Single combined sampler for OpenGL ES
-uniform sampler2D depth_stencil;
-#else
 layout(binding = 0) uniform highp sampler2D depth;
 layout(binding = 1) uniform lowp usampler2D stencil;
-#endif
 
 void main() {
     mediump vec2 coord = tex_coord * vec2(textureSize(depth, 0));
