@@ -121,8 +121,8 @@ if (APPLE)
     set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols -c <TARGET>")
 
     if (IOS)
-        # Minimum iOS 15
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0")
+        # Minimum iOS 14
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "16.5")
 
         # Enable searching CMAKE_PREFIX_PATH for bundled dependencies.
         set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
@@ -130,7 +130,7 @@ if (APPLE)
         set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
     else()
         # Minimum macOS 13
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "13.4")
     endif()
 endif()
 
