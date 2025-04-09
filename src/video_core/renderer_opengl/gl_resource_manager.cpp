@@ -80,7 +80,11 @@ void OGLTexture::Release() {
 
 void OGLTexture::Allocate(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width,
                           GLsizei height, GLsizei depth) {
-    if (is_gles) {
+    GLint majorVersion = 0, minorVersion = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+    glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+
+    if (is_gles && majorVersion == 3 && minorVersion < 2) {
         AllocateGLES(target, levels, internalformat, width, height, depth);
         return;
     }
