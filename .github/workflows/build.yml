@@ -390,12 +390,16 @@ jobs:
           pacboy: >-
             toolchain:p ccache:p cmake:p ninja:p 
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
-      - name: Install extra tools (clang)
-        run: choco install ptime wget
+      - name: Install extra tools (Clang)
         if: ${{ matrix.target == 'clang' }}
-      - name: Install extra tools (gcc)
-        run: choco install ptime wget
+        uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: install ptime wget
+      - name: Install extra tools (GCC)
         if: ${{ matrix.target == 'gcc' }}
+        uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: install ptime wget
       - name: Set up MINGW (gcc)
         uses: msys2/setup-msys2@v2
         with:
