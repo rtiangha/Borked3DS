@@ -221,6 +221,72 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+  linux-clang-noble-arm:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        target: ["appimage-clang-24.04", "fresh"]
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      OS: linux
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-
+      - name: Remove System Clang
+        run: sudo apt autoremove clang-16 clang-format-16 clang-tidy-16 clang-17 clang-format-17 clang-tidy-17 clang-18 clang-format-18 clang-tidy-18 -y
+      - name: Install Clang PPA
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main
+          repo-name: llvm
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install GCC PPA
+        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa
+      - name: Update deb repositories 
+        run: sudo apt-get update 
+      - name: Install New Packages
+        run: sudo apt-get -y install ccache gcc-14 clang-20 clang-tools-20 clang-20-doc libxcb-xkb-dev libclang-common-20-dev libclang-20-dev libclang1-20 clang-format-20 python3-clang-20 clangd-20 clang-tidy-20 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
+      - name: Get latest CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: latest
+          ninjaVersion: latest
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          aqtversion: '==3.2.*'
+          version: '6.9.0'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: 'qtmultimedia qtwaylandcompositor'
+          cache: 'true'
+      - name: Install mold linker
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: false
+      - name: Build
+        run: ./.ci/linux-clang-24.04.sh
+      - name: Pack
+        run: ./.ci/pack.sh
+        if: ${{ matrix.target == 'appimage-clang-24.04' }}
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == 'appimage-clang-24.04' }}
+        with:
+          name: ${{ env.OS }}-${{ env.TARGET }}
+          path: artifacts/
   linux-gcc-noble:
     runs-on: ubuntu-24.04
     strategy:
@@ -431,6 +497,88 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+  windows-arm:
+    runs-on: windows-11-arm
+    strategy:
+      matrix:
+        target: ["msvc", "clang", "gcc"]
+    defaults:
+      run:
+        shell: ${{ (matrix.target == 'clang' || matrix.target == 'gcc') && 'msys2' || 'bash' }} {0}
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      OS: windows
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        if: ${{ matrix.target == 'msvc' }}
+      - name: Install extra tools (MSVC)
+        run: choco install ccache ninja wget unzip
+        if: ${{ matrix.target == 'msvc' }}
+      - name: Set up MSYS2 (clang)
+        uses: msys2/setup-msys2@v2
+        if: ${{ matrix.target == 'clang' }}
+        with:
+          msystem: clang64
+          update: true
+          install: git make p7zip unzip
+          pacboy: >-
+            toolchain:p ccache:p cmake:p ninja:p 
+            qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
+      - name: Set up MINGW (gcc)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          update: true
+          install: git make p7zip unzip
+          pacboy: >-
+            toolchain:p ccache:p cmake:p ninja:p
+            qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
+        if: ${{ matrix.target == 'gcc' }}
+      - name: Install NSIS
+        run: |
+          Invoke-WebRequest https://deac-riga.dl.sourceforge.net/project/nsis/NSIS%203/3.10/nsis-3.10-setup.exe?viasf=1 -OutFile C:\WINDOWS\Temp\nsis-3.10-setup.exe
+          Invoke-Expression "& C:\WINDOWS\Temp\nsis-3.10-setup.exe \S"
+        shell: pwsh
+      - name: Disable line ending translation
+        run: git config --global core.autocrlf input
+      - name: Build (MSVC)
+        run: ./.ci/windows-msvc.sh
+        if: ${{ matrix.target == 'msvc' }}
+      - name: Build (CLANG)
+        run: ./.ci/windows-clang.sh
+        if: ${{ matrix.target == 'clang' }}
+      - name: Build (GCC)
+        run: ./.ci/windows-gcc.sh
+        if: ${{ matrix.target == 'gcc' }}
+      - name: Generate installer
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          cd src\installer
+          "C:\Program Files (x86)\NSIS\makensis.exe" /DPRODUCT_VARIANT=${{ matrix.target }} /DPRODUCT_VERSION=${{ github.ref_name }} broken3ds.nsi
+          mkdir bin
+          move /y *.exe bin\
+        shell: cmd
+      - name: Pack
+        run: ./.ci/pack.sh
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OS }}-${{ env.TARGET }}
+          path: artifacts/
   android:
     runs-on: ubuntu-24.04
     env:
@@ -524,7 +672,7 @@ jobs:
         run: ./.ci/ios.sh
   release:
     runs-on: ubuntu-latest
-    needs: [windows, linux-clang-focal, linux-clang-jammy, linux-clang-noble, linux-gcc-noble, macos-universal, android, source]
+    needs: [windows, windows-arm, linux-clang-focal, linux-clang-jammy, linux-clang-noble, linux-clang-noble-arm, linux-gcc-noble, macos-universal, android, source]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/download-artifact@v4
