@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-if [ "$TARGET" = "appimage-clang-24.04" || "$TARGET" = "appimage-clang-24.04-arm" ]; then
+if [ "$TARGET" = "appimage-clang-24.04" ] || [ "$TARGET" = "appimage-clang-24.04-arm" ]; then
     # Compile the AppImage we distribute with Clang.
     export EXTRA_CMAKE_FLAGS=(-DCMAKE_LINKER_TYPE="MOLD" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold" -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold")
     # Bundle required QT wayland libraries
@@ -51,7 +51,7 @@ cmake .. -G Ninja \
 ninja
 strip -s bin/Release/*
 
-if [ "$TARGET" = "appimage-clang-24.04" || "$TARGET" = "appimage-clang-24.04-arm ]; then
+if [ "$TARGET" = "appimage-clang-24.04" ] || [ "$TARGET" = "appimage-clang-24.04-arm ]; then
     ninja bundle
     # TODO: Our AppImage environment currently uses an older ccache version without the verbose flag.
     ccache -s
