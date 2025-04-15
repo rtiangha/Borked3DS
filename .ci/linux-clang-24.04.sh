@@ -51,7 +51,7 @@ cmake .. -G Ninja \
 ninja
 strip -s bin/Release/*
 
-if [ "$TARGET" = "appimage-clang-24.04" ] || [ "$TARGET" = "appimage-clang-24.04-arm ]; then
+if [ "$TARGET" = "appimage-clang-24.04" ] || [ "$TARGET" = "appimage-clang-24.04-arm" ]; then
     ninja bundle
     # TODO: Our AppImage environment currently uses an older ccache version without the verbose flag.
     ccache -s
