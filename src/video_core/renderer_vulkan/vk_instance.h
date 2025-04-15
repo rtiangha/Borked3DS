@@ -302,9 +302,6 @@ private:
     /// Creates the VMA allocator handle
     void CreateAllocator();
 
-    /// Log information about available memory heaps and types
-    void CheckDeviceMemory();
-
     // Collects logging gpu info
     void CollectToolingInfo();
 
