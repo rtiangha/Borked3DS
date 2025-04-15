@@ -50,7 +50,7 @@ function pack_artifacts() {
     rm -rf "$REV_NAME"
 }
 
-if [ "$OS" = "windows" ] && [ "$GITHUB_REF_TYPE" = "tag" ]; then
+if [ "$OS" = "windows" ] && [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$RUNNER_ARCH" != "ARM64" ]; then
     # Move the installer to the artifacts directory
     mv src/installer/bin/*.exe artifacts/
 fi
