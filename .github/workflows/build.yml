@@ -197,7 +197,7 @@ jobs:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jdpurcell/install-qt-action@v5 
         with:
           aqtversion: '==3.2.*'
           version: '6.9.0'
@@ -214,10 +214,10 @@ jobs:
         run: ./.ci/linux-clang-22.04.sh
       - name: Pack
         run: ./.ci/pack.sh
-        if: ${{ matrix.target == 'appimage-clang-22.04' }}
+        if: ${{ matrix.target == 'appimage-clang-22.04-arm' }}
       - name: Upload
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == 'appimage-clang-22.04' }}
+        if: ${{ matrix.target == 'appimage-clang-22.04-arm' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
@@ -291,7 +291,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
-        target: ["appimage-clang-24.04", "fresh"]
+        target: ["appimage-clang-24.04-arm", "fresh"]
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_COMPILERCHECK: content
@@ -329,7 +329,7 @@ jobs:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jdpurcell/install-qt-action@v5 
         with:
           aqtversion: '==3.2.*'
           version: '6.9.0'
@@ -346,10 +346,10 @@ jobs:
         run: ./.ci/linux-clang-24.04.sh
       - name: Pack
         run: ./.ci/pack.sh
-        if: ${{ matrix.target == 'appimage-clang-24.04' }}
+        if: ${{ matrix.target == 'appimage-clang-24.04-arm' }}
       - name: Upload
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == 'appimage-clang-24.04' }}
+        if: ${{ matrix.target == 'appimage-clang-24.04-arm' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
