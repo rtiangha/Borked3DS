@@ -267,9 +267,9 @@ jobs:
         with:
           aqtversion: '==3.2.*'
           version: '6.9.0'
-          host: 'linux'
+          host: 'linux_arm64'
           target: 'desktop'
-          arch: 'linux_gcc_64'
+          arch: 'linux_gcc_arm64'
           modules: 'qtmultimedia qtwaylandcompositor'
           cache: 'true'
       - name: Install mold linker
