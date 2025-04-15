@@ -378,7 +378,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         if: ${{ matrix.target == 'msvc' }}
       - name: Install extra tools (MSVC)
-        run: choco install ccache ninja wget unzip
+        run: choco install ccache ninja ptime wget unzip
         if: ${{ matrix.target == 'msvc' }}
       - name: Set up MSYS2 (clang)
         uses: msys2/setup-msys2@v2
@@ -390,6 +390,12 @@ jobs:
           pacboy: >-
             toolchain:p ccache:p cmake:p ninja:p 
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
+      - name: Install extra tools (clang)
+        run: choco install ptime wget
+        if: ${{ matrix.target == 'clang' }}
+      - name: Install extra tools (gcc)
+        run: choco install ptime wget
+        if: ${{ matrix.target == 'gcc' }}
       - name: Set up MINGW (gcc)
         uses: msys2/setup-msys2@v2
         with:
