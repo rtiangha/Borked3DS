@@ -48,7 +48,7 @@ jobs:
       - name: Update deb repositories 
         run: sudo apt-get update
       - name: Install New Packages
-        run: sudo apt-get -y install libgstreamer1.0-0 libgstreamer1.0-dev ccache gcc-12 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
+        run: sudo apt-get -y install libunwind-dev libgstreamer1.0-0 libgstreamer1.0-dev ccache gcc-12 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
       - name: Get latest CMake and Ninja
         uses: lukka/get-cmake@latest
         with:
