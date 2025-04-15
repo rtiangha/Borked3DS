@@ -68,7 +68,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           aqtversion: '==3.2.*'
-          version: '6.8.2'
+          version: '6.9.0'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
@@ -134,7 +134,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           aqtversion: '==3.2.*'
-          version: '6.8.2'
+          version: '6.9.0'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
@@ -200,7 +200,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           aqtversion: '==3.2.*'
-          version: '6.8.2'
+          version: '6.9.0'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
@@ -324,7 +324,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           aqtversion: '==3.2.*'
-          version: '6.8.2'
+          version: '6.9.0'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'

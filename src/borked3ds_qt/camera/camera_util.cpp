@@ -7,6 +7,7 @@
 #include <array>
 #include <cstring>
 #include <QImage>
+#include <QtGlobal>
 #include "borked3ds_qt/camera/camera_util.h"
 
 namespace CameraUtil {
@@ -209,14 +210,34 @@ std::vector<u16> Rgb2Yuv(const QImage& source, int width, int height) {
 std::vector<u16> ProcessImage(const QImage& image, int width, int height, bool output_rgb = false,
                               bool flip_horizontal = false, bool flip_vertical = false) {
     std::vector<u16> buffer(width * height);
+
     if (image.isNull()) {
         return buffer;
     }
+
     QImage scaled =
         image.scaled(width, height, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
+    // For older versions: use mirrored()
     QImage transformed =
         scaled.copy((scaled.width() - width) / 2, (scaled.height() - height) / 2, width, height)
             .mirrored(flip_horizontal, flip_vertical);
+#else
+    // For Qt 6.9 and newer: use flipped() with proper orientations.
+    QImage cropped =
+        scaled.copy((scaled.width() - width) / 2, (scaled.height() - height) / 2, width, height);
+    Qt::Orientations orientation = Qt::Orientations(); // default is 0 (no flipping)
+    if (flip_horizontal) {
+        orientation |= Qt::Horizontal;
+    }
+    if (flip_vertical) {
+        orientation |= Qt::Vertical;
+    }
+    QImage transformed =
+        (orientation == Qt::Orientations()) ? cropped : cropped.flipped(orientation);
+#endif
+
     if (output_rgb) {
         QImage converted = transformed.convertToFormat(QImage::Format_RGB16);
         std::memcpy(buffer.data(), converted.bits(), width * height * sizeof(u16));

@@ -122,7 +122,7 @@ if (APPLE)
 
     if (IOS)
         # Minimum iOS 14
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "16.5")
 
         # Enable searching CMAKE_PREFIX_PATH for bundled dependencies.
         set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
@@ -130,7 +130,7 @@ if (APPLE)
         set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
     else()
         # Minimum macOS 13
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "13.4")
     endif()
 endif()
 
@@ -362,7 +362,7 @@ if (ENABLE_QT)
        if (IOS)
            download_qt(6.7.3) # iOS build fails with QT 6.8 with undefined refs
        else()
-           download_qt(6.8.2)
+           download_qt(6.9.0)
        endif()
     endif()
 
