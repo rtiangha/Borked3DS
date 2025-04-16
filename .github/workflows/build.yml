@@ -57,7 +57,9 @@ jobs:
       - name: Install Qt
         uses: jdpurcell/install-qt-action@v5
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.7.3'
           host: 'linux_arm64'
           target: 'desktop'
@@ -121,9 +123,11 @@ jobs:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jdpurcell/install-qt-action@v5
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.9.0'
           host: 'linux'
           target: 'desktop'
@@ -189,7 +193,9 @@ jobs:
       - name: Install Qt
         uses: jdpurcell/install-qt-action@v5 
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.7.3'
           host: 'linux_arm64'
           target: 'desktop'
@@ -253,9 +259,11 @@ jobs:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jdpurcell/install-qt-action@v5 
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.9.0'
           host: 'linux'
           target: 'desktop'
@@ -321,7 +329,9 @@ jobs:
       - name: Install Qt
         uses: jdpurcell/install-qt-action@v5 
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.9.0'
           host: 'linux_arm64'
           target: 'desktop'
@@ -377,9 +387,11 @@ jobs:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jdpurcell/install-qt-action@v5 
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.9.0'
           host: 'linux'
           target: 'desktop'
@@ -437,7 +449,9 @@ jobs:
       - name: Install Qt
         uses: jdpurcell/install-qt-action@v5
         with:
-          aqtversion: '==3.2.*'
+          use-naqt: true
+          mirror: https://qt.mirror.constant.com
+          setup-python: false
           version: '6.9.0'
           host: 'linux_arm64'
           target: 'desktop'
