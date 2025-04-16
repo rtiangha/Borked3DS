@@ -57,7 +57,6 @@ endif()
 # For LTO support
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_link_options(borked3ds-room PRIVATE
-        -fuse-ld=mold
         $<$<BOOL:${ENABLE_LTO}>:-flto>
     )
 endif()

@@ -41,15 +41,57 @@ endif()
 
 create_target_directory_groups(borked3ds)
 
-target_link_libraries(borked3ds PRIVATE borked3ds_common borked3ds_core input_common network)
-target_link_libraries(borked3ds PRIVATE inih)
+# Add dependency on scm_rev.cpp generation
+add_dependencies(borked3ds borked3ds_common)
+
+# Fix linking order with repeated libraries to handle circular dependencies
+target_link_libraries(borked3ds PRIVATE
+    borked3ds_core
+    video_core
+    audio_core
+    input_common
+    network
+    web_service
+    borked3ds_common
+    inih
+    glad
+    dynarmic
+    mcl
+    cryptopp
+    lodepng
+    enet
+    ssl
+    crypto
+    libusb
+    SDL2::SDL2
+    faad2
+    SoundTouch
+    teakra
+    cubeb
+    openal
+    gamemode
+    fmt
+    boost_iostreams
+    zstd
+    tracy
+    boost_serialization
+    sirit
+    SPIRV
+    glslang
+    SPIRV-Tools-opt
+    SPIRV-Tools
+    network # Repeated to resolve circular dependencies
+    borked3ds_common # Repeated to resolve circular dependencies
+    ${PLATFORM_LIBRARIES}
+    Threads::Threads
+    atomic
+    rt
+    dl
+    m
+)
+
 if (MSVC)
     target_link_libraries(borked3ds PRIVATE getopt)
-endif()
-target_link_libraries(borked3ds PRIVATE ${PLATFORM_LIBRARIES} SDL2::SDL2 Threads::Threads)
-
-if (ENABLE_OPENGL)
-    target_link_libraries(borked3ds PRIVATE glad)
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -58,6 +100,13 @@ endif()
 
 if (BORKED3DS_USE_PRECOMPILED_HEADERS)
     target_precompile_headers(borked3ds PRIVATE precompiled_headers.h)
+endif()
+
+# For LTO support
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(borked3ds PRIVATE
+        $<$<BOOL:${ENABLE_LTO}>:-flto>
+    )
 endif()
 
 # Bundle in-place on MSVC so dependencies can be resolved by builds.

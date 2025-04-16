@@ -30,8 +30,63 @@ endif()
 
 create_target_directory_groups(tests)
 
-target_link_libraries(tests PRIVATE borked3ds_common borked3ds_core video_core audio_core)
-target_link_libraries(tests PRIVATE ${PLATFORM_LIBRARIES} catch2 nihstro-headers Threads::Threads)
+# Add dependency on scm_rev.cpp generation
+add_dependencies(tests borked3ds_common)
+
+# Fix linking order with repeated libraries to handle circular dependencies
+target_link_libraries(tests PRIVATE
+    borked3ds_core
+    video_core
+    audio_core
+    input_common
+    network
+    borked3ds_common
+    web_service
+    cryptopp
+    lodepng
+    network # Repeat for circular dependencies
+    web_service
+    enet
+    ssl
+    crypto
+    dynarmic
+    mcl
+    glad
+    sirit
+    SPIRV
+    glslang
+    SPIRV-Tools-opt
+    SPIRV-Tools
+    faad2
+    SoundTouch
+    teakra
+    cubeb
+    openal
+    dl
+    atomic
+    borked3ds_common # Repeat for circular dependencies
+    gamemode
+    fmt
+    boost_serialization
+    boost_iostreams
+    zstd
+    tracy
+    SDL2::SDL2
+    libusb
+    catch2
+    nihstro-headers
+    ${PLATFORM_LIBRARIES}
+    Threads::Threads
+    rt
+    m
+)
+
+# For LTO support
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(tests PRIVATE
+        $<$<BOOL:${ENABLE_LTO}>:-flto>
+    )
+endif()
 
 add_test(NAME tests COMMAND tests)
 

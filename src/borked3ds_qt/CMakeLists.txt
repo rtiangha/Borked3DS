@@ -312,7 +312,7 @@ endif()
 
 create_target_directory_groups(borked3ds-qt)
 
-target_link_libraries(borked3ds-qt PRIVATE audio_core borked3ds_common borked3ds_core input_common network video_core)
+target_link_libraries(borked3ds-qt PRIVATE borked3ds_core borked3ds_common audio_core video_core input_common network)
 target_link_libraries(borked3ds-qt PRIVATE Boost::boost nihstro-headers Qt6::Widgets Qt6::Multimedia Qt6::Concurrent)
 if (MSVC)
     target_link_libraries(borked3ds-qt PRIVATE getopt)
@@ -333,6 +333,10 @@ endif()
 
 if (UNIX AND NOT APPLE)
     target_link_libraries(borked3ds-qt PRIVATE Qt6::DBus gamemode)
+endif()
+
+if (ENABLE_WEB_SERVICE)
+    target_link_libraries(borked3ds-qt PRIVATE web_service)
 endif()
 
 target_compile_definitions(borked3ds-qt PRIVATE
@@ -358,6 +362,9 @@ if (BORKED3DS_ENABLE_COMPATIBILITY_REPORTING)
     target_compile_definitions(borked3ds-qt PRIVATE -DBORKED3DS_ENABLE_COMPATIBILITY_REPORTING)
 endif()
 
+# Repeat core libraries to resolve circular dependencies
+target_link_libraries(borked3ds-qt PRIVATE borked3ds_core borked3ds_common audio_core video_core input_common network)
+
 if (USE_DISCORD_PRESENCE)
     target_sources(borked3ds-qt PUBLIC
         discord_impl.cpp
@@ -367,8 +374,11 @@ if (USE_DISCORD_PRESENCE)
     target_compile_definitions(borked3ds-qt PRIVATE -DUSE_DISCORD_PRESENCE)
 endif()
 
-if (ENABLE_WEB_SERVICE)
-    target_link_libraries(borked3ds-qt PRIVATE web_service)
+# For LTO support
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(borked3ds-qt PRIVATE
+        $<$<BOOL:${ENABLE_LTO}>:-flto>
+    )
 endif()
 
 if(UNIX AND NOT APPLE)
