@@ -38,6 +38,7 @@ TEST_CASE("DSP LLE vs HLE", "[audio_core][hle]") {
 
         if (!FileUtil::Exists(firm_filepath)) {
             SKIP("Test requires dspaudio.cdc");
+            return;
         }
 
         FileUtil::IOFile firm_file(firm_filepath, "rb");
