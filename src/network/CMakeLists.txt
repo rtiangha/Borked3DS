@@ -29,11 +29,23 @@ endif()
 
 create_target_directory_groups(network)
 
-if (ENABLE_WEB_SERVICE)
-    target_link_libraries(network PRIVATE web_service)
-endif()
+# Update library dependencies
+target_link_libraries(network
+    PUBLIC
+        borked3ds_common
+    PRIVATE
+        enet
+        Boost::serialization
+        httplib
+        $<$<BOOL:${ENABLE_WEB_SERVICE}>:web_service>
+)
 
-target_link_libraries(network PRIVATE borked3ds_common enet Boost::serialization httplib)
+# For LTO support
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_link_options(network PRIVATE
+        $<$<BOOL:${ENABLE_LTO}>:-flto>
+    )
+endif()
 
 if (BORKED3DS_USE_PRECOMPILED_HEADERS)
     target_precompile_headers(network PRIVATE precompiled_headers.h)
