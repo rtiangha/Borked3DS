@@ -630,10 +630,10 @@ jobs:
     runs-on: windows-11-arm
     strategy:
       matrix:
-        target: ["msvc", "clang", "gcc"]
+        target: ["msvc-arm", "clang-arm", "gcc-arm"]
     defaults:
       run:
-        shell: ${{ (matrix.target == 'clang' || matrix.target == 'gcc') && 'msys2' || 'bash' }} {0}
+        shell: ${{ (matrix.target == 'clang-arm' || matrix.target == 'gcc-arm') && 'msys2' || 'bash' }} {0}
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_COMPILERCHECK: content
@@ -653,13 +653,13 @@ jobs:
             ${{ runner.os }}-${{ matrix.target }}-
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
-        if: ${{ matrix.target == 'msvc' }}
+        if: ${{ matrix.target == 'msvc-arm' }}
       - name: Install extra tools (MSVC)
         run: choco install ccache ninja wget unzip
-        if: ${{ matrix.target == 'msvc' }}
+        if: ${{ matrix.target == 'msvc-arm' }}
       - name: Set up MSYS2 (clang)
         uses: msys2/setup-msys2@v2
-        if: ${{ matrix.target == 'clang' }}
+        if: ${{ matrix.target == 'clang-arm' }}
         with:
           msystem: clang64
           update: true
@@ -676,32 +676,18 @@ jobs:
           pacboy: >-
             toolchain:p ccache:p cmake:p ninja:p
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
-        if: ${{ matrix.target == 'gcc' }}
-      - name: Install NSIS
-        if: ${{ github.ref_type == 'tag' }}
-        run: |
-          wget https://download.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11-setup.exe -O D:/a/_temp/nsis-setup.exe
-          ptime D:/a/_temp/nsis-setup.exe /S
-        shell: pwsh
+        if: ${{ matrix.target == 'gcc-arm' }}
       - name: Disable line ending translation
         run: git config --global core.autocrlf input
       - name: Build (MSVC)
         run: ./.ci/windows-msvc.sh
-        if: ${{ matrix.target == 'msvc' }}
+        if: ${{ matrix.target == 'msvc-arm' }}
       - name: Build (CLANG)
         run: ./.ci/windows-clang.sh
-        if: ${{ matrix.target == 'clang' }}
+        if: ${{ matrix.target == 'clang-arm' }}
       - name: Build (GCC)
         run: ./.ci/windows-gcc.sh
-        if: ${{ matrix.target == 'gcc' }}
-      - name: Generate installer
-        if: ${{ github.ref_type == 'tag' }}
-        run: |
-          cd src\installer
-          "C:\Program Files (x86)\NSIS\makensis.exe" /DPRODUCT_VARIANT=${{ matrix.target }} /DPRODUCT_VERSION=${{ github.ref_name }} broken3ds.nsi
-          mkdir bin
-          move /y *.exe bin\
-        shell: cmd
+        if: ${{ matrix.target == 'gcc-arm' }}
       - name: Pack
         run: ./.ci/pack.sh
       - name: Upload
