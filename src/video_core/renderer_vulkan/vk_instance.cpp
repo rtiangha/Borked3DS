@@ -6,6 +6,7 @@
 #include <span>
 #include <boost/container/static_vector.hpp>
 #include <fmt/ranges.h>
+#include <vulkan/vulkan.h>
 
 #include "common/assert.h"
 #include "common/settings.h"

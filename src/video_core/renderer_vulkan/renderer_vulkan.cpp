@@ -28,15 +28,6 @@
 
 namespace Vulkan {
 
-struct ScreenRectVertex {
-    ScreenRectVertex() = default;
-    ScreenRectVertex(float x, float y, float u, float v)
-        : position{Common::MakeVec(x, y)}, tex_coord{Common::MakeVec(u, v)} {}
-
-    Common::Vec2f position;
-    Common::Vec2f tex_coord;
-};
-
 constexpr u32 VERTEX_BUFFER_SIZE = sizeof(ScreenRectVertex) * 8192;
 
 constexpr std::array<f32, 4 * 4> MakeOrthographicMatrix(u32 width, u32 height) {
@@ -54,7 +45,8 @@ constexpr static std::array<vk::DescriptorSetLayoutBinding, 1> PRESENT_BINDINGS 
 
 RendererVulkan::RendererVulkan(Core::System& system, Pica::PicaCore& pica_,
                                Frontend::EmuWindow& window, Frontend::EmuWindow* secondary_window)
-    : RendererBase{system, window, secondary_window}, memory{system.Memory()}, pica{pica_},
+    : RendererBase{system, window, secondary_window},
+      validation{std::make_unique<ValidationHelper>()}, memory{system.Memory()}, pica{pica_},
       instance{window, Settings::values.physical_device.GetValue()}, scheduler{instance},
       renderpass_cache{instance, scheduler}, main_window{window, instance, scheduler},
       vertex_buffer{instance, scheduler, vk::BufferUsageFlagBits::eVertexBuffer,
@@ -64,12 +56,63 @@ RendererVulkan::RendererVulkan(Core::System& system, Pica::PicaCore& pica_,
           memory,   pica,      system.CustomTexManager(), *this,        render_window,
           instance, scheduler, renderpass_cache,          update_queue, main_window.ImageCount()},
       present_heap{instance, scheduler.GetMasterSemaphore(), PRESENT_BINDINGS, 32} {
-    CompileShaders();
-    BuildLayouts();
-    BuildPipelines();
-    ReloadPipeline();
-    if (secondary_window) {
-        second_window = std::make_unique<PresentWindow>(*secondary_window, instance, scheduler);
+    try {
+        // Initial device validation
+        ValidateDeviceProperties();
+
+        // Validate vertex buffer size and alignment
+        if (!validation->ValidateBufferProperties(
+                instance.GetPhysicalDevice().getProperties(), // Use physical device properties
+                VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer)) {
+            throw std::runtime_error("Invalid buffer configuration");
+        }
+
+        // Validate window surface
+        if (!validation->ValidateSurfaceCapabilities(
+                instance.GetPhysicalDevice().getSurfaceCapabilitiesKHR(window.GetWindowSurface()),
+                vk::Extent2D{window.GetWidth(), window.GetHeight()})) {
+            throw std::runtime_error("Invalid surface configuration");
+        }
+
+        // Proceed with initialization if validation passes
+        if (!CompileShaders()) {
+            throw std::runtime_error("Failed to compile shaders");
+        }
+
+        if (!BuildLayouts()) {
+            throw std::runtime_error("Failed to build layouts");
+        }
+
+        if (!BuildPipelines()) {
+            throw std::runtime_error("Failed to build pipelines");
+        }
+
+        ReloadPipeline();
+
+        // Validate secondary window if present
+        if (secondary_window) {
+            second_window = std::make_unique<PresentWindow>(*secondary_window, instance, scheduler);
+            if (!second_window ||
+                !validation->ValidateSurfaceCapabilities(
+                    instance.GetPhysicalDevice().getSurfaceCapabilitiesKHR(
+                        secondary_window->GetWindowSurface()),
+                    vk::Extent2D{static_cast<u32>(secondary_window->GetFramebufferWidth()),
+                                 static_cast<u32>(secondary_window->GetFramebufferHeight())})) {
+                throw std::runtime_error("Secondary window validation failed");
+            }
+        }
+
+        // Final validation of the complete renderer state
+        if (!ValidateRenderState()) {
+            throw std::runtime_error("Final renderer state validation failed");
+        }
+
+    } catch (const vk::SystemError& e) {
+        LOG_CRITICAL(Render_Vulkan, "Vulkan error during renderer initialization: {}", e.what());
+        throw;
+    } catch (const std::exception& e) {
+        LOG_CRITICAL(Render_Vulkan, "Error during renderer initialization: {}", e.what());
+        throw;
     }
 }
 
@@ -97,6 +140,37 @@ RendererVulkan::~RendererVulkan() {
 
 void RendererVulkan::Sync() {
     rasterizer.SyncEntireState();
+}
+
+void RendererVulkan::ValidateDeviceProperties() {
+    const auto& props = instance.GetPhysicalDevice().getProperties();
+
+    // Validate maximum dimensions
+    if (props.limits.maxImageDimension2D < std::max(TOP_SCREEN_WIDTH, BOTTOM_SCREEN_WIDTH)) {
+        LOG_CRITICAL(Render_Vulkan, "Device doesn't support required image dimensions");
+        throw std::runtime_error("Inadequate device capabilities");
+    }
+
+    // Validate queue family support
+    bool found_graphics_queue = false;
+    for (const auto& queue_family : instance.GetPhysicalDevice().getQueueFamilyProperties()) {
+        if (ValidationHelper::ValidateQueueFamilyProperties(queue_family,
+                                                            vk::QueueFlagBits::eGraphics)) {
+            found_graphics_queue = true;
+            break;
+        }
+    }
+    if (!found_graphics_queue) {
+        throw std::runtime_error("No suitable graphics queue found");
+    }
+
+    // Validate format support for 3DS textures
+    const auto required_features =
+        vk::FormatFeatureFlagBits::eSampledImage | vk::FormatFeatureFlagBits::eTransferDst;
+    if (!ValidationHelper::ValidateFormatSupport(instance.GetPhysicalDevice(),
+                                                 vk::Format::eR8G8B8A8Unorm, required_features)) {
+        throw std::runtime_error("Required texture format not supported");
+    }
 }
 
 void RendererVulkan::PrepareRendertarget() {
@@ -154,9 +228,23 @@ void RendererVulkan::PrepareRendertarget() {
 }
 
 void RendererVulkan::PrepareDraw(Frame* frame, const Layout::FramebufferLayout& layout) {
+    if (!frame) {
+        LOG_CRITICAL(Render_Vulkan, "Null frame in PrepareDraw");
+        return;
+    }
+
     const auto sampler = present_samplers[!Settings::values.filter_mode.GetValue()];
     const auto present_set = present_heap.Commit();
+
+    if (!validation->ValidateDescriptorSet(present_set)) {
+        return;
+    }
+
     for (u32 index = 0; index < screen_infos.size(); index++) {
+        if (!validation->ValidateScreenInfo(screen_infos[index])) {
+            LOG_CRITICAL(Render_Vulkan, "Invalid screen info at index {}", index);
+            continue;
+        }
         update_queue.AddImageSampler(present_set, 0, index, screen_infos[index].image_view,
                                      sampler);
     }
@@ -164,6 +252,10 @@ void RendererVulkan::PrepareDraw(Frame* frame, const Layout::FramebufferLayout& 
     renderpass_cache.EndRendering();
     scheduler.Record([this, layout, frame, present_set, renderpass = main_window.Renderpass(),
                       index = current_pipeline](vk::CommandBuffer cmdbuf) {
+        if (!validation->ValidateCommandBuffer(cmdbuf)) {
+            return;
+        }
+
         const vk::Viewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
@@ -178,11 +270,22 @@ void RendererVulkan::PrepareDraw(Frame* frame, const Layout::FramebufferLayout& 
             .extent = {layout.width, layout.height},
         };
 
+        const vk::Extent2D framebuffer_extent = {frame->width, frame->height};
+        if (!validation->ValidateViewport(viewport, framebuffer_extent) ||
+            !validation->ValidateScissor(scissor, framebuffer_extent)) {
+            return;
+        }
+
         cmdbuf.setViewport(0, viewport);
         cmdbuf.setScissor(0, scissor);
 
         const vk::ClearValue clear{.color = clear_color};
         const vk::PipelineLayout layout{*present_pipeline_layout};
+
+        if (!validation->ValidatePipelineState(present_pipelines[index], layout)) {
+            return;
+        }
+
         const vk::RenderPassBeginInfo renderpass_begin_info = {
             .renderPass = renderpass,
             .framebuffer = frame->framebuffer,
@@ -195,6 +298,10 @@ void RendererVulkan::PrepareDraw(Frame* frame, const Layout::FramebufferLayout& 
             .pClearValues = &clear,
         };
 
+        if (!validation->ValidateRenderPassBegin(renderpass_begin_info)) {
+            return;
+        }
+
         cmdbuf.beginRenderPass(renderpass_begin_info, vk::SubpassContents::eInline);
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eGraphics, present_pipelines[index]);
         cmdbuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, 0, present_set, {});
@@ -204,6 +311,11 @@ void RendererVulkan::PrepareDraw(Frame* frame, const Layout::FramebufferLayout& 
 void RendererVulkan::RenderToWindow(PresentWindow& window, const Layout::FramebufferLayout& layout,
                                     bool flipped) {
     Frame* frame = window.GetRenderFrame();
+
+    if (!validation->ValidateFrameDimensions(layout.width, layout.height,
+                                             instance.GetPhysicalDevice().getProperties().limits)) {
+        return;
+    }
 
     if (layout.width != frame->width || layout.height != frame->height) {
         window.WaitPresent();
@@ -219,7 +331,11 @@ void RendererVulkan::RenderToWindow(PresentWindow& window, const Layout::Framebu
 
 bool RendererVulkan::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuffer,
                                         ScreenInfo& screen_info, bool right_eye) {
-
+    if (!ValidationHelper::ValidateFramebufferConfig(
+            framebuffer, right_eye ? framebuffer.address_right1 : framebuffer.address_left1,
+            framebuffer.stride)) {
+        return false;
+    }
     try {
         LOG_DEBUG(Render_Vulkan, "Loading framebuffer to screen info");
 
@@ -259,6 +375,16 @@ bool RendererVulkan::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
             screen_info.image_view = screen_info.texture.image_view;
             screen_info.texcoords = {0.f, 0.f, 1.f, 1.f};
             LOG_ERROR(Render_Vulkan, "Failed to accelerate display");
+
+            // Add a check to ensure the image is valid
+            if (!screen_info.texture.image) {
+                LOG_CRITICAL(Render_Vulkan, "Invalid image handle in screen_info.texture.image");
+                return false;
+            }
+            return false;
+        }
+
+        if (!validation->ValidateScreenInfo(screen_info)) {
             return false;
         }
 
@@ -273,180 +399,214 @@ bool RendererVulkan::LoadFBToScreenInfo(const Pica::FramebufferConfig& framebuff
     }
 }
 
-void RendererVulkan::CompileShaders() {
-    const vk::Device device = instance.GetDevice();
-    const std::string_view preamble =
-        instance.IsImageArrayDynamicIndexSupported() ? "#define ARRAY_DYNAMIC_INDEX" : "";
-    present_vertex_shader =
-        Compile(HostShaders::VULKAN_PRESENT_VERT, vk::ShaderStageFlagBits::eVertex, device);
-    present_shaders[0] = Compile(HostShaders::VULKAN_PRESENT_FRAG,
-                                 vk::ShaderStageFlagBits::eFragment, device, preamble);
-    present_shaders[1] = Compile(HostShaders::VULKAN_PRESENT_ANAGLYPH_RENDEPTH_FRAG,
-                                 vk::ShaderStageFlagBits::eFragment, device, preamble);
-    present_shaders[2] = Compile(HostShaders::VULKAN_PRESENT_ANAGLYPH_DUBOIS_FRAG,
-                                 vk::ShaderStageFlagBits::eFragment, device, preamble);
-    present_shaders[3] = Compile(HostShaders::VULKAN_PRESENT_INTERLACED_FRAG,
-                                 vk::ShaderStageFlagBits::eFragment, device, preamble);
+bool RendererVulkan::CompileShaders() {
+    try {
+        const vk::Device device = instance.GetDevice();
+        const std::string_view preamble =
+            instance.IsImageArrayDynamicIndexSupported() ? "#define ARRAY_DYNAMIC_INDEX" : "";
+        present_vertex_shader =
+            Compile(HostShaders::VULKAN_PRESENT_VERT, vk::ShaderStageFlagBits::eVertex, device);
+        present_shaders[0] = Compile(HostShaders::VULKAN_PRESENT_FRAG,
+                                     vk::ShaderStageFlagBits::eFragment, device, preamble);
+        present_shaders[1] = Compile(HostShaders::VULKAN_PRESENT_ANAGLYPH_RENDEPTH_FRAG,
+                                     vk::ShaderStageFlagBits::eFragment, device, preamble);
+        present_shaders[2] = Compile(HostShaders::VULKAN_PRESENT_ANAGLYPH_DUBOIS_FRAG,
+                                     vk::ShaderStageFlagBits::eFragment, device, preamble);
+        present_shaders[3] = Compile(HostShaders::VULKAN_PRESENT_INTERLACED_FRAG,
+                                     vk::ShaderStageFlagBits::eFragment, device, preamble);
 
-    auto properties = instance.GetPhysicalDevice().getProperties();
-    for (std::size_t i = 0; i < present_samplers.size(); i++) {
-        const vk::Filter filter_mode = i == 0 ? vk::Filter::eLinear : vk::Filter::eNearest;
-        const vk::SamplerCreateInfo sampler_info = {
-            .magFilter = filter_mode,
-            .minFilter = filter_mode,
-            .mipmapMode = vk::SamplerMipmapMode::eLinear,
-            .addressModeU = vk::SamplerAddressMode::eClampToEdge,
-            .addressModeV = vk::SamplerAddressMode::eClampToEdge,
-            .anisotropyEnable = instance.IsAnisotropicFilteringSupported(),
-            .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-            .compareEnable = false,
-            .compareOp = vk::CompareOp::eAlways,
-            .borderColor = vk::BorderColor::eIntOpaqueBlack,
-            .unnormalizedCoordinates = false,
-        };
+        auto properties = instance.GetPhysicalDevice().getProperties();
+        for (std::size_t i = 0; i < present_samplers.size(); i++) {
+            const vk::Filter filter_mode = i == 0 ? vk::Filter::eLinear : vk::Filter::eNearest;
+            const vk::SamplerCreateInfo sampler_info = {
+                .magFilter = filter_mode,
+                .minFilter = filter_mode,
+                .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                .addressModeU = vk::SamplerAddressMode::eClampToEdge,
+                .addressModeV = vk::SamplerAddressMode::eClampToEdge,
+                .anisotropyEnable = instance.IsAnisotropicFilteringSupported(),
+                .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+                .compareEnable = false,
+                .compareOp = vk::CompareOp::eAlways,
+                .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                .unnormalizedCoordinates = false,
+            };
 
-        present_samplers[i] = device.createSampler(sampler_info);
+            present_samplers[i] = device.createSampler(sampler_info);
+        }
+        return true;
+    } catch (const std::exception& e) {
+        LOG_CRITICAL(Render_Vulkan, "Shader compilation failed: {}", e.what());
+        return false;
     }
 }
 
-void RendererVulkan::BuildLayouts() {
-    const vk::PushConstantRange push_range = {
-        .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-        .offset = 0,
-        .size = sizeof(PresentUniformData),
-    };
+bool RendererVulkan::BuildLayouts() {
+    try {
+        const vk::PushConstantRange push_range = {
+            .stageFlags = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+            .offset = 0,
+            .size = sizeof(PresentUniformData),
+        };
 
-    const auto descriptor_set_layout = present_heap.Layout();
-    const vk::PipelineLayoutCreateInfo layout_info = {
-        .setLayoutCount = 1,
-        .pSetLayouts = &descriptor_set_layout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &push_range,
-    };
-    present_pipeline_layout = instance.GetDevice().createPipelineLayoutUnique(layout_info);
+        const auto descriptor_set_layout = present_heap.Layout();
+        const vk::PipelineLayoutCreateInfo layout_info = {
+            .setLayoutCount = 1,
+            .pSetLayouts = &descriptor_set_layout,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &push_range,
+        };
+        present_pipeline_layout = instance.GetDevice().createPipelineLayoutUnique(layout_info);
+        return true;
+    } catch (const std::exception& e) {
+        LOG_CRITICAL(Render_Vulkan, "Layout building failed: {}", e.what());
+        return false;
+    }
 }
 
-void RendererVulkan::BuildPipelines() {
-    const vk::VertexInputBindingDescription binding = {
-        .binding = 0,
-        .stride = sizeof(ScreenRectVertex),
-        .inputRate = vk::VertexInputRate::eVertex,
-    };
+bool RendererVulkan::BuildPipelines() {
+    try {
+        // Add validation for pipeline creation parameters
+        if (!present_pipeline_layout) {
+            LOG_CRITICAL(Render_Vulkan, "Pipeline layout not created");
+            return false;
+        }
 
-    const std::array attributes = {
-        vk::VertexInputAttributeDescription{
-            .location = 0,
+        // Validate vertex input
+        const auto& device_props = instance.GetPhysicalDevice().getProperties();
+        if (sizeof(ScreenRectVertex) > device_props.limits.maxVertexInputBindingStride) {
+            LOG_CRITICAL(Render_Vulkan, "Vertex size exceeds device limits");
+            return false;
+        }
+
+        const vk::VertexInputBindingDescription binding = {
             .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(ScreenRectVertex, position),
-        },
-        vk::VertexInputAttributeDescription{
-            .location = 1,
-            .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(ScreenRectVertex, tex_coord),
-        },
-    };
+            .stride = sizeof(ScreenRectVertex),
+            .inputRate = vk::VertexInputRate::eVertex,
+        };
 
-    const vk::PipelineVertexInputStateCreateInfo vertex_input_info = {
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &binding,
-        .vertexAttributeDescriptionCount = static_cast<u32>(attributes.size()),
-        .pVertexAttributeDescriptions = attributes.data(),
-    };
-
-    const vk::PipelineInputAssemblyStateCreateInfo input_assembly = {
-        .topology = vk::PrimitiveTopology::eTriangleStrip,
-        .primitiveRestartEnable = false,
-    };
-
-    const vk::PipelineRasterizationStateCreateInfo raster_state = {
-        .depthClampEnable = false,
-        .rasterizerDiscardEnable = false,
-        .cullMode = vk::CullModeFlagBits::eNone,
-        .frontFace = vk::FrontFace::eClockwise,
-        .depthBiasEnable = false,
-        .lineWidth = 1.0f,
-    };
-
-    const vk::PipelineMultisampleStateCreateInfo multisampling = {
-        .rasterizationSamples = vk::SampleCountFlagBits::e1,
-        .sampleShadingEnable = false,
-    };
-
-    const vk::PipelineColorBlendAttachmentState colorblend_attachment = {
-        .blendEnable = false,
-        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-                          vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-    };
-
-    const vk::PipelineColorBlendStateCreateInfo color_blending = {
-        .logicOpEnable = false,
-        .attachmentCount = 1,
-        .pAttachments = &colorblend_attachment,
-        .blendConstants = std::array{1.0f, 1.0f, 1.0f, 1.0f},
-    };
-
-    const vk::Viewport placeholder_viewport = vk::Viewport{0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
-    const vk::Rect2D placeholder_scissor = vk::Rect2D{{0, 0}, {1, 1}};
-    const vk::PipelineViewportStateCreateInfo viewport_info = {
-        .viewportCount = 1,
-        .pViewports = &placeholder_viewport,
-        .scissorCount = 1,
-        .pScissors = &placeholder_scissor,
-    };
-
-    const std::array dynamic_states = {
-        vk::DynamicState::eViewport,
-        vk::DynamicState::eScissor,
-    };
-
-    const vk::PipelineDynamicStateCreateInfo dynamic_info = {
-        .dynamicStateCount = static_cast<u32>(dynamic_states.size()),
-        .pDynamicStates = dynamic_states.data(),
-    };
-
-    const vk::PipelineDepthStencilStateCreateInfo depth_info = {
-        .depthTestEnable = false,
-        .depthWriteEnable = false,
-        .depthCompareOp = vk::CompareOp::eAlways,
-        .depthBoundsTestEnable = false,
-        .stencilTestEnable = false,
-    };
-
-    for (u32 i = 0; i < PRESENT_PIPELINES; i++) {
-        const std::array shader_stages = {
-            vk::PipelineShaderStageCreateInfo{
-                .stage = vk::ShaderStageFlagBits::eVertex,
-                .module = present_vertex_shader,
-                .pName = "main",
+        const std::array attributes = {
+            vk::VertexInputAttributeDescription{
+                .location = 0,
+                .binding = 0,
+                .format = vk::Format::eR32G32Sfloat,
+                .offset = offsetof(ScreenRectVertex, position),
             },
-            vk::PipelineShaderStageCreateInfo{
-                .stage = vk::ShaderStageFlagBits::eFragment,
-                .module = present_shaders[i],
-                .pName = "main",
+            vk::VertexInputAttributeDescription{
+                .location = 1,
+                .binding = 0,
+                .format = vk::Format::eR32G32Sfloat,
+                .offset = offsetof(ScreenRectVertex, tex_coord),
             },
         };
 
-        const vk::GraphicsPipelineCreateInfo pipeline_info = {
-            .stageCount = static_cast<u32>(shader_stages.size()),
-            .pStages = shader_stages.data(),
-            .pVertexInputState = &vertex_input_info,
-            .pInputAssemblyState = &input_assembly,
-            .pViewportState = &viewport_info,
-            .pRasterizationState = &raster_state,
-            .pMultisampleState = &multisampling,
-            .pDepthStencilState = &depth_info,
-            .pColorBlendState = &color_blending,
-            .pDynamicState = &dynamic_info,
-            .layout = *present_pipeline_layout,
-            .renderPass = main_window.Renderpass(),
+        const vk::PipelineVertexInputStateCreateInfo vertex_input_info = {
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &binding,
+            .vertexAttributeDescriptionCount = static_cast<u32>(attributes.size()),
+            .pVertexAttributeDescriptions = attributes.data(),
         };
 
-        const auto [result, pipeline] =
-            instance.GetDevice().createGraphicsPipeline({}, pipeline_info);
-        ASSERT_MSG(result == vk::Result::eSuccess, "Unable to build present pipelines");
-        present_pipelines[i] = pipeline;
+        const vk::PipelineInputAssemblyStateCreateInfo input_assembly = {
+            .topology = vk::PrimitiveTopology::eTriangleStrip,
+            .primitiveRestartEnable = false,
+        };
+
+        const vk::PipelineRasterizationStateCreateInfo raster_state = {
+            .depthClampEnable = false,
+            .rasterizerDiscardEnable = false,
+            .cullMode = vk::CullModeFlagBits::eNone,
+            .frontFace = vk::FrontFace::eClockwise,
+            .depthBiasEnable = false,
+            .lineWidth = 1.0f,
+        };
+
+        const vk::PipelineMultisampleStateCreateInfo multisampling = {
+            .rasterizationSamples = vk::SampleCountFlagBits::e1,
+            .sampleShadingEnable = false,
+        };
+
+        const vk::PipelineColorBlendAttachmentState colorblend_attachment = {
+            .blendEnable = false,
+            .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                              vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+        };
+
+        const vk::PipelineColorBlendStateCreateInfo color_blending = {
+            .logicOpEnable = false,
+            .attachmentCount = 1,
+            .pAttachments = &colorblend_attachment,
+            .blendConstants = std::array{1.0f, 1.0f, 1.0f, 1.0f},
+        };
+
+        const vk::Viewport placeholder_viewport = vk::Viewport{0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+        const vk::Rect2D placeholder_scissor = vk::Rect2D{{0, 0}, {1, 1}};
+        const vk::PipelineViewportStateCreateInfo viewport_info = {
+            .viewportCount = 1,
+            .pViewports = &placeholder_viewport,
+            .scissorCount = 1,
+            .pScissors = &placeholder_scissor,
+        };
+
+        const std::array dynamic_states = {
+            vk::DynamicState::eViewport,
+            vk::DynamicState::eScissor,
+        };
+
+        const vk::PipelineDynamicStateCreateInfo dynamic_info = {
+            .dynamicStateCount = static_cast<u32>(dynamic_states.size()),
+            .pDynamicStates = dynamic_states.data(),
+        };
+
+        const vk::PipelineDepthStencilStateCreateInfo depth_info = {
+            .depthTestEnable = false,
+            .depthWriteEnable = false,
+            .depthCompareOp = vk::CompareOp::eAlways,
+            .depthBoundsTestEnable = false,
+            .stencilTestEnable = false,
+        };
+
+        for (u32 i = 0; i < PRESENT_PIPELINES; i++) {
+            const std::array shader_stages = {
+                vk::PipelineShaderStageCreateInfo{
+                    .stage = vk::ShaderStageFlagBits::eVertex,
+                    .module = present_vertex_shader,
+                    .pName = "main",
+                },
+                vk::PipelineShaderStageCreateInfo{
+                    .stage = vk::ShaderStageFlagBits::eFragment,
+                    .module = present_shaders[i],
+                    .pName = "main",
+                },
+            };
+
+            const vk::GraphicsPipelineCreateInfo pipeline_info = {
+                .stageCount = static_cast<u32>(shader_stages.size()),
+                .pStages = shader_stages.data(),
+                .pVertexInputState = &vertex_input_info,
+                .pInputAssemblyState = &input_assembly,
+                .pViewportState = &viewport_info,
+                .pRasterizationState = &raster_state,
+                .pMultisampleState = &multisampling,
+                .pDepthStencilState = &depth_info,
+                .pColorBlendState = &color_blending,
+                .pDynamicState = &dynamic_info,
+                .layout = *present_pipeline_layout,
+                .renderPass = main_window.Renderpass(),
+            };
+
+            const auto [result, pipeline] =
+                instance.GetDevice().createGraphicsPipeline({}, pipeline_info);
+            ASSERT_MSG(result == vk::Result::eSuccess, "Unable to build present pipelines");
+            present_pipelines[i] = pipeline;
+        }
+        return true;
+    } catch (const vk::SystemError& err) {
+        LOG_CRITICAL(Render_Vulkan, "Failed to build pipelines: {}", err.what());
+        return false;
+    } catch (const std::exception& e) {
+        LOG_CRITICAL(Render_Vulkan, "Pipeline building failed: {}", e.what());
+        return false;
     }
 }
 
@@ -456,6 +616,11 @@ bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
         LOG_DEBUG(Render_Vulkan, "Configuring framebuffer texture {}x{} format={}",
                   framebuffer.width.Value(), framebuffer.height.Value(),
                   static_cast<u32>(framebuffer.color_format.Value()));
+
+        if (!ValidationHelper::ValidateFramebufferConfig(framebuffer, fb_addr,
+                                                         framebuffer.stride)) {
+            return false;
+        }
 
         vk::Device device = instance.GetDevice();
         if (texture.image_view) {
@@ -483,6 +648,12 @@ bool RendererVulkan::ConfigureFramebufferTexture(TextureInfo& texture,
             .samples = vk::SampleCountFlagBits::e1,
             .usage = vk::ImageUsageFlagBits::eSampled,
         };
+
+        // Validate image creation parameters
+        if (!ValidationHelper::ValidateImageProperties(
+                image_info, instance.GetPhysicalDevice().getProperties().limits)) {
+            return false;
+        }
 
         const VmaAllocationCreateInfo alloc_info = {
             .flags = VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT,
@@ -613,7 +784,22 @@ void RendererVulkan::ReloadPipeline() {
 
 void RendererVulkan::DrawSingleScreen(u32 screen_id, float x, float y, float w, float h,
                                       Layout::DisplayOrientation orientation) {
+    // Validate parameters
+    if (screen_id >= screen_infos.size()) {
+        LOG_CRITICAL(Render_Vulkan, "Invalid screen_id: {}", screen_id);
+        return;
+    }
+
+    if (w <= 0.0f || h <= 0.0f) {
+        LOG_CRITICAL(Render_Vulkan, "Invalid dimensions: {}x{}", w, h);
+        return;
+    }
+
     const ScreenInfo& screen_info = screen_infos[screen_id];
+    if (!ValidationHelper::ValidateScreenInfo(screen_info)) {
+        return;
+    }
+
     const auto& texcoords = screen_info.texcoords;
 
     std::array<ScreenRectVertex, 4> vertices;
@@ -889,8 +1075,7 @@ void RendererVulkan::DrawBottomScreen(const Layout::FramebufferLayout& layout,
 void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& layout,
                                  bool flipped) {
     try {
-        if (!frame) {
-            LOG_CRITICAL(Render_Vulkan, "Null frame passed to DrawScreens");
+        if (!ValidationHelper::ValidateDrawParameters(frame, layout, screen_infos)) {
             return;
         }
 
@@ -899,8 +1084,8 @@ void RendererVulkan::DrawScreens(Frame* frame, const Layout::FramebufferLayout& 
 
         // Validate screen info textures
         for (size_t i = 0; i < screen_infos.size(); i++) {
-            if (!screen_infos[i].texture.image || !screen_infos[i].texture.image_view) {
-                LOG_ERROR(Render_Vulkan, "Invalid texture at screen_infos[{}]", i);
+            if (!ValidationHelper::ValidateScreenInfo(screen_infos[i])) {
+                LOG_CRITICAL(Render_Vulkan, "Invalid screen info at index {}", i);
                 return;
             }
         }
@@ -1004,15 +1189,15 @@ void RendererVulkan::RenderScreenshotWithStagingCopy() {
 
     VkBuffer unsafe_buffer{};
     VmaAllocation allocation{};
-    VmaAllocationInfo alloc_info;
-    VkBufferCreateInfo unsafe_buffer_info = static_cast<VkBufferCreateInfo>(staging_buffer_info);
+    VmaAllocationInfo alloc_info{};
 
-    VkResult result = vmaCreateBuffer(instance.GetAllocator(), &unsafe_buffer_info,
-                                      &alloc_create_info, &unsafe_buffer, &allocation, &alloc_info);
-    if (result != VK_SUCCESS) [[unlikely]] {
-        LOG_CRITICAL(Render_Vulkan, "Failed allocating texture with error {}", result);
-        UNREACHABLE();
+    if (!ValidationHelper::ValidateBufferAllocation(instance.GetAllocator(), staging_buffer_info,
+                                                    alloc_create_info, unsafe_buffer, allocation)) {
+        return;
     }
+
+    // Get the allocation info which contains the mapped pointer
+    vmaGetAllocationInfo(instance.GetAllocator(), allocation, &alloc_info);
 
     vk::Buffer staging_buffer{unsafe_buffer};
 
