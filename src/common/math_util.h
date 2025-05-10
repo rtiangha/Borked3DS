@@ -41,23 +41,34 @@ struct Rectangle {
     }
 
     [[nodiscard]] T GetWidth() const {
-        return std::abs(static_cast<std::make_signed_t<T>>(right - left));
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::abs(right - left);
+        } else {
+            return std::abs(static_cast<std::make_signed_t<T>>(right - left));
+        }
     }
+
     [[nodiscard]] T GetHeight() const {
-        return std::abs(static_cast<std::make_signed_t<T>>(bottom - top));
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::abs(bottom - top);
+        } else {
+            return std::abs(static_cast<std::make_signed_t<T>>(bottom - top));
+        }
     }
+
     [[nodiscard]] Rectangle<T> TranslateX(const T x) const {
         return Rectangle{left + x, top, right + x, bottom};
     }
+
     [[nodiscard]] Rectangle<T> TranslateY(const T y) const {
         return Rectangle{left, top + y, right, bottom + y};
     }
+
     [[nodiscard]] Rectangle<T> Scale(const float s) const {
         return Rectangle{left, top, static_cast<T>(left + GetWidth() * s),
                          static_cast<T>(top + GetHeight() * s)};
     }
 };
-
 template <typename T>
 Rectangle(T, T, T, T) -> Rectangle<T>;
 
