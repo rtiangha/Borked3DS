@@ -12,7 +12,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("de.undercouch.download") version "5.6.0"
     id("kotlin-parcelize")
-    kotlin("plugin.serialization") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.21"
     id("androidx.navigation.safeargs.kotlin")
 }
 
@@ -31,7 +31,7 @@ android {
     namespace = "io.github.borked3ds.android"
 
     compileSdk = 35
-    ndkVersion = "28.0.13004108"
+    ndkVersion = "28.1.13356709"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_23
@@ -194,24 +194,24 @@ android {
 
 dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
-    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("androidx.fragment:fragment-ktx:1.8.6")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.9")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.9")
+    implementation("androidx.documentfile:documentfile:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.8")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.1")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.9.0")
+    implementation("androidx.navigation:navigation-ui-ktx:2.9.0")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.slidingpanelayout:slidingpanelayout:1.2.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-    implementation("androidx.work:work-runtime:2.10.0")
+    implementation("androidx.work:work-runtime:2.10.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("info.debatty:java-string-similarity:2.0.0")
     implementation("io.coil-kt:coil:2.7.0")
     implementation("org.ini4j:ini4j:0.5.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 }
 
 // Download Vulkan Validation Layers from the KhronosGroup GitHub.
