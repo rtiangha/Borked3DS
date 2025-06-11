@@ -181,7 +181,7 @@ function(download_moltenvk)
     if (NOT BORKED3DS_USE_EXTERNAL_MOLTENVK)
         if (NOT EXISTS ${MOLTENVK_DIR})
             if (NOT EXISTS ${MOLTENVK_TAR})
-                file(DOWNLOAD https://github.com/KhronosGroup/MoltenVK/releases/download/v1.2.11-artifacts/MoltenVK-all.tar 
+                file(DOWNLOAD https://github.com/KhronosGroup/MoltenVK/releases/download/v1.3.0/MoltenVK-all.tar 
                 ${MOLTENVK_TAR} SHOW_PROGRESS)
             endif()
         endif()
