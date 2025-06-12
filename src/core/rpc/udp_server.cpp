@@ -43,6 +43,15 @@ private:
         } else if (size >= MIN_PACKET_SIZE && size <= MAX_PACKET_SIZE) {
             PacketHeader header;
             std::memcpy(&header, request_buffer.data(), sizeof(header));
+
+            // Add validation for header.packet_size
+            if (header.packet_size > MAX_PACKET_DATA_SIZE) {
+                LOG_WARNING(RPC_Server, "Received packet with invalid data size: {}",
+                            header.packet_size);
+                StartReceive();
+                return;
+            }
+
             if ((size - MIN_PACKET_SIZE) == header.packet_size) {
                 u8* data = request_buffer.data() + MIN_PACKET_SIZE;
                 std::function<void(Packet&)> send_reply_callback =
@@ -60,12 +69,25 @@ private:
     }
 
     void SendReply(boost::asio::ip::udp::endpoint endpoint, Packet& reply_packet) {
-        std::vector<u8> reply_buffer(MIN_PACKET_SIZE + reply_packet.GetPacketDataSize());
+        const auto data_size = reply_packet.GetPacketDataSize();
+
+        // Validate size is within allowed bounds
+        if (data_size > MAX_PACKET_DATA_SIZE) {
+            LOG_ERROR(RPC_Server, "Invalid packet data size: {} exceeds maximum {}", data_size,
+                      MAX_PACKET_DATA_SIZE);
+            return;
+        }
+
+        // Now we know the total size will be valid
+        std::vector<u8> reply_buffer(MIN_PACKET_SIZE + data_size);
         auto reply_header = reply_packet.GetHeader();
 
-        std::memcpy(reply_buffer.data(), &reply_header, sizeof(reply_header));
-        std::memcpy(reply_buffer.data() + (4 * sizeof(u32)), reply_packet.GetPacketData().data(),
-                    reply_packet.GetPacketDataSize());
+        // Copy header
+        std::memcpy(reply_buffer.data(), &reply_header, MIN_PACKET_SIZE);
+
+        // Copy packet data
+        const auto& packet_data = reply_packet.GetPacketData();
+        std::memcpy(reply_buffer.data() + MIN_PACKET_SIZE, packet_data.data(), data_size);
 
         boost::system::error_code error;
         socket.send_to(boost::asio::buffer(reply_buffer), endpoint, 0, error);
