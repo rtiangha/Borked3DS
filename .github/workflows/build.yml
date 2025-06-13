@@ -23,6 +23,7 @@ jobs:
         with:
           name: source
           path: artifacts/
+          compression-level: 9
   linux-clang-jammy:
     runs-on: ubuntu-22.04
     strategy:
@@ -67,8 +68,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          aqtversion: '==3.2.*'
-          version: '6.9.0'
+          aqtversion: '==3.3.*'
+          version: '6.9.1'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
@@ -89,6 +90,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+          compression-level: 9
   linux-clang-noble:
     runs-on: ubuntu-24.04
     strategy:
@@ -133,8 +135,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          aqtversion: '==3.2.*'
-          version: '6.9.0'
+          aqtversion: '==3.3.*'
+          version: '6.9.1'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
@@ -155,6 +157,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+          compression-level: 9
   linux-gcc-noble:
     runs-on: ubuntu-24.04
     strategy:
@@ -191,8 +194,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          aqtversion: '==3.2.*'
-          version: '6.9.0'
+          aqtversion: '==3.3.*'
+          version: '6.9.1'
           host: 'linux'
           target: 'desktop'
           arch: 'linux_gcc_64'
@@ -213,6 +216,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+          compression-level: 9
   macos:
     runs-on: ${{ (matrix.target == 'x86_64' && 'macos-13') || 'macos-15' }}
     strategy:
@@ -283,6 +287,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+          compression-level: 9
   windows:
     runs-on: windows-latest
     strategy:
@@ -376,6 +381,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+          compression-level: 9
   windows-arm:
     runs-on: windows-11-arm
     strategy:
@@ -445,6 +451,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
+          compression-level: 9
   android:
     runs-on: ubuntu-24.04
     env:
@@ -506,6 +513,7 @@ jobs:
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: src/android/app/artifacts/
+          compression-level: 9
   ios:
     runs-on: macos-15
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
