@@ -1,8 +1,8 @@
 #!/bin/bash -ex
 
-if [ "$TARGET" = "appimage-clang-24.04" ] ; then
+if [ "$TARGET" = "appimage-clang-24.04-arm" ] ; then
     # Compile the AppImage we distribute with Clang.
-    export EXTRA_CMAKE_FLAGS=(-DCMAKE_LINKER_TYPE="MOLD" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold" -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=mold")
+    export EXTRA_CMAKE_FLAGS=(-DCMAKE_LINKER=/usr/bin/lld-20)
     # Bundle required QT wayland libraries
     export EXTRA_QT_PLUGINS="waylandcompositor"
     export EXTRA_PLATFORM_PLUGINS="libqwayland-egl.so;libqwayland-generic.so"
@@ -11,7 +11,7 @@ else
     export EXTRA_CMAKE_FLAGS=(-DBORKED3DS_USE_PRECOMPILED_HEADERS=OFF)
 fi
 
-mkdir build && cd build
+mkdir -p build && cd build
 cmake .. -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -22,6 +22,7 @@ cmake .. -G Ninja \
     -DCMAKE_C_FLAGS="-O2" \
     "${EXTRA_CMAKE_FLAGS[@]}" \
     -DENABLE_QT_TRANSLATION=ON \
+    -DENABLE_TESTS=OFF \
     -DUSE_SYSTEM_BOOST=OFF \
     -DUSE_SYSTEM_CATCH2=OFF \
     -DUSE_SYSTEM_CRYPTOPP=OFF \
@@ -51,7 +52,7 @@ cmake .. -G Ninja \
 ninja
 strip -s bin/Release/*
 
-if [ "$TARGET" = "appimage-clang-24.04" ]; then
+if [ "$TARGET" = "appimage-clang-24.04-arm" ]; then
     ninja bundle
     # TODO: Our AppImage environment currently uses an older ccache version without the verbose flag.
     ccache -s
