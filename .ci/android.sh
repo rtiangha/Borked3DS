@@ -16,11 +16,11 @@ cd externals/Vulkan-ValidationLayers
 
 # Build vvl release binary for arm64-v8a
 cmake -S . -B build \
-  -D CMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+  -D CMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
   -D CMAKE_C_COMPILER_LAUNCHER=ccache \
   -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -D CMAKE_CXX_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang++ \
-  -D CMAKE_C_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang \
+  -D CMAKE_CXX_COMPILER=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang++ \
+  -D CMAKE_C_COMPILER=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang \
   -D CMAKE_CXX_FLAGS="-O3 -march=armv8-a+simd" \
   -D CMAKE_EXE_LINKER_FLAGS=-flto=thin \
   -D CMAKE_SHARED_LINKER_FLAGS=-flto=thin \
@@ -45,11 +45,11 @@ rm -rf build
 
 # Build vvl release binary for x86_64
 cmake -S . -B build \
-  -D CMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+  -D CMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
   -D CMAKE_C_COMPILER_LAUNCHER=ccache \
   -D CMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -D CMAKE_CXX_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang++ \
-  -D CMAKE_C_COMPILER=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang \
+  -D CMAKE_CXX_COMPILER=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang++ \
+  -D CMAKE_C_COMPILER=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang \
   -D CMAKE_CXX_FLAGS="-O3 -march=atom -mtune=sandybridge -msse4.1" \
   -D CMAKE_EXE_LINKER_FLAGS=-flto=thin \
   -D CMAKE_SHARED_LINKER_FLAGS=-flto=thin \
