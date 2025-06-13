@@ -395,6 +395,24 @@ void Instance::CreateAttribTable() {
     }
 }
 
+void Instance::CheckDeviceMemory() {
+    const auto memory_properties = physical_device.getMemoryProperties();
+
+    LOG_INFO(Render_Vulkan, "Device Memory Heaps:");
+    for (u32 i = 0; i < memory_properties.memoryHeapCount; ++i) {
+        const auto& heap = memory_properties.memoryHeaps[i];
+        LOG_INFO(Render_Vulkan, "Heap {}: Size = {} MB, Flags = {}", i, heap.size / (1024 * 1024),
+                 vk::to_string(heap.flags));
+    }
+
+    LOG_INFO(Render_Vulkan, "Device Memory Types:");
+    for (u32 i = 0; i < memory_properties.memoryTypeCount; ++i) {
+        const auto& type = memory_properties.memoryTypes[i];
+        LOG_INFO(Render_Vulkan, "Type {}: Heap = {}, Flags = {}", i, type.heapIndex,
+                 vk::to_string(type.propertyFlags));
+    }
+}
+
 bool Instance::CreateDevice() {
     const vk::StructureChain feature_chain = physical_device.getFeatures2<
         vk::PhysicalDeviceFeatures2, vk::PhysicalDevicePortabilitySubsetFeaturesKHR,
@@ -634,6 +652,7 @@ bool Instance::CreateDevice() {
     present_queue = device->getQueue(queue_family_index, 0);
 
     CreateAllocator();
+    CheckDeviceMemory();
     return true;
 }
 
@@ -687,5 +706,4 @@ void Instance::CollectToolingInfo() {
         has_nsight_graphics = has_nsight_graphics || name == "NVIDIA Nsight Graphics";
     }
 }
-
 } // namespace Vulkan
