@@ -13,13 +13,13 @@ jobs:
     if: ${{ !github.head_ref }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Pack
         run: ./.ci/source.sh
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: source
           path: artifacts/
@@ -36,11 +36,11 @@ jobs:
       OS: linux
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
@@ -61,12 +61,12 @@ jobs:
       - name: Install New Packages
         run: sudo apt-get -y install ccache gcc-11 clang-20 clang-tools-20 clang-20-doc libxcb-xkb-dev libclang-common-20-dev libclang-20-dev libclang1-20 clang-format-20 python3-clang-20 clangd-20 clang-tidy-20 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.0.3
         with:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v4.3.0
         with:
           aqtversion: '==3.3.*'
           version: '6.9.1'
@@ -85,7 +85,7 @@ jobs:
         run: ./.ci/pack.sh
         if: ${{ matrix.target == 'appimage-clang-22.04' }}
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: ${{ matrix.target == 'appimage-clang-22.04' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
@@ -103,11 +103,11 @@ jobs:
       OS: linux
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
@@ -128,12 +128,12 @@ jobs:
       - name: Install New Packages
         run: sudo apt-get -y install ccache gcc-14 clang-20 clang-tools-20 clang-20-doc libxcb-xkb-dev libclang-common-20-dev libclang-20-dev libclang1-20 clang-format-20 python3-clang-20 clangd-20 clang-tidy-20 libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.0.3
         with:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v4.3.0
         with:
           aqtversion: '==3.3.*'
           version: '6.9.1'
@@ -152,7 +152,7 @@ jobs:
         run: ./.ci/pack.sh
         if: ${{ matrix.target == 'appimage-clang-24.04' }}
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: ${{ matrix.target == 'appimage-clang-24.04' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
@@ -170,11 +170,11 @@ jobs:
       OS: linux
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
@@ -199,12 +199,12 @@ jobs:
           sudo ln -s /usr/lib/aarch64-linux-gnu/libGLESv2.so /usr/lib/libbrcmGLESv2.so
           sudo ln -s /usr/lib/aarch64-linux-gnu/libEGL.so /usr/lib/libbrcmEGL.so
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.0.3
         with:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v4.3.0
         with:
           aqtversion: '==3.3.*'
           version: '6.9.1'
@@ -219,7 +219,7 @@ jobs:
         run: ./.ci/pack.sh
         if: ${{ matrix.target == 'appimage-clang-24.04-arm' }}
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: ${{ matrix.target == 'appimage-clang-24.04-arm' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
@@ -237,11 +237,11 @@ jobs:
       OS: linux
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
@@ -254,12 +254,12 @@ jobs:
       - name: Install New Packages
         run: sudo apt-get -y install ccache gcc-14 build-essential libxcb-xkb-dev libasound-dev xorg-dev libx11-dev libxext-dev jackd libpipewire-0.3-dev libsndio-dev libxcb-cursor-dev libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev unzip && sudo apt-get clean
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.0.3
         with:
           cmakeVersion: latest
           ninjaVersion: latest
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@v4.3.0
         with:
           aqtversion: '==3.3.*'
           version: '6.9.1'
@@ -278,7 +278,7 @@ jobs:
         run: ./.ci/pack.sh
         if: ${{ matrix.target == 'appimage-gcc-24.04' }}
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: ${{ matrix.target == 'appimage-gcc-24.04' }}
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
@@ -296,22 +296,22 @@ jobs:
       OS: macos
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-
       - name: Setup XCode
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
           xcode-version: latest-stable
       - name: Install tools
-        uses: tecolicom/actions-use-homebrew-tools@v1
+        uses: tecolicom/actions-use-homebrew-tools@v1.3
         with:
           tools: ccache ninja
       - name: Build
@@ -319,7 +319,7 @@ jobs:
       - name: Prepare outputs for caching
         run: mv build/bundle $OS-$TARGET
       - name: Cache outputs for universal build
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v4.2.3
         with:
           path: ${{ env.OS }}-${{ env.TARGET }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -330,15 +330,15 @@ jobs:
       OS: macos
       TARGET: universal
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - name: Download x86_64 build from cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v4.2.3
         with:
           path: ${{ env.OS }}-x86_64
           key: ${{ runner.os }}-x86_64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           fail-on-cache-miss: true
       - name: Download ARM64 build from cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v4.2.3
         with:
           path: ${{ env.OS }}-arm64
           key: ${{ runner.os }}-arm64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -350,7 +350,7 @@ jobs:
       - name: Pack
         run: ./.ci/pack.sh
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
@@ -370,24 +370,24 @@ jobs:
       OS: windows
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-
       - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@v1.13.0
         if: ${{ matrix.target == 'msvc' }}
       - name: Install extra tools (MSVC)
         run: choco install ccache ninja ptime wget unzip
         if: ${{ matrix.target == 'msvc' }}
       - name: Set up MSYS2 (clang)
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@v2.27.0
         if: ${{ matrix.target == 'clang' }}
         with:
           msystem: clang64
@@ -398,16 +398,16 @@ jobs:
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
       - name: Install extra tools (Clang)
         if: ${{ matrix.target == 'clang' }}
-        uses: crazy-max/ghaction-chocolatey@v3
+        uses: crazy-max/ghaction-chocolatey@v3.3.0
         with:
           args: install ptime wget
       - name: Install extra tools (GCC)
         if: ${{ matrix.target == 'gcc' }}
-        uses: crazy-max/ghaction-chocolatey@v3
+        uses: crazy-max/ghaction-chocolatey@v3.3.0
         with:
           args: install ptime wget
       - name: Set up MINGW (gcc)
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@v2.27.0
         with:
           msystem: mingw64
           update: true
@@ -444,7 +444,7 @@ jobs:
       - name: Pack
         run: ./.ci/pack.sh
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
@@ -464,24 +464,24 @@ jobs:
       OS: windows
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-${{ matrix.target }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-
       - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@v1.13.0
         if: ${{ matrix.target == 'msvc-arm' }}
       - name: Install extra tools (MSVC)
         run: choco install ccache ninja wget unzip
         if: ${{ matrix.target == 'msvc-arm' }}
       - name: Set up MSYS2 (clang)
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@v2.27.0
         if: ${{ matrix.target == 'clang-arm' }}
         with:
           msystem: clang64
@@ -491,7 +491,7 @@ jobs:
             toolchain:p ccache:p cmake:p ninja:p 
             qt6-base:p qt6-multimedia:p qt6-multimedia-wmf:p qt6-tools:p qt6-translations:p
       - name: Set up MINGW (gcc)
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@v2.27.0
         with:
           msystem: mingw64
           update: true
@@ -514,7 +514,7 @@ jobs:
       - name: Pack
         run: ./.ci/pack.sh
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: artifacts/
@@ -528,11 +528,11 @@ jobs:
       OS: android
       TARGET: universal
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -552,12 +552,12 @@ jobs:
       - name: Install New Packages
         run: sudo apt-get -y install zip unzip python3 ccache apksigner && sudo apt-get clean
       - name: Get latest CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.0.3
         with:
           cmakeVersion: 3.30.6
           ninjaVersion: latest
       - name: Install JDK 23
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.1
         with:
           distribution: 'temurin'
           java-version: '23'
@@ -576,7 +576,7 @@ jobs:
         env:
           UNPACKED: 1
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ env.OS }}-${{ env.TARGET }}
           path: src/android/app/artifacts/
@@ -591,22 +591,22 @@ jobs:
       OS: ios
       TARGET: arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           submodules: recursive
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ runner.os }}-ios-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-ios-
       - name: Setup XCode
-        uses: maxim-lobanov/setup-xcode@v1
+        uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
           xcode-version: latest-stable
       - name: Install tools
-        uses: tecolicom/actions-use-homebrew-tools@v1
+        uses: tecolicom/actions-use-homebrew-tools@v1.3
         with:
           tools: ccache ninja
       - name: Build
@@ -616,9 +616,9 @@ jobs:
     needs: [windows, windows-arm, linux-clang-jammy, linux-clang-noble, linux-clang-noble-arm, linux-gcc-noble, macos-universal, android, source]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
       - name: Create release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
